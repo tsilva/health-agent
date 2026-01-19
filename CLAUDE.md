@@ -123,24 +123,40 @@ When analyzing health patterns, consider data from all three sources:
 5. Search exam summaries for related findings
 ```
 
-## Creating Analysis Skills
+## Built-in Skills
 
-Users can create custom skills in `~/.claude/skills/` for common analyses:
+Six analysis skills are available in `.claude/skills/health-agent/`:
+
+| Skill | Use When |
+|-------|----------|
+| `lab-trend` | User asks to track a specific marker over time |
+| `out-of-range-labs` | User asks for abnormal or flagged lab values |
+| `exam-catalog` | User asks to list or search medical exams |
+| `episode-investigation` | User asks about a specific health episode |
+| `health-summary` | User needs a comprehensive health overview |
+| `cross-temporal-correlation` | User asks about patterns or correlations |
+
+### Shared Reference
+
+`references/common-markers.md` contains:
+- Marker name aliases (e.g., "A1C" = "HbA1c")
+- Age-specific range adjustments
+- Gender-specific range adjustments
+- Critical value thresholds
+
+## Creating Custom Skills
+
+Users can create additional skills in `~/.claude/skills/` for custom analyses:
 
 ```markdown
 ---
-description: "Analyze trends for a specific lab marker"
+name: my-analysis
+description: "What it does and trigger phrases"
 ---
 
-# Lab Trend Analysis Skill
+# My Analysis Skill
 
-When analyzing lab trends:
-1. Load the active profile's labs_path
-2. Read all.csv and filter for the requested marker
-3. Sort by lab_date
-4. Calculate: min, max, mean, trend direction
-5. Identify out-of-range values
-6. Present findings with dates and context
+Instructions for performing the analysis...
 ```
 
 ## Important Notes

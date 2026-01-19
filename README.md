@@ -60,34 +60,54 @@ Open Claude Code in this directory. You'll be prompted to select a profile.
 | [medical-exams-parser](https://github.com/tsilva/medical-exams-parser) | `*.summary.md` | Imaging and exam transcriptions with YAML metadata |
 | [health-log-parser](https://github.com/tsilva/health-log-parser) | `health_log.md` + `health_timeline.csv` | Health journal entries and structured timeline |
 
+## Built-in Skills
+
+Health Agent includes 6 analysis skills that activate automatically based on your queries:
+
+| Skill | Trigger Phrases | Description |
+|-------|-----------------|-------------|
+| **lab-trend** | "track my glucose", "cholesterol trend", "how has my TSH changed" | Analyze longitudinal trends for specific biomarkers |
+| **out-of-range-labs** | "abnormal labs", "which labs are out of range", "labs that need attention" | Identify and prioritize abnormal lab values by severity |
+| **exam-catalog** | "list my exams", "find my MRI", "show ultrasounds" | Index and search medical imaging records |
+| **episode-investigation** | "tell me about episode_001", "investigate my cold", "what happened with my back pain" | Deep-dive into health episodes across all data sources |
+| **health-summary** | "summarize my health", "doctor visit prep", "health overview for 2024" | Generate comprehensive reports for provider visits |
+| **cross-temporal-correlation** | "correlation between X and Y", "patterns in my data", "do symptoms affect labs" | Discover patterns between events and biomarkers |
+
 ## Directory Structure
 
 ```
 health-agent/
-├── CLAUDE.md              # Agent instructions and data schemas
+├── CLAUDE.md                          # Agent instructions and data schemas
 ├── profiles/
-│   ├── _template.yaml     # Profile template
-│   └── {name}.yaml        # User profiles (gitignored)
+│   ├── _template.yaml                 # Profile template
+│   └── {name}.yaml                    # User profiles (gitignored)
+├── .claude/
+│   └── skills/
+│       └── health-agent/
+│           ├── lab-trend/SKILL.md
+│           ├── out-of-range-labs/SKILL.md
+│           ├── exam-catalog/SKILL.md
+│           ├── episode-investigation/SKILL.md
+│           ├── health-summary/SKILL.md
+│           ├── cross-temporal-correlation/SKILL.md
+│           └── references/
+│               └── common-markers.md  # Lab marker aliases and ranges
 └── README.md
 ```
 
-## Creating Analysis Skills
+## Creating Custom Skills
 
-Create custom skills in `~/.claude/skills/` for repeated analyses:
+Create additional skills in `~/.claude/skills/` or `.claude/skills/` for custom analyses:
 
 ```markdown
 ---
-description: "Analyze trends for a specific lab marker"
+name: my-custom-analysis
+description: "Describe what this skill does and trigger phrases"
 ---
 
-# Lab Trend Analysis
+# My Custom Analysis
 
-When analyzing lab trends:
-1. Load the active profile's labs_path
-2. Read all.csv and filter for the requested marker
-3. Sort by lab_date and calculate statistics
-4. Identify out-of-range values
-5. Present findings with dates and context
+Instructions for performing the analysis...
 ```
 
 ## Data Privacy
