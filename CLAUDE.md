@@ -168,6 +168,7 @@ Instructions for performing the analysis...
 - **No Scripts**: This agent reads data files directly - no Python preprocessing required.
 - **Demographics**: Use `date_of_birth` and `gender` when interpreting reference ranges, as many vary by age and sex.
 - **Confidence Scores**: Lab values with low confidence (<0.8) should be flagged for manual verification.
+- **Large File Handling**: Data files (`all.csv`, `health_log.csv`, `health_log.md`) typically exceed Claude's 256KB/25000 token read limits. Skills include "Efficient Data Access" sections with extraction commands. Always use filtered extraction (grep/head) rather than direct reads for these files.
 
 ## Maintenance
 

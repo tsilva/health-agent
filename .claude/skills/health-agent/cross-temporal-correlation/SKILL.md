@@ -16,6 +16,31 @@ Discover patterns between health events and biomarker changes.
 5. Assess significance
 6. Present findings with appropriate caveats
 
+## Efficient Data Access
+
+Data files often exceed Claude's 256KB read limit. Use these extraction patterns:
+
+### Timeline: Recent Events (Last 12 Months)
+```bash
+head -1 "{health_log_path}/health_log.csv" && grep "^202[56]-" "{health_log_path}/health_log.csv" | sort -t',' -k1 -r
+```
+
+### Timeline: Filter by Category
+```bash
+head -1 "{health_log_path}/health_log.csv" && grep ",{category}," "{health_log_path}/health_log.csv"
+```
+Categories: symptom, medication, condition, provider, supplement, watch, todo
+
+### Labs: Recent Values
+```bash
+head -1 "{labs_path}/all.csv" && grep "^202[56]-" "{labs_path}/all.csv" | sort -t',' -k1 -r | head -300
+```
+
+### Labs: Specific Marker History
+```bash
+head -1 "{labs_path}/all.csv" && grep -i "{marker}" "{labs_path}/all.csv" | sort -t',' -k1
+```
+
 ## Unified Timeline Construction
 
 1. Read `{health_log_path}/health_timeline.csv`

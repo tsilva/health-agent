@@ -16,6 +16,26 @@ Identify and prioritize abnormal lab values.
 5. Apply age/gender context
 6. Present prioritized results
 
+## Efficient Data Access
+
+Data files often exceed Claude's 256KB read limit. Use these extraction patterns:
+
+### Extract Abnormal Values Only (Most Efficient)
+The CSV has `is_below_limit` and `is_above_limit` columns:
+```bash
+head -1 "{labs_path}/all.csv" && grep -E ",True," "{labs_path}/all.csv"
+```
+
+### Recent Abnormal Values (Last 12 Months)
+```bash
+head -1 "{labs_path}/all.csv" && grep "^202[56]-" "{labs_path}/all.csv" | grep -E ",True,"
+```
+
+### All Recent Labs for Context
+```bash
+head -1 "{labs_path}/all.csv" && grep "^202[56]-" "{labs_path}/all.csv" | sort -t',' -k1 -r | head -200
+```
+
 ## Severity Classification
 
 ### Critical (Immediate attention)

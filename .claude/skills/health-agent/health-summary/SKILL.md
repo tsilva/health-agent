@@ -15,6 +15,36 @@ Comprehensive health report combining labs, timeline, exams, and narrative.
 4. Organize by category
 5. Generate discussion points
 
+## Efficient Data Access
+
+Data files often exceed Claude's 256KB read limit. **Always use filtered extraction** for health summaries.
+
+### Labs: Recent + Abnormal (Parallel Extraction)
+```bash
+# Get header + recent data
+head -1 "{labs_path}/all.csv" && grep "^202[56]-" "{labs_path}/all.csv" | sort -t',' -k1 -r | head -200
+```
+
+### Timeline: Recent Events
+```bash
+head -1 "{health_log_path}/health_log.csv" && grep "^202[56]-" "{health_log_path}/health_log.csv" | sort -t',' -k1 -r
+```
+
+### Narrative: Recent Entries
+Use Read tool with `offset` and `limit` parameters:
+```
+Read file: {health_log_path}/health_log.md
+offset: 1
+limit: 500
+```
+(File is reverse chronological, so first 500 lines = most recent)
+
+### Exams: Find Summaries
+```bash
+find "{exams_path}" -name "*.summary.md" 2>/dev/null
+```
+Note: Individual exam summaries are small and can be read directly.
+
 ## Data Aggregation
 
 ### Labs Overview

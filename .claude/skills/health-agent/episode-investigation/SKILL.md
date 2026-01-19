@@ -17,6 +17,31 @@ Comprehensive investigation of a health episode across all data sources.
 4. Build chronological narrative
 5. Synthesize findings
 
+## Efficient Data Access
+
+Data files often exceed Claude's 256KB read limit. Use these extraction patterns:
+
+### Timeline: Extract by Episode ID
+```bash
+head -1 "{health_log_path}/health_log.csv" && grep "{episode_id}" "{health_log_path}/health_log.csv"
+```
+
+### Timeline: Search by Keyword
+```bash
+head -1 "{health_log_path}/health_log.csv" && grep -i "{keyword}" "{health_log_path}/health_log.csv"
+```
+
+### Narrative: Extract Date Range
+```bash
+grep -A 20 "^# {YYYY-MM-DD}" "{health_log_path}/health_log.md"
+```
+Repeat for each date in the episode range.
+
+### Labs: Extract Date Range (±7 days)
+```bash
+head -1 "{labs_path}/all.csv" && grep "^{YYYY-MM}" "{labs_path}/all.csv"
+```
+
 ## Data Gathering
 
 ### Timeline Events

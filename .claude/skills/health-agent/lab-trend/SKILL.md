@@ -17,6 +17,28 @@ Analyze longitudinal trends for a specific lab marker.
 6. Calculate statistics and trend
 7. Present findings
 
+## Efficient Data Access
+
+Data files often exceed Claude's 256KB read limit. Use these extraction patterns:
+
+### Check File Size First
+```bash
+wc -l "{labs_path}/all.csv"
+```
+If >3000 lines, use filtered extraction below instead of direct read.
+
+### Extract Specific Marker (Recommended)
+```bash
+head -1 "{labs_path}/all.csv" && grep -i "{marker_name}" "{labs_path}/all.csv" | sort -t',' -k1
+```
+
+### Extract by Date Range
+```bash
+head -1 "{labs_path}/all.csv" && grep "^202[45]-" "{labs_path}/all.csv" | grep -i "{marker_name}"
+```
+
+Replace `{marker_name}` with search term (e.g., "TSH", "glucose", "vitamin d").
+
 ## Statistics to Calculate
 
 - **Count**: Total number of measurements
