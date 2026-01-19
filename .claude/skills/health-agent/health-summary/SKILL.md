@@ -26,7 +26,7 @@ Comprehensive health report combining labs, timeline, exams, and narrative.
    - Significant trends
 
 ### Health Events
-1. Read `{health_log_path}/health_timeline.csv`
+1. Read `{health_log_path}/health_log.csv`
 2. Filter by date range
 3. Group by category:
    - Symptoms
@@ -36,7 +36,7 @@ Comprehensive health report combining labs, timeline, exams, and narrative.
    - Other
 
 ### Medical Exams
-1. List `{exams_path}/*.summary.md`
+1. Find exams: `find {exams_path} -name "*.summary.md"`
 2. Filter by date range
 3. Extract key findings from each
 

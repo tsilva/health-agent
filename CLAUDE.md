@@ -43,32 +43,35 @@ data_sources:
 
 | Column | Type | Description |
 |--------|------|-------------|
+| `date` | date | Date of lab test (YYYY-MM-DD) |
 | `source_file` | string | Original PDF filename |
-| `lab_date` | date | Date of lab test (YYYY-MM-DD) |
+| `page_number` | int | Page number in source PDF |
 | `lab_name` | string | Name of the test/marker |
-| `lab_value` | float | Measured value |
-| `lab_unit` | string | Unit of measurement |
-| `lab_reference_range` | string | Reference range (e.g., "70-100") |
+| `value` | float | Measured value |
+| `unit` | string | Unit of measurement |
+| `reference_min` | float | Lower bound of reference range |
+| `reference_max` | float | Upper bound of reference range |
 | `confidence` | float | OCR confidence score (0-1) |
 
 **Example queries**:
 - Track a specific marker over time: filter by `lab_name`
-- Find out-of-range values: parse `lab_reference_range` and compare to `lab_value`
-- Review recent labs: sort by `lab_date` descending
+- Find out-of-range values: compare `value` to `reference_min`/`reference_max`
+- Review recent labs: sort by `date` descending
 
 ### Health Timeline (health-log-parser)
 
-**File**: `{health_log_path}/health_timeline.csv`
+**File**: `{health_log_path}/health_log.csv`
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `date` | date | Event date (YYYY-MM-DD) |
-| `category` | string | Event category (symptom, medication, condition, etc.) |
-| `event` | string | Brief event description |
-| `episode_id` | string | Links related events (e.g., "episode_001") |
-| `notes` | string | Additional context |
+| `Date` | date | Event date (YYYY-MM-DD) |
+| `EpisodeID` | string | Links related events (e.g., "episode_001") |
+| `Item` | string | Brief item name |
+| `Category` | string | Event category (symptom, medication, condition, etc.) |
+| `Event` | string | Event description |
+| `Details` | string | Additional context |
 
-**Episode IDs**: Events with the same `episode_id` are related (e.g., a cold's symptoms, treatment, and resolution).
+**Episode IDs**: Events with the same `EpisodeID` are related (e.g., a cold's symptoms, treatment, and resolution).
 
 ### Health Log Narrative (health-log-parser)
 
@@ -81,7 +84,7 @@ Markdown journal with chronological health entries. Use for:
 
 ### Medical Exam Summaries (medical-exams-parser)
 
-**Directory**: `{exams_path}/*.summary.md`
+**Directory**: `{exams_path}/*/*.summary.md`
 
 Each exam produces a markdown summary with YAML frontmatter:
 
@@ -99,7 +102,7 @@ provider: "facility name"
 ```
 
 **Finding exam files**:
-- List all summaries: `ls {exams_path}/*.summary.md`
+- List all summaries: `find {exams_path} -name "*.summary.md"`
 - Filter by type: read frontmatter and check `exam_type`
 
 ## Analysis Patterns
@@ -116,7 +119,7 @@ When analyzing health patterns, consider data from all three sources:
 ### Example: Investigating a Health Concern
 
 ```
-1. Search health_timeline.csv for related events by category
+1. Search health_log.csv for related events by category
 2. Find linked events via episode_id
 3. Check health_log.md for detailed context around those dates
 4. Look for relevant lab values near those dates
