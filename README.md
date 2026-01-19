@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="logo.png" alt="health-agent" width="200"/>
+  <img src="logo.png" alt="health-agent" width="300"/>
 
   # health-agent
 
