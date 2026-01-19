@@ -1,0 +1,19 @@
+# Health Agent Profile Template
+# Copy this file to {name}.yaml and fill in your details
+# Profile files (except this template) are gitignored for privacy
+
+name: "Your Name"
+
+demographics:
+  date_of_birth: "YYYY-MM-DD"  # Used for age-based reference ranges
+  gender: "male|female"         # Used for gender-specific reference ranges
+
+data_sources:
+  # Path to labs-parser output directory containing all.csv
+  labs_path: "/path/to/labs-parser/output/"
+
+  # Path to medical-exams-parser output directory containing *.summary.md files
+  exams_path: "/path/to/medical-exams-parser/output/"
+
+  # Path to health-log-parser output directory containing health_log.md and health_timeline.csv
+  health_log_path: "/path/to/health-log-parser/output/"

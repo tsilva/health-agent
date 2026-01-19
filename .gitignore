@@ -205,3 +205,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Health Agent - User profiles contain sensitive health data paths
+profiles/*.yaml
+!profiles/_template.yaml
