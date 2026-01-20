@@ -209,3 +209,5 @@ __marimo__/
 # Health Agent - User profiles contain sensitive health data paths
 profiles/*.yaml
 !profiles/_template.yaml
+
+.output/*
