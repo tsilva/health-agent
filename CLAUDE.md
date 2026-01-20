@@ -33,6 +33,7 @@ data_sources:
   labs_path: "/path/to/labs-parser/output/"
   exams_path: "/path/to/medical-exams-parser/output/"
   health_log_path: "/path/to/health-log-parser/output/"
+  genetics_23andme_path: "/path/to/23andme_raw_data.txt"  # Optional
 ```
 
 ## Data Source Schemas
@@ -105,16 +106,50 @@ provider: "facility name"
 - List all summaries: `find {exams_path} -name "*.summary.md"`
 - Filter by type: read frontmatter and check `exam_type`
 
+### 23andMe Genetics Data (optional)
+
+**File**: `{genetics_23andme_path}` (typically `23andme_raw_data.txt`)
+
+Tab-separated file with ~631,000 SNPs:
+
+| Column | Description |
+|--------|-------------|
+| `rsid` | Reference SNP identifier (e.g., rs12345) |
+| `chromosome` | Chromosome number (1-22, X, Y, MT) |
+| `position` | Base pair position |
+| `genotype` | Unphased genotype (e.g., AG, CC, TT) |
+
+**File format**:
+```
+# rsid  chromosome  position  genotype
+rs12345  1  12345678  AG
+```
+
+**Efficient data access** (file is too large to read directly):
+```bash
+# Single SNP lookup
+grep "^rs12345" "{genetics_23andme_path}"
+
+# Multiple SNPs (batch)
+grep -E "^(rs123|rs456|rs789)" "{genetics_23andme_path}"
+```
+
+**Key variant categories**:
+- Pharmacogenomics: Drug metabolism (CYP2D6, CYP2C19, CYP2C9, VKORC1, SLCO1B1)
+- Health risks: APOE, Factor V Leiden, HFE hemochromatosis, MTHFR
+- Limited BRCA testing: Only 3 Ashkenazi founder mutations
+
 ## Analysis Patterns
 
 ### Cross-Source Correlation
 
-When analyzing health patterns, consider data from all three sources:
+When analyzing health patterns, consider data from all sources:
 
 1. **Labs** - Objective biomarker data with timestamps
 2. **Timeline** - Structured event tracking with episode linking
 3. **Exams** - Imaging and procedure findings
 4. **Health Log** - Narrative context and subjective symptoms
+5. **Genetics** - Pharmacogenomics and health risk variants (if configured)
 
 ### Example: Investigating a Health Concern
 
@@ -128,7 +163,7 @@ When analyzing health patterns, consider data from all three sources:
 
 ## Built-in Skills
 
-Ten skills are available in `.claude/skills/health-agent/`:
+Fifteen skills are available in `.claude/skills/health-agent/`:
 
 ### Analysis Skills
 
@@ -142,6 +177,14 @@ Ten skills are available in `.claude/skills/health-agent/`:
 | `cross-temporal-correlation` | User asks about patterns or correlations |
 | `medication-supplements` | User asks for medication list or supplement tracking |
 
+### Genetics Skills
+
+| Skill | Use When |
+|-------|----------|
+| `genetics-snp-lookup` | User asks to look up a specific SNP (e.g., "rs12345") |
+| `genetics-pharmacogenomics` | User asks about drug metabolism or CYP status |
+| `genetics-health-risks` | User asks about APOE, Factor V Leiden, or genetic risks |
+
 ### Report Skills
 
 Report skills generate saveable markdown sections to `.output/{profile}/sections/`:
@@ -151,14 +194,31 @@ Report skills generate saveable markdown sections to `.output/{profile}/sections
 | `report-medication-list` | User needs medication list for provider visit |
 | `report-labs-abnormal` | User needs abnormal labs summary for provider |
 | `report-health-events` | User needs recent health timeline for provider |
+| `report-pharmacogenomics` | User needs pharmacogenomics summary for provider |
+| `report-genetic-risks` | User needs genetic risks summary for provider |
 
-### Shared Reference
+### Shared References
 
 `references/common-markers.md` contains:
 - Marker name aliases (e.g., "A1C" = "HbA1c")
 - Age-specific range adjustments
 - Gender-specific range adjustments
 - Critical value thresholds
+
+`references/genetics-pharmacogenomics.md` contains:
+- Drug metabolism gene variants (CYP2D6, CYP2C19, CYP2C9, VKORC1, SLCO1B1, TPMT, DPYD)
+- Metabolizer status determination
+- Affected medications and dosing implications
+
+`references/genetics-health-risks.md` contains:
+- Health risk variants (APOE, Factor V Leiden, HFE, MTHFR, BRCA founder mutations)
+- Risk interpretations and clinical significance
+- Limitations of 23andMe testing
+
+`references/genetics-snp-index.md` contains:
+- Master rsID lookup table
+- Batch grep patterns for variant categories
+- 23andMe data format reference
 
 ## Creating Custom Skills
 
@@ -192,6 +252,8 @@ Report skills use the `report-*` prefix:
 - `report-medication-list`
 - `report-labs-abnormal`
 - `report-health-events`
+- `report-pharmacogenomics`
+- `report-genetic-risks`
 
 ### Output Structure
 
@@ -200,7 +262,9 @@ Report skills use the `report-*` prefix:
 ├── sections/                    # Individual report sections
 │   ├── medication-list-YYYY-MM-DD.md
 │   ├── labs-abnormal-YYYY-MM-DD.md
-│   └── health-events-YYYY-MM-DD.md
+│   ├── health-events-YYYY-MM-DD.md
+│   ├── pharmacogenomics-YYYY-MM-DD.md
+│   └── genetic-risks-YYYY-MM-DD.md
 └── combined/                    # Assembled reports (future)
     └── provider-visit-YYYY-MM-DD.md
 ```
@@ -234,6 +298,8 @@ To create a combined report:
 
 Example combined reports:
 - **Provider Visit** = medication-list + labs-abnormal + health-events
+- **Genetics Review** = pharmacogenomics + genetic-risks
+- **Comprehensive Visit** = medication-list + pharmacogenomics + labs-abnormal + health-events + genetic-risks
 - **Annual Review** = all sections + exam summaries + trends
 
 ### Creating Report Directories

@@ -150,3 +150,52 @@ grep -i "{medication_name}" "{health_log_path}/health_log.md" | head -20
 - **PRN Medications**: Flag as-needed medications separately
 - **Interactions**: If user asks, cross-reference active medications
 - **Refill Dates**: Calculate approximate refill dates if frequency known
+
+## Optional: Pharmacogenomics Cross-Reference
+
+If `genetics_23andme_path` is configured in the profile, add a pharmacogenomics section highlighting any medications affected by genetic variants.
+
+### Extraction
+```bash
+# Check if genetics data available
+test -f "{genetics_23andme_path}" && echo "Genetics data available"
+
+# Extract pharmacogenomics SNPs
+grep -E "^(rs3892097|rs1065852|rs4244285|rs4986893|rs12248560|rs1799853|rs1057910|rs9923231|rs4149056)" "{genetics_23andme_path}"
+```
+
+### Medication-Gene Mapping
+
+| Drug/Class | Gene | CYP2D6 Affected | CYP2C19 Affected | CYP2C9 Affected |
+|------------|------|-----------------|------------------|-----------------|
+| Codeine, Tramadol | CYP2D6 | ✓ | | |
+| Metoprolol | CYP2D6 | ✓ | | |
+| Paroxetine, Fluoxetine | CYP2D6 | ✓ | | |
+| Clopidogrel | CYP2C19 | | ✓ | |
+| Omeprazole, Esomeprazole | CYP2C19 | | ✓ | |
+| Citalopram, Escitalopram | CYP2C19 | | ✓ | |
+| Warfarin | CYP2C9/VKORC1 | | | ✓ |
+| Simvastatin | SLCO1B1 | | | |
+
+### Output Section (if genetics available)
+
+Add after Provider Summary:
+
+```
+---
+
+### Pharmacogenomics Considerations
+
+{If any current medications match affected gene pathways:}
+
+| Medication | Gene | Your Status | Note |
+|------------|------|-------------|------|
+| {med} | {gene} | {status} | {consideration} |
+
+*For comprehensive pharmacogenomics analysis, use the genetics-pharmacogenomics skill*
+```
+
+### Integration Notes
+- Only add this section if genetics data is available AND relevant medications are found
+- Don't add if no current medications are affected by tested genes
+- Keep brief - link to full pharmacogenomics skill for details

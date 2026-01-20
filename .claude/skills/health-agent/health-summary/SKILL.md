@@ -154,3 +154,47 @@ Automatically flag:
 3. Medication reviews
 4. Age-appropriate screenings due
 5. Trends requiring attention
+
+## Optional: Genetics Summary
+
+If `genetics_23andme_path` is configured in the profile, include a brief genetics section.
+
+### Extraction
+```bash
+# Check if genetics data available
+test -f "{genetics_23andme_path}" && echo "Genetics data available"
+
+# Extract key pharmacogenomics SNPs
+grep -E "^(rs3892097|rs4244285|rs1799853|rs9923231|rs4149056)" "{genetics_23andme_path}"
+
+# Extract key health risk SNPs (APOE)
+grep -E "^(rs429358|rs7412)" "{genetics_23andme_path}"
+```
+
+### Output Section (if genetics available)
+
+Add after Medical Exams section:
+
+```
+---
+
+### Genetics Highlights
+
+**Pharmacogenomics**
+| Gene | Status | Key Implication |
+|------|--------|-----------------|
+| CYP2D6 | {status} | {brief note} |
+| CYP2C19 | {status} | {brief note} |
+
+**Health Variants**
+- APOE: {isoform}
+- Clotting: {Factor V status}
+
+*For full genetics reports, use genetics-pharmacogenomics or genetics-health-risks skills*
+```
+
+### Integration Notes
+- Keep genetics section brief in health summary - it's supplementary
+- Link to detailed genetics skills for comprehensive analysis
+- Include only if `genetics_23andme_path` exists and file is found
+- Don't include BRCA results in summary due to test limitations

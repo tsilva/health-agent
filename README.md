@@ -11,9 +11,10 @@
 
 ## Features
 
-- **Unified Health Data Access** — Query labs, exams, and health journals from a single conversational interface
+- **Unified Health Data Access** — Query labs, exams, health journals, and genetic data from a single conversational interface
+- **23andMe Genetics Integration** — Pharmacogenomics analysis and health risk variant interpretation
 - **Profile-Based Configuration** — Support multiple users with separate data sources and demographics
-- **Cross-Source Correlation** — Connect lab results with symptoms, treatments, and imaging findings across time
+- **Cross-Source Correlation** — Connect lab results, genetics, symptoms, treatments, and imaging findings across time
 - **Skill-Extensible** — Create custom analysis skills for recurring health queries
 - **Privacy-First Design** — No health data stored in repo; profile paths are gitignored by default
 
@@ -37,6 +38,7 @@ data_sources:
   labs_path: "/path/to/labs-parser/output/"
   exams_path: "/path/to/medical-exams-parser/output/"
   health_log_path: "/path/to/health-log-parser/output/"
+  genetics_23andme_path: "/path/to/23andme_raw_data.txt"  # Optional
 ```
 
 ### 2. Start a Session
@@ -50,6 +52,8 @@ Open Claude Code in this directory. You'll be prompted to select a profile.
 "Find all symptoms related to episode_003"
 "What did my last ultrasound show?"
 "Correlate my fatigue entries with my iron levels"
+"What's my CYP2D6 metabolizer status?"
+"Look up my APOE genotype"
 ```
 
 ## Data Sources
@@ -59,10 +63,13 @@ Open Claude Code in this directory. You'll be prompted to select a profile.
 | [labs-parser](https://github.com/tsilva/labs-parser) | `all.csv` | Lab test results with values, units, reference ranges |
 | [medical-exams-parser](https://github.com/tsilva/medical-exams-parser) | `*.summary.md` | Imaging and exam transcriptions with YAML metadata |
 | [health-log-parser](https://github.com/tsilva/health-log-parser) | `health_log.md` + `health_timeline.csv` | Health journal entries and structured timeline |
+| 23andMe | Raw data download | Genetic variants for pharmacogenomics and health risks |
 
 ## Built-in Skills
 
-Health Agent includes 7 analysis skills that activate automatically based on your queries:
+Health Agent includes 12 skills that activate automatically based on your queries:
+
+### Core Analysis Skills
 
 | Skill | Trigger Phrases | Description |
 |-------|-----------------|-------------|
@@ -73,6 +80,21 @@ Health Agent includes 7 analysis skills that activate automatically based on you
 | **health-summary** | "summarize my health", "doctor visit prep", "health overview for 2024" | Generate comprehensive reports for provider visits |
 | **cross-temporal-correlation** | "correlation between X and Y", "patterns in my data", "do symptoms affect labs" | Discover patterns between events and biomarkers |
 | **medication-supplements** | "my medications", "medication list", "what supplements am I taking", "current meds" | Generate medication and supplement reports with active/discontinued status |
+
+### Genetics Skills
+
+| Skill | Trigger Phrases | Description |
+|-------|-----------------|-------------|
+| **genetics-snp-lookup** | "look up rs12345", "my genotype for...", "check SNP" | Query specific genetic variants from 23andMe data |
+| **genetics-pharmacogenomics** | "drug metabolism", "CYP2D6 status", "how do I metabolize medications" | Analyze variants affecting drug metabolism (CYP2D6, CYP2C19, etc.) |
+| **genetics-health-risks** | "APOE status", "genetic risks", "Factor V Leiden", "MTHFR" | Interpret health risk variants with clinical context |
+
+### Report Skills
+
+| Skill | Trigger Phrases | Description |
+|-------|-----------------|-------------|
+| **report-pharmacogenomics** | "pharmacogenomics report for doctor" | Generate provider-ready pharmacogenomics summary |
+| **report-genetic-risks** | "genetic risks for provider" | Generate provider-ready health risks summary |
 
 ## Directory Structure
 
@@ -92,8 +114,16 @@ health-agent/
 │           ├── health-summary/SKILL.md
 │           ├── cross-temporal-correlation/SKILL.md
 │           ├── medication-supplements/SKILL.md
+│           ├── genetics-snp-lookup/SKILL.md
+│           ├── genetics-pharmacogenomics/SKILL.md
+│           ├── genetics-health-risks/SKILL.md
+│           ├── report-pharmacogenomics/SKILL.md
+│           ├── report-genetic-risks/SKILL.md
 │           └── references/
-│               └── common-markers.md  # Lab marker aliases and ranges
+│               ├── common-markers.md              # Lab marker aliases and ranges
+│               ├── genetics-pharmacogenomics.md   # Drug metabolism variants
+│               ├── genetics-health-risks.md       # Health risk variants
+│               └── genetics-snp-index.md          # Master SNP lookup
 └── README.md
 ```
 
@@ -118,6 +148,7 @@ Instructions for performing the analysis...
 - All profiles except `_template.yaml` are gitignored
 - No health data is stored in this repository—only paths to external sources
 - Demographics (DOB, gender) enable age/sex-specific reference range interpretation
+- 23andMe raw data files are processed locally; genetic data never leaves your machine
 
 ## Requirements
 
@@ -126,6 +157,7 @@ Instructions for performing the analysis...
   - [labs-parser](https://github.com/tsilva/labs-parser)
   - [medical-exams-parser](https://github.com/tsilva/medical-exams-parser)
   - [health-log-parser](https://github.com/tsilva/health-log-parser)
+- Optional: 23andMe raw data download (Settings > 23andMe Data > Download Raw Data)
 
 ## License
 

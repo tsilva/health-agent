@@ -17,3 +17,7 @@ data_sources:
 
   # Path to health-log-parser output directory containing health_log.md and health_timeline.csv
   health_log_path: "/path/to/health-log-parser/output/"
+
+  # Path to 23andMe raw data file (optional)
+  # Download from: 23andMe > Settings > 23andMe Data > Download Raw Data
+  genetics_23andme_path: "/path/to/23andme_raw_data.txt"
