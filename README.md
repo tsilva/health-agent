@@ -67,7 +67,7 @@ Open Claude Code in this directory. You'll be prompted to select a profile.
 
 ## Built-in Skills
 
-Health Agent includes 12 skills that activate automatically based on your queries:
+Health Agent includes 16 skills that activate automatically based on your queries:
 
 ### Core Analysis Skills
 
@@ -93,8 +93,12 @@ Health Agent includes 12 skills that activate automatically based on your querie
 
 | Skill | Trigger Phrases | Description |
 |-------|-----------------|-------------|
+| **report-medication-list** | "medication list for doctor", "generate med report" | Generate provider-ready medication and supplement list |
+| **report-labs-abnormal** | "abnormal labs report", "labs summary for provider" | Generate provider-ready abnormal labs summary |
+| **report-health-events** | "health events report", "recent health timeline" | Generate provider-ready health events timeline |
 | **report-pharmacogenomics** | "pharmacogenomics report for doctor" | Generate provider-ready pharmacogenomics summary |
 | **report-genetic-risks** | "genetic risks for provider" | Generate provider-ready health risks summary |
+| **report-conditions-status** | "conditions report", "active diagnoses", "medical conditions list" | Generate provider-ready active/resolved conditions summary |
 
 ## Directory Structure
 
@@ -117,8 +121,12 @@ health-agent/
 │           ├── genetics-snp-lookup/SKILL.md
 │           ├── genetics-pharmacogenomics/SKILL.md
 │           ├── genetics-health-risks/SKILL.md
+│           ├── report-medication-list/SKILL.md
+│           ├── report-labs-abnormal/SKILL.md
+│           ├── report-health-events/SKILL.md
 │           ├── report-pharmacogenomics/SKILL.md
 │           ├── report-genetic-risks/SKILL.md
+│           ├── report-conditions-status/SKILL.md
 │           └── references/
 │               ├── common-markers.md              # Lab marker aliases and ranges
 │               ├── genetics-pharmacogenomics.md   # Drug metabolism variants

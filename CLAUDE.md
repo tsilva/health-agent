@@ -163,7 +163,7 @@ When analyzing health patterns, consider data from all sources:
 
 ## Built-in Skills
 
-Fifteen skills are available in `.claude/skills/health-agent/`:
+Nineteen skills are available in `.claude/skills/health-agent/`:
 
 ### Analysis Skills
 
@@ -185,6 +185,14 @@ Fifteen skills are available in `.claude/skills/health-agent/`:
 | `genetics-pharmacogenomics` | User asks about drug metabolism or CYP status |
 | `genetics-health-risks` | User asks about APOE, Factor V Leiden, or genetic risks |
 
+### Hypothesis Investigation Skills
+
+| Skill | Use When |
+|-------|----------|
+| `mechanism-search` | User asks about biological mechanisms linking observations |
+| `confound-identification` | User asks what could confound a correlation |
+| `evidence-contradiction-check` | User asks to test hypothesis against data |
+
 ### Report Skills
 
 Report skills generate saveable markdown sections to `.output/{profile}/sections/`:
@@ -196,6 +204,7 @@ Report skills generate saveable markdown sections to `.output/{profile}/sections
 | `report-health-events` | User needs recent health timeline for provider |
 | `report-pharmacogenomics` | User needs pharmacogenomics summary for provider |
 | `report-genetic-risks` | User needs genetic risks summary for provider |
+| `report-conditions-status` | User needs active/resolved conditions list for provider |
 
 ### Shared References
 
@@ -254,6 +263,7 @@ Report skills use the `report-*` prefix:
 - `report-health-events`
 - `report-pharmacogenomics`
 - `report-genetic-risks`
+- `report-conditions-status`
 
 ### Output Structure
 
@@ -264,7 +274,12 @@ Report skills use the `report-*` prefix:
 │   ├── labs-abnormal-YYYY-MM-DD.md
 │   ├── health-events-YYYY-MM-DD.md
 │   ├── pharmacogenomics-YYYY-MM-DD.md
-│   └── genetic-risks-YYYY-MM-DD.md
+│   ├── genetic-risks-YYYY-MM-DD.md
+│   └── conditions-status-YYYY-MM-DD.md
+├── hypothesis/                  # Hypothesis investigation reports
+│   ├── hemolysis-YYYY-MM-DD.md
+│   ├── headaches-YYYY-MM-DD.md
+│   └── fatigue-YYYY-MM-DD.md
 └── combined/                    # Assembled reports (future)
     └── provider-visit-YYYY-MM-DD.md
 ```
@@ -297,17 +312,123 @@ To create a combined report:
 4. Save to `.output/{profile}/combined/`
 
 Example combined reports:
-- **Provider Visit** = medication-list + labs-abnormal + health-events
+- **Provider Visit** = medication-list + labs-abnormal + health-events + conditions-status
 - **Genetics Review** = pharmacogenomics + genetic-risks
-- **Comprehensive Visit** = medication-list + pharmacogenomics + labs-abnormal + health-events + genetic-risks
+- **Comprehensive Visit** = medication-list + pharmacogenomics + labs-abnormal + health-events + conditions-status + genetic-risks
 - **Annual Review** = all sections + exam summaries + trends
 
-### Creating Report Directories
+### Creating Report Directories and Files
 
-Report skills should create the output directory if it doesn't exist:
+**Directory Creation** - Use Bash (works in sandbox):
 ```bash
 mkdir -p .output/{profile}/sections
 ```
+
+**File Writing** - Use the `Write` tool, NOT Bash heredocs:
+```
+# CORRECT: Use Write tool for report files
+Write tool with file_path=".output/{profile}/sections/report-name-YYYY-MM-DD.md"
+
+# WRONG: Bash heredocs fail in sandbox mode
+cat > file.md << 'EOF'  # This will fail with "operation not permitted"
+```
+
+The Write tool works in sandboxed mode for files within the project directory. Bash heredocs and redirections are blocked by sandbox restrictions.
+
+## Hypothesis Generation Workflow
+
+For root cause investigation of health conditions, the hypothesis generation workflow provides iterative, multi-turn investigation that goes beyond single-pass skills.
+
+### When to Use Hypothesis Generation
+
+Use this workflow when:
+- User asks to "investigate root cause of [condition]"
+- User wants to understand why something is happening
+- User asks for competing explanations of a health pattern
+- Single-pass skills (like cross-temporal-correlation) found patterns but not mechanisms
+
+### How It Works
+
+1. **Invocation**: User says "Investigate root cause of [condition]"
+2. **Process**: Assistant spawns a general-purpose agent that:
+   - Gathers evidence using analysis skills (episode-investigation, cross-temporal-correlation, lab-trend, etc.)
+   - Generates competing hypotheses using hypothesis investigation skills
+   - Tests hypotheses using evidence-contradiction-check
+   - Identifies confounding factors using confound-identification
+   - Proposes biological mechanisms using mechanism-search
+   - Ranks hypotheses by supporting evidence
+   - Iterates and refines based on contradictions
+3. **Output**: Saved to `.output/{profile}/hypothesis/{condition}-YYYY-MM-DD.md`
+
+### Output Format
+
+Hypothesis investigation reports include:
+- **Ranked hypotheses** (High/Medium/Low likelihood)
+- **Supporting evidence** with data citations (dates, lab values, timeline events)
+- **Contradictory evidence** with explanations or acknowledgment
+- **Biological mechanisms** linking observations (if identifiable)
+- **Confounding factors** that could explain observations
+- **Testable predictions** (what should be true if hypothesis is correct)
+- **Recommended follow-up investigations** (what data to collect next)
+
+### Integration with Report Skills
+
+Hypothesis investigation reports are saved to `.output/{profile}/hypothesis/` (separate from report sections), enabling future integration with provider visit summaries. For example:
+- **Provider Visit** = conditions-status + hypothesis/fatigue + labs-abnormal + medication-list
+- **Specialist Referral** = hypothesis/headaches + health-events + exam-catalog
+
+### Available Tools for Hypothesis Agent
+
+The hypothesis generation agent has access to all 19 health-agent skills:
+- **Evidence gathering**: episode-investigation, cross-temporal-correlation, lab-trend, out-of-range-labs, exam-catalog
+- **Mechanism exploration**: mechanism-search (identifies biological pathways)
+- **Confound detection**: confound-identification (rules out alternative explanations)
+- **Hypothesis testing**: evidence-contradiction-check (searches for counter-examples)
+- **Supporting data**: health-summary, medication-supplements, genetics skills (if configured)
+
+### Example Workflow
+
+**User**: "Investigate root cause of my recurring headaches"
+
+**Agent Process**:
+1. Uses `episode-investigation` to gather all headache events
+2. Uses `cross-temporal-correlation` to find temporal patterns
+3. Identifies potential triggers: poor sleep (5 instances), stress (3 instances), caffeine changes (2 instances)
+4. Uses `mechanism-search` to propose biological pathways:
+   - Poor sleep → cortisol elevation → vasoconstriction → headaches
+   - Caffeine withdrawal → adenosine rebound → headaches
+5. Uses `confound-identification` to check for confounds:
+   - Identifies caffeine intake increased during poor sleep periods (temporal clustering)
+6. Uses `evidence-contradiction-check` to test hypotheses:
+   - Finds 2 headache instances with normal sleep (partial contradiction)
+   - Revises hypothesis: multiple triggers exist, not single cause
+7. Ranks hypotheses:
+   - **High likelihood**: Sleep deprivation as primary trigger (5/7 instances, 71%)
+   - **Moderate likelihood**: Caffeine withdrawal as secondary trigger (2/7 instances, but confounded with sleep)
+   - **Low likelihood**: Stress as independent trigger (overlaps with sleep disruption)
+8. Recommends follow-up: Track caffeine intake separately from sleep to discriminate between hypotheses
+
+**Output**: Markdown report saved to `.output/{profile}/hypothesis/headaches-2026-01-20.md`
+
+### Differences from Analysis Skills
+
+| Feature | Analysis Skills | Hypothesis Generation |
+|---------|----------------|----------------------|
+| **Execution** | Single-pass workflow | Multi-turn iterative exploration |
+| **Output** | Report patterns found | Propose and test competing explanations |
+| **Iteration** | No refinement loop | Refines hypotheses based on contradictions |
+| **Mechanism proposals** | Identify correlations | Propose causal pathways |
+| **Evidence weighing** | Present all findings | Rank by supporting evidence |
+
+### Medical Disclaimers
+
+All hypothesis investigation reports emphasize:
+- Hypotheses are data-driven interpretations, not diagnoses
+- Correlation does not imply causation
+- Multiple mechanisms may coexist
+- Genetics analysis (if included) is limited to 23andMe data
+- Always consult a healthcare provider for clinical interpretation
+- This is not medical advice
 
 ## Important Notes
 
@@ -316,6 +437,7 @@ mkdir -p .output/{profile}/sections
 - **Demographics**: Use `date_of_birth` and `gender` when interpreting reference ranges, as many vary by age and sex.
 - **Confidence Scores**: Lab values with low confidence (<0.8) should be flagged for manual verification.
 - **Large File Handling**: Data files (`all.csv`, `health_log.csv`, `health_log.md`) typically exceed Claude's 256KB/25000 token read limits. Skills include "Efficient Data Access" sections with extraction commands. Always use filtered extraction (grep/head) rather than direct reads for these files.
+- **Sandbox Compliance**: Always use the `Write` tool (not Bash heredocs/redirects) to create files in `.output/`. Bash `mkdir -p` works for directories, but file writing via `cat > file` or heredocs is blocked by sandbox. This ensures reports generate without permission errors.
 
 ## Maintenance
 
