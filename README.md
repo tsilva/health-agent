@@ -62,7 +62,7 @@ Open Claude Code in this directory. You'll be prompted to select a profile.
 
 ## Built-in Skills
 
-Health Agent includes 6 analysis skills that activate automatically based on your queries:
+Health Agent includes 7 analysis skills that activate automatically based on your queries:
 
 | Skill | Trigger Phrases | Description |
 |-------|-----------------|-------------|
@@ -72,6 +72,7 @@ Health Agent includes 6 analysis skills that activate automatically based on you
 | **episode-investigation** | "tell me about episode_001", "investigate my cold", "what happened with my back pain" | Deep-dive into health episodes across all data sources |
 | **health-summary** | "summarize my health", "doctor visit prep", "health overview for 2024" | Generate comprehensive reports for provider visits |
 | **cross-temporal-correlation** | "correlation between X and Y", "patterns in my data", "do symptoms affect labs" | Discover patterns between events and biomarkers |
+| **medication-supplements** | "my medications", "medication list", "what supplements am I taking", "current meds" | Generate medication and supplement reports with active/discontinued status |
 
 ## Directory Structure
 
@@ -90,6 +91,7 @@ health-agent/
 │           ├── episode-investigation/SKILL.md
 │           ├── health-summary/SKILL.md
 │           ├── cross-temporal-correlation/SKILL.md
+│           ├── medication-supplements/SKILL.md
 │           └── references/
 │               └── common-markers.md  # Lab marker aliases and ranges
 └── README.md

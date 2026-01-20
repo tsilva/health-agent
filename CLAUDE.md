@@ -128,7 +128,7 @@ When analyzing health patterns, consider data from all three sources:
 
 ## Built-in Skills
 
-Six analysis skills are available in `.claude/skills/health-agent/`:
+Seven analysis skills are available in `.claude/skills/health-agent/`:
 
 | Skill | Use When |
 |-------|----------|
@@ -138,6 +138,7 @@ Six analysis skills are available in `.claude/skills/health-agent/`:
 | `episode-investigation` | User asks about a specific health episode |
 | `health-summary` | User needs a comprehensive health overview |
 | `cross-temporal-correlation` | User asks about patterns or correlations |
+| `medication-supplements` | User asks for medication list or supplement tracking |
 
 ### Shared Reference
 
