@@ -245,7 +245,7 @@ This analysis proposes potential biological mechanisms based on available data. 
 
 If `genetics_23andme_path` is configured in profile:
 - Include genetics in mechanism search (especially for pharmacogenomics and metabolic pathways)
-- Use references/genetics-pharmacogenomics.md and references/genetics-health-risks.md
+- Use genetics-snp-lookup skill for gene/SNP lookups and interpretations
 - Cite specific rsIDs and genotypes as supporting evidence
 
 If genetics is NOT configured:
@@ -260,11 +260,11 @@ If genetics is NOT configured:
 3. **Biological Plausibility**: Don't propose mechanisms that violate basic physiology
 4. **Data Gaps**: Clearly state when mechanisms are speculative due to missing data
 
-### Consultation with References
+### Consultation with Lab Specifications
 
-Use `references/common-markers.md` for:
-- Marker name aliases (e.g., "A1C" = "HbA1c")
-- Reference range adjustments
+Use `{labs_path}/lab_specs.json` (from labs-parser) for:
+- Marker name aliases and canonical names (e.g., "A1C" = "HbA1c")
+- Reference ranges and unit conversions
 - Clinical significance thresholds
 
 ### Time Windows for Mechanisms

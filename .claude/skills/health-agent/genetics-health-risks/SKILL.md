@@ -10,56 +10,63 @@ Analyze genetic variants associated with disease risk and health conditions.
 ## Prerequisites
 
 - Profile must have `genetics_23andme_path` configured
-- Reference: `references/genetics-health-risks.md`
-- Index: `references/genetics-snp-index.md`
+- Uses `genetics-snp-lookup` skill for all SNP interpretations
 
 ## Workflow
 
 1. Get `genetics_23andme_path` from the loaded profile
-2. Extract all health risk SNPs using batch grep
-3. Parse genotypes and determine risk status for each condition
-4. Check labs data for relevant biomarkers if available
-5. Generate comprehensive risk report with appropriate caveats
+2. **Delegate to genetics-snp-lookup**: Request health risk analysis for all relevant conditions:
+   - APOE (Alzheimer's disease, cardiovascular disease)
+   - Factor V Leiden (thrombophilia)
+   - Prothrombin G20210A (thrombophilia)
+   - Hemochromatosis (HFE - iron overload)
+   - MTHFR (folate metabolism)
+   - BRCA founder mutations (limited - 3 Ashkenazi variants only)
+   - APC I1307K (colorectal cancer risk)
+3. Receive genotypes, risk interpretations, and clinical significance from genetics-snp-lookup
+4. Format results into provider-friendly report (see Output Format below)
+5. Cross-reference with relevant labs if available (lipids for APOE, iron for HFE, etc.)
 
-## Efficient Data Access
+## Calling genetics-snp-lookup
 
-### Extract All Health Risk SNPs
-```bash
-grep -E "^(rs429358|rs7412|rs6025|rs1799963|rs1800562|rs1799945|rs1801133|rs1801131|rs80357906|rs80357914|rs80359550|rs1801155)" "{genetics_23andme_path}"
+Use genetics-snp-lookup in **condition-based health risk mode**:
+
+```
+For each condition in [APOE, Factor V Leiden, Hemochromatosis, MTHFR, BRCA, Prothrombin]:
+  Call genetics-snp-lookup with: "look up {condition} health risk"
+
+genetics-snp-lookup will:
+1. Query SNPedia for condition's relevant rsIDs
+2. Extract those SNPs from 23andMe data
+3. Fetch risk interpretations from SNPedia
+4. Return risk level, clinical significance, recommendations
 ```
 
-### Cross-Reference Labs (if relevant)
-```bash
-# For hemochromatosis - check iron studies
-head -1 "{labs_path}/all.csv" && grep -iE "(ferritin|iron|transferrin|tibc)" "{labs_path}/all.csv" | sort -t',' -k1 -r | head -10
-```
+**Do NOT**:
+- Duplicate SNP extraction logic
+- Hardcode rsID lists
+- Reimplement risk determination algorithms (e.g., APOE isoform table)
+- Query SNPedia directly
+
+genetics-snp-lookup is the centralized lookup mechanism for all genetics queries.
 
 ## Conditions Analyzed
 
-| Condition | SNPs | Inheritance |
-|-----------|------|-------------|
-| APOE (Alzheimer's/CVD) | rs429358, rs7412 | Complex |
+genetics-snp-lookup provides interpretation for these conditions via SNPedia:
+
+| Condition | Primary Genes/SNPs | Inheritance Pattern |
+|-----------|-------------------|---------------------|
+| APOE (Alzheimer's/CVD) | rs429358, rs7412 | Complex (ε2, ε3, ε4 isoforms) |
 | Factor V Leiden | rs6025 | Autosomal dominant |
 | Prothrombin G20210A | rs1799963 | Autosomal dominant |
-| Hemochromatosis (HFE) | rs1800562, rs1799945 | Autosomal recessive |
-| MTHFR Variants | rs1801133, rs1801131 | Autosomal recessive |
+| Hemochromatosis (HFE) | rs1800562 (C282Y), rs1799945 (H63D) | Autosomal recessive |
+| MTHFR Variants | rs1801133 (C677T), rs1801131 (A1298C) | Autosomal recessive |
 | BRCA1/2 Founder Mutations | rs80357906, rs80357914, rs80359550 | Autosomal dominant |
 | APC I1307K | rs1801155 | Autosomal dominant |
 
-## APOE Determination
-
-APOE requires two SNPs to determine the isoform:
-
-| rs429358 | rs7412 | Isoform |
-|----------|--------|---------|
-| T/T | T/T | ε2/ε2 |
-| T/T | C/T | ε2/ε3 |
-| T/C | T/T | ε2/ε4 |
-| T/T | C/C | ε3/ε3 |
-| T/C | C/T | ε3/ε4 |
-| C/C | C/C | ε4/ε4 |
-
 ## Output Format
+
+Format the genetics-snp-lookup results into this provider-friendly structure:
 
 ```markdown
 ## Genetic Health Risk Report
@@ -192,17 +199,25 @@ APOE requires two SNPs to determine the isoform:
 - Results should be confirmed by clinical testing before medical decisions
 - Negative results do NOT rule out conditions (limited SNPs tested)
 - These results represent a snapshot; genetic counseling recommended for significant findings
+
+**Data Source**: SNPedia via genetics-snp-lookup skill (cached interpretations)
 ```
 
 ## Cross-Reference with Labs
 
 When relevant, check for related biomarkers:
 
-| Genetic Finding | Related Lab Tests |
-|-----------------|-------------------|
-| APOE ε4 | Lipid panel (LDL, HDL, TG) |
-| HFE variants | Ferritin, serum iron, TIBC, transferrin saturation |
-| MTHFR | Homocysteine, folate, B12 |
+| Genetic Finding | Related Lab Tests | Extraction Command |
+|-----------------|-------------------|-------------------|
+| APOE ε4 | Lipid panel (LDL, HDL, TG) | `grep -iE "(ldl|hdl|cholesterol|triglyceride)" "{labs_path}/all.csv"` |
+| HFE variants | Ferritin, iron, TIBC, transferrin saturation | `grep -iE "(ferritin|iron|transferrin|tibc)" "{labs_path}/all.csv"` |
+| MTHFR | Homocysteine, folate, B12 | `grep -iE "(homocysteine|folate|b12|cobalamin)" "{labs_path}/all.csv"` |
+
+**Workflow**:
+1. Identify genetic findings from genetics-snp-lookup
+2. Extract relevant lab markers from `{labs_path}/all.csv`
+3. Sort by date, show most recent values
+4. Include in report under "Relevant Lab Correlation" sections
 
 ## Sensitivity Considerations
 
@@ -210,8 +225,29 @@ When relevant, check for related biomarkers:
 - **BRCA**: Incomplete testing requires careful communication about limitations
 - **Encourage genetic counseling** for actionable findings
 
+**Important**: Always present genetic risk findings with appropriate context:
+- Emphasize modifiable risk factors
+- Clarify relative vs absolute risk
+- Note limitations of consumer genetic testing
+- Recommend professional genetic counseling for high-risk findings
+
 ## Special Handling
 
 - **BRCA Results**: Always emphasize the severe limitations of 23andMe BRCA testing
 - **APOE ε4/ε4**: High-risk finding; encourage professional genetic counseling
 - **Factor V Leiden homozygous**: Clinically significant; recommend hematology consultation
+- **HFE C282Y homozygous**: Clinical hemochromatosis risk; recommend iron studies and medical evaluation
+
+## Integration with Other Skills
+
+- **report-genetic-risks**: Generates provider-ready markdown section saved to .output/
+- **health-summary**: May include genetics summary if genetics data is configured
+- **investigate-root-cause**: Can reference genetic findings when investigating conditions
+
+## Notes
+
+- All SNP interpretations come from SNPedia via genetics-snp-lookup (cached, 30-day TTL)
+- genetics-snp-lookup handles SNP extraction, API calls, caching, and error handling
+- This skill focuses on formatting and clinical context for health risk findings
+- For individual SNP lookups, use genetics-snp-lookup directly
+- APOE isoform determination (ε2/ε3/ε4) is handled by genetics-snp-lookup using SNPedia's algorithms

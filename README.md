@@ -148,10 +148,7 @@ health-agent/
 │           ├── report-genetic-risks/SKILL.md
 │           ├── report-conditions-status/SKILL.md
 │           └── references/
-│               ├── common-markers.md              # Lab marker aliases and ranges
-│               ├── genetics-pharmacogenomics.md   # Drug metabolism variants
-│               ├── genetics-health-risks.md       # Health risk variants
-│               ├── genetics-snp-index.md          # Master SNP lookup
+│               ├── lab-specs-helpers.sh           # Helper functions for lab_specs.json
 │               └── status-keywords.md             # Status determination keywords
 └── README.md
 ```

@@ -152,9 +152,7 @@ When user asks about specific correlation:
 1. Parse the two factors (e.g., "stress" and "blood pressure")
 2. Map to data columns:
    - Events: search `category` and `event` columns
-   - Labs: search `lab_name` column using:
-     - lab_specs.json canonical names + aliases (if available)
-     - Manual patterns from `references/common-markers.md` (fallback)
+   - Labs: search `lab_name` column using lab_specs.json (canonical names + aliases from labs-parser)
 3. Run targeted correlation analysis
 4. Display results using canonical names for consistency
 

@@ -333,7 +333,7 @@ If genetics is configured:
 - Example: "Medication X causes side effect Y" may only be true for poor metabolizers
 - Check pharmacogenomics variants to explain contradictions
 
-Consult references/genetics-pharmacogenomics.md if relevant.
+Use genetics-snp-lookup skill for pharmacogenomics variants if relevant.
 
 ### Multiple Hypothesis Testing
 

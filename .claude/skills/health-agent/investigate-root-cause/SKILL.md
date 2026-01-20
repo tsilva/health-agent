@@ -70,33 +70,23 @@ If genetics data is configured, you MUST perform comprehensive genetic analysis:
 
 **Step 2: Identify Condition-Relevant Genes**
 
-For the condition being investigated, identify ALL relevant genes and SNPs. Common examples:
+For the condition being investigated, use `genetics-snp-lookup` to identify and query relevant genes:
 
-**Bilirubin/Liver:**
-- UGT1A1 (Gilbert's): rs4148323, rs887829
-- ABCC2 (Dubin-Johnson): rs717620, rs4148396, rs3740066, rs8187710
-- SLCO1B1 (Rotor): rs4149056, rs2306283
-- G6PD (hemolysis): rs1050828, rs1050829
-- HFE (hemochromatosis): rs1800562, rs1799945
+1. **Search SNPedia** for condition-related genes via genetics-snp-lookup
+2. **Query genes** using genetics-snp-lookup's gene/condition lookup modes
+3. **Review findings** from SNPedia for both positive AND negative results
+4. **Consider genetics** as evidence for/against hypotheses
 
-**Cardiovascular:**
-- APOE: rs429358, rs7412
-- PCSK9: rs11591147, rs505151
-- LDLR: rs688, rs5925, rs6511720
-- Factor V Leiden: rs6025
-- Prothrombin: rs1799963
+**Example workflow for investigating elevated bilirubin:**
+```
+Call genetics-snp-lookup with: "look up UGT1A1 for Gilbert's syndrome"
+Call genetics-snp-lookup with: "look up hemochromatosis" (covers HFE genes)
+Call genetics-snp-lookup with: "look up G6PD deficiency"
+```
 
-**Metabolic:**
-- TCF7L2 (diabetes): rs7903146, rs12255372
-- PPARG (diabetes): rs1801282
-- FTO (obesity): rs9939609
-- MC4R (obesity): rs17782313
+genetics-snp-lookup will query SNPedia for condition-relevant rsIDs automatically - no need to hardcode SNP lists.
 
-**Thyroid:**
-- DIO1, DIO2 (thyroid hormone metabolism)
-- TSHR (thyroid receptor)
-
-**Step 3: Direct SNP Lookup via Bash**
+**Step 3: Direct SNP Lookup via Bash (If Needed)**
 
 For genes not covered by genetics skills, use direct grep commands:
 

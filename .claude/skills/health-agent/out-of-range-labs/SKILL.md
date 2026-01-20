@@ -55,7 +55,7 @@ unit=$(get_primary_unit "{labs_path}/lab_specs.json" "{raw_marker_name}")
 ## Severity Classification
 
 ### Critical (Immediate attention)
-- Values in critical ranges (see `../references/common-markers.md`)
+- Values in critical ranges (e.g., potassium <2.5 or >6.0, glucose <40)
 - Far outside normal (>2x deviation from boundary)
 
 ### High/Low (Abnormal)
@@ -96,8 +96,8 @@ Markers abnormal on 2+ occasions:
 
 Use profile's `date_of_birth` and `gender` to:
 1. Calculate current age
-2. Apply age-specific adjustments (see `../references/common-markers.md`)
-3. Apply gender-specific ranges
+2. Apply age-specific adjustments (reference ranges vary by age for some markers)
+3. Apply gender-specific ranges (reference ranges vary by gender for some markers)
 4. Note when using adjusted ranges
 
 ## Reference Range Parsing

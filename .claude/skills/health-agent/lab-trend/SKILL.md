@@ -12,7 +12,7 @@ Analyze longitudinal trends for a specific lab marker.
 1. Get `labs_path` from the loaded profile
 2. Check if `{labs_path}/lab_specs.json` exists for canonical name lookup
 3. Read `{labs_path}/all.csv`
-4. Identify the marker (use lab_specs.json if available, otherwise `references/common-markers.md`)
+4. Identify the marker using lab_specs.json (canonical names and aliases)
 5. Filter rows where `lab_name` matches
 6. Sort by `lab_date` ascending
 7. Calculate statistics and trend
@@ -118,8 +118,9 @@ If `{labs_path}/lab_specs.json` exists:
 4. Provides most accurate matching via canonical names + aliases
 
 ### Without lab_specs.json (Fallback)
-Use case-insensitive fuzzy matching. See `../references/common-markers.md` for:
-- Alias mappings (e.g., "A1C" → "HbA1c")
-- Age/gender-specific ranges
+Use case-insensitive fuzzy matching directly on lab_name values in all.csv:
+- Try variations: "A1C", "HbA1c", "Hemoglobin A1c", "Glycated Hemoglobin"
+- Use grep with `-iE` for case-insensitive pattern matching
+- May miss some aliases without lab_specs.json
 
-**Note**: `common-markers.md` remains the source for clinical annotations (critical values, age/gender adjustments) not included in lab_specs.json.
+**Note**: lab_specs.json (from labs-parser) is the authoritative source for canonical names, aliases, reference ranges, and unit conversions.

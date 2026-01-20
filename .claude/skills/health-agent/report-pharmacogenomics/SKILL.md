@@ -18,23 +18,38 @@ This report section provides:
 ## Prerequisites
 
 - Profile must have `genetics_23andme_path` configured
-- Reference: `references/genetics-pharmacogenomics.md`
+- Uses `genetics-snp-lookup` skill for all SNP interpretations
 
 ## Workflow
 
 1. Load profile and extract `genetics_23andme_path`
-2. Extract all pharmacogenomics SNPs
-3. Determine metabolizer status for each gene
-4. Identify medications affected
-5. Format into standardized section
-6. Save to `.output/{profile}/sections/pharmacogenomics-{date}.md`
+2. **Delegate to genetics-snp-lookup**: Call for all pharmacogenomics genes (CYP2D6, CYP2C19, CYP2C9, VKORC1, SLCO1B1, TPMT, DPYD)
+3. Receive metabolizer statuses and medication implications from genetics-snp-lookup
+4. Format into standardized provider-ready section
+5. Save to `.output/{profile}/sections/pharmacogenomics-{date}.md`
 
-## Efficient Data Access
+## Calling genetics-snp-lookup
 
-### Extract Pharmacogenomics SNPs
-```bash
-grep -E "^(rs3892097|rs1065852|rs5030655|rs28371725|rs4244285|rs4986893|rs12248560|rs1799853|rs1057910|rs9923231|rs4149056|rs1800460|rs1142345|rs3918290|rs55886062|rs67376798|rs75017182)" "{genetics_23andme_path}"
+Use genetics-snp-lookup in **gene-based pharmacogenomics mode**:
+
 ```
+For each gene in [CYP2D6, CYP2C19, CYP2C9, VKORC1, SLCO1B1, TPMT, DPYD]:
+  Call genetics-snp-lookup with: "look up {gene} pharmacogenomics"
+
+genetics-snp-lookup will:
+1. Query SNPedia for gene's clinically relevant rsIDs
+2. Extract those SNPs from 23andMe data
+3. Fetch interpretations from SNPedia
+4. Return metabolizer status, affected drugs, dosing guidance
+```
+
+**Do NOT**:
+- Duplicate SNP extraction logic
+- Hardcode rsID lists
+- Reimplement metabolizer status determination
+- Query SNPedia directly
+
+genetics-snp-lookup is the centralized lookup mechanism - this skill focuses on formatting for providers.
 
 ## Output Format
 
@@ -45,6 +60,7 @@ The section must follow this exact format for composability:
 section: pharmacogenomics
 generated: {YYYY-MM-DD}
 source: 23andMe raw data (consumer genetic test)
+profile: {profile_name}
 ---
 
 # Pharmacogenomics Summary
@@ -53,13 +69,13 @@ source: 23andMe raw data (consumer genetic test)
 
 | Gene | Status | Key Implications |
 |------|--------|------------------|
-| CYP2D6 | {status} | {brief implication} |
-| CYP2C19 | {status} | {brief implication} |
-| CYP2C9 | {status} | {brief implication} |
-| VKORC1 | {status} | {brief implication} |
-| SLCO1B1 | {status} | {brief implication} |
-| TPMT | {status} | {brief implication} |
-| DPYD | {status} | {brief implication} |
+| CYP2D6 | {status from genetics-snp-lookup} | {brief implication} |
+| CYP2C19 | {status from genetics-snp-lookup} | {brief implication} |
+| CYP2C9 | {status from genetics-snp-lookup} | {brief implication} |
+| VKORC1 | {status from genetics-snp-lookup} | {brief implication} |
+| SLCO1B1 | {status from genetics-snp-lookup} | {brief implication} |
+| TPMT | {status from genetics-snp-lookup} | {brief implication} |
+| DPYD | {status from genetics-snp-lookup} | {brief implication} |
 
 ---
 
@@ -69,7 +85,7 @@ source: 23andMe raw data (consumer genetic test)
 
 | Drug Class | Examples | Reason | Recommendation |
 |------------|----------|--------|----------------|
-| {class} | {examples} | {your status} | {action} |
+| {class} | {examples} | {your status} | {action from genetics-snp-lookup} |
 
 ### Medications with No Genetic Concerns Detected
 
@@ -81,17 +97,17 @@ Standard dosing expected for medications metabolized by pathways with normal sta
 
 | Gene | SNP | Genotype | Interpretation |
 |------|-----|----------|----------------|
-| CYP2D6 | rs3892097 | {genotype} | {allele} |
-| CYP2D6 | rs1065852 | {genotype} | {allele} |
-| CYP2C19 | rs4244285 | {genotype} | {allele} |
-| CYP2C19 | rs12248560 | {genotype} | {allele} |
-| CYP2C9 | rs1799853 | {genotype} | {allele} |
-| CYP2C9 | rs1057910 | {genotype} | {allele} |
-| VKORC1 | rs9923231 | {genotype} | {sensitivity} |
-| SLCO1B1 | rs4149056 | {genotype} | {transport} |
-| TPMT | rs1800460 | {genotype} | {activity} |
-| TPMT | rs1142345 | {genotype} | {activity} |
-| DPYD | rs3918290 | {genotype} | {activity} |
+| CYP2D6 | rs3892097 | {genotype} | {allele from genetics-snp-lookup} |
+| CYP2D6 | rs1065852 | {genotype} | {allele from genetics-snp-lookup} |
+| CYP2C19 | rs4244285 | {genotype} | {allele from genetics-snp-lookup} |
+| CYP2C19 | rs12248560 | {genotype} | {allele from genetics-snp-lookup} |
+| CYP2C9 | rs1799853 | {genotype} | {allele from genetics-snp-lookup} |
+| CYP2C9 | rs1057910 | {genotype} | {allele from genetics-snp-lookup} |
+| VKORC1 | rs9923231 | {genotype} | {sensitivity from genetics-snp-lookup} |
+| SLCO1B1 | rs4149056 | {genotype} | {transport from genetics-snp-lookup} |
+| TPMT | rs1800460 | {genotype} | {activity from genetics-snp-lookup} |
+| TPMT | rs1142345 | {genotype} | {activity from genetics-snp-lookup} |
+| DPYD | rs3918290 | {genotype} | {activity from genetics-snp-lookup} |
 
 ---
 
@@ -100,6 +116,7 @@ Standard dosing expected for medications metabolized by pathways with normal sta
 1. **Copy number variations**: CYP2D6 gene duplications/deletions are NOT detected by this test
 2. **CPIC Guidelines**: For formal dosing recommendations, consult CPIC (cpicpgx.org)
 3. **Consumer test**: Confirm with clinical testing for critical medication decisions
+4. **Data source**: Interpretations from SNPedia (genetics-snp-lookup skill with 30-day cache)
 
 ---
 
@@ -115,10 +132,12 @@ Standard dosing expected for medications metabolized by pathways with normal sta
 - **Filename**: `pharmacogenomics-YYYY-MM-DD.md`
 - **Create directory if needed**: `mkdir -p .output/{profile}/sections`
 
+**IMPORTANT**: Use the `Write` tool to create the report file, NOT Bash heredocs/redirects. Bash file writing (`cat > file` or heredocs) is blocked by sandbox restrictions. Directory creation via `mkdir -p` is permitted.
+
 ## Section Header Requirements
 
 For composability with other report sections:
-1. Include YAML frontmatter with section name, date, and source
+1. Include YAML frontmatter with section name, date, source, and profile
 2. Use consistent H1 header format
 3. End with horizontal rule and attribution line
 4. Tables must be valid markdown for concatenation
@@ -130,10 +149,11 @@ For composability with other report sections:
 - Emphasize limitations clearly
 - Provide genotype data for their records
 - Reference CPIC for clinical guidelines
+- Note data source and caching (SNPedia via genetics-snp-lookup)
 
-## Status Determination
+## Metabolizer Status Categories
 
-Use the logic from `references/genetics-pharmacogenomics.md` to determine metabolizer status:
+genetics-snp-lookup returns these statuses from SNPedia:
 
 | Status | Description |
 |--------|-------------|
@@ -152,3 +172,16 @@ This section is designed to combine with:
 Combined report for provider visit:
 1. Medication list + pharmacogenomics = comprehensive medication review
 2. All genetics sections = complete genetic summary
+
+## Integration with Other Skills
+
+- **genetics-pharmacogenomics**: Non-report version for interactive analysis
+- **report-medication-list**: Shows current medications (combine for complete picture)
+- **report-genetic-risks**: Companion genetics report section
+
+## Notes
+
+- All SNP interpretations come from SNPedia via genetics-snp-lookup (cached, 30-day TTL)
+- genetics-snp-lookup handles SNP extraction, API calls, caching, and error handling
+- This skill focuses on formatting for provider consumption and saving to .output/
+- For interactive pharmacogenomics analysis, use the genetics-pharmacogenomics skill

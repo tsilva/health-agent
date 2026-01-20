@@ -278,7 +278,7 @@ If medications are identified as high-risk confounds:
 If genetics is configured, consider:
 - Pharmacogenomics variants as confounds for medication effects
 - Health risk variants as confounds for disease development
-- Consult references/genetics-pharmacogenomics.md and references/genetics-health-risks.md
+- Use genetics-snp-lookup skill for gene/SNP lookups and interpretations
 
 ### Temporal Clustering Is Common
 
