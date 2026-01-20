@@ -10,11 +10,12 @@ Discover patterns between health events and biomarker changes.
 ## Workflow
 
 1. Get all data paths from profile
-2. Build unified timeline (events + labs)
-3. Identify correlation targets (user-specified or auto-detect)
-4. Search for temporal patterns
-5. Assess significance
-6. Present findings with appropriate caveats
+2. Check if `{labs_path}/lab_specs.json` exists for canonical marker names
+3. Build unified timeline (events + labs)
+4. Identify correlation targets (user-specified or auto-detect)
+5. Search for temporal patterns using canonical names when available
+6. Assess significance
+7. Present findings with appropriate caveats
 
 ## Efficient Data Access
 
@@ -37,13 +38,33 @@ head -1 "{labs_path}/all.csv" && grep "^202[56]-" "{labs_path}/all.csv" | sort -
 ```
 
 ### Labs: Specific Marker History
+
+**With lab_specs.json** (more accurate):
+```bash
+# Source helper functions
+source .claude/skills/health-agent/references/lab-specs-helpers.sh
+
+# Build pattern from canonical name + aliases
+if has_lab_specs "{labs_path}/lab_specs.json"; then
+    pattern=$(build_grep_pattern "{labs_path}/lab_specs.json" "{marker}")
+    if [ -n "$pattern" ]; then
+        head -1 "{labs_path}/all.csv" && grep -iE "$pattern" "{labs_path}/all.csv" | sort -t',' -k1
+    else
+        head -1 "{labs_path}/all.csv" && grep -i "{marker}" "{labs_path}/all.csv" | sort -t',' -k1
+    fi
+else
+    head -1 "{labs_path}/all.csv" && grep -i "{marker}" "{labs_path}/all.csv" | sort -t',' -k1
+fi
+```
+
+**Without lab_specs.json** (fallback):
 ```bash
 head -1 "{labs_path}/all.csv" && grep -i "{marker}" "{labs_path}/all.csv" | sort -t',' -k1
 ```
 
 ## Unified Timeline Construction
 
-1. Read `{health_log_path}/health_timeline.csv`
+1. Read `{health_log_path}/health_log.csv`
 2. Read `{labs_path}/all.csv`
 3. Merge into single timeline sorted by date
 4. Tag each entry as `event` or `lab`
@@ -131,8 +152,11 @@ When user asks about specific correlation:
 1. Parse the two factors (e.g., "stress" and "blood pressure")
 2. Map to data columns:
    - Events: search `category` and `event` columns
-   - Labs: search `lab_name` column (use marker aliases)
+   - Labs: search `lab_name` column using:
+     - lab_specs.json canonical names + aliases (if available)
+     - Manual patterns from `references/common-markers.md` (fallback)
 3. Run targeted correlation analysis
+4. Display results using canonical names for consistency
 
 ## Confidence Levels
 

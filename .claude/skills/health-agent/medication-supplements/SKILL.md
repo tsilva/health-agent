@@ -26,37 +26,11 @@ head -1 "{health_log_path}/health_log.csv" && grep -iE ",(medication|supplement)
 
 This extracts the header row plus all medication/supplement entries, sorted by date.
 
-## Status Determination Logic
+## Status Determination
 
-Analyze the `Event` column to determine current status:
+Use the standard status determination keywords and algorithm from `references/status-keywords.md`.
 
-### Active Keywords (most recent event)
-- started
-- prescribed
-- continued
-- refilled
-- increased
-- decreased
-- taking
-- began
-
-### Discontinued Keywords (most recent event)
-- stopped
-- discontinued
-- finished
-- completed
-- replaced by
-- switched to
-- ended
-- no longer
-
-### Status Algorithm
-1. Group events by `Item` (medication/supplement name)
-2. Sort events by `Date` descending
-3. Check the most recent event for status keywords
-4. If most recent event contains discontinued keywords → Discontinued
-5. If most recent event contains active keywords → Active
-6. If ambiguous, check for a more recent "started" event for the same item
+For this skill, apply: **Active/Discontinued only** (medications and supplements)
 
 ## Dosage Parsing
 

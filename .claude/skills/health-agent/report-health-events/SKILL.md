@@ -9,10 +9,22 @@ Generate a standardized section documenting recent health events and episodes fo
 
 ## Purpose
 
-This report section provides:
+This report section provides a **chronological timeline** focused on recent health episodes and events:
 - Active/ongoing health episodes with full detail
 - Recently resolved episodes (last 6 months) in compact format
 - Chronological timeline with episode grouping
+
+**Use this skill when:**
+- Preparing for provider visits about recent health issues
+- Documenting recent illness episodes and outcomes
+- Providing visit context for ongoing problems
+- Summarizing recent health activity for follow-up appointments
+
+**Use report-conditions-status instead when:**
+- Completing intake forms requiring diagnosis lists
+- Annual wellness visits needing condition inventory
+- The focus is on condition status (active/resolved) not timeline
+- Insurance or disability forms requiring comprehensive diagnosis lists
 
 ## Workflow
 
@@ -42,22 +54,13 @@ grep -A 10 "^# {YYYY-MM-DD}" "{health_log_path}/health_log.md"
 
 ## Episode Classification
 
-### Active Episodes
-Episodes are **active** if:
-- Most recent event is NOT a resolution event
-- Contains ongoing symptoms or conditions
-- Has pending follow-ups or treatments
+Use the standard status determination keywords and algorithm from `references/status-keywords.md`.
 
-### Resolution Keywords
-- resolved, recovered, completed, cleared
-- healed, finished, ended, normal
-- negative (for test results)
+For this skill, apply: **Active/Resolved** for episode classification
 
-### Resolved Episodes
-Episodes are **resolved** if:
-- Most recent event contains resolution keywords
-- No events in last 30 days AND last event was treatment completion
-- Explicitly marked as resolved in health_log.md
+### Episode-Specific Rules
+- **Active**: Most recent event is NOT a resolution event, OR contains ongoing symptoms/conditions, OR has pending follow-ups/treatments
+- **Resolved**: Most recent event contains resolution keywords, OR no events in last 30 days AND last event was treatment completion
 
 ## Output Format
 
@@ -67,7 +70,6 @@ The section must follow this exact format for composability:
 ---
 section: health-events
 generated: {YYYY-MM-DD}
-profile: {profile_name}
 period: last 6 months
 ---
 
@@ -111,7 +113,7 @@ period: last 6 months
 ## Section Header Requirements
 
 For composability with other report sections:
-1. Include YAML frontmatter with section name, date, profile, and period
+1. Include YAML frontmatter with section name, date, and period
 2. Use consistent H1 header format
 3. Separate each episode with horizontal rules
 4. End with attribution line

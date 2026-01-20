@@ -10,18 +10,41 @@ Identify potential biological mechanisms linking two health observations.
 ## Workflow
 
 1. Get all data paths from profile
-2. Parse the two observations to link (event/symptom/lab marker)
-3. Extract relevant biomarkers from labs
-4. Check genetics for related variants (if configured)
-5. Search timeline for intermediate events
-6. Consult references for known pathways
-7. Propose mechanisms with supporting data points
+2. Check if `{labs_path}/lab_specs.json` exists for canonical marker names
+3. Parse the two observations to link (event/symptom/lab marker)
+4. Extract relevant biomarkers from labs using canonical names when available
+5. Check genetics for related variants (if configured)
+6. Search timeline for intermediate events
+7. Consult references for known pathways
+8. Propose mechanisms with supporting data points
 
 ## Efficient Data Access
 
 Data files often exceed Claude's 256KB read limit. Use these extraction patterns:
 
-### Labs: Extract Relevant Biomarkers
+### Labs: Using lab_specs.json (Preferred)
+
+If `{labs_path}/lab_specs.json` exists, use it for more accurate marker matching:
+
+```bash
+# Source helper functions
+source .claude/skills/health-agent/references/lab-specs-helpers.sh
+
+# Build patterns for mechanism-specific marker groups
+# Example: Get glucose-related markers
+glucose_pattern=$(build_grep_pattern "{labs_path}/lab_specs.json" "glucose")
+insulin_pattern=$(build_grep_pattern "{labs_path}/lab_specs.json" "insulin")
+hba1c_pattern=$(build_grep_pattern "{labs_path}/lab_specs.json" "hba1c")
+
+# Combine patterns for mechanism category
+head -1 "{labs_path}/all.csv" && grep -iE "$glucose_pattern|$insulin_pattern|$hba1c_pattern" "{labs_path}/all.csv" | sort -t',' -k1
+```
+
+**Benefit**: Matches all aliases automatically (e.g., "A1C", "Hemoglobin A1c", "Glycated Hemoglobin" all captured).
+
+### Labs: Extract Relevant Biomarkers (Fallback Patterns)
+
+If `lab_specs.json` is not available, use these manual patterns:
 
 For metabolic mechanisms (glucose, insulin, HbA1c):
 ```bash

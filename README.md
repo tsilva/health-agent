@@ -62,12 +62,18 @@ Open Claude Code in this directory. You'll be prompted to select a profile.
 |--------|--------|-------------|
 | [labs-parser](https://github.com/tsilva/labs-parser) | `all.csv` | Lab test results with values, units, reference ranges |
 | [medical-exams-parser](https://github.com/tsilva/medical-exams-parser) | `*.summary.md` | Imaging and exam transcriptions with YAML metadata |
-| [health-log-parser](https://github.com/tsilva/health-log-parser) | `health_log.md` + `health_timeline.csv` | Health journal entries and structured timeline |
+| [health-log-parser](https://github.com/tsilva/health-log-parser) | `health_log.md` + `health_log.csv` | Health journal entries and structured timeline |
 | 23andMe | Raw data download | Genetic variants for pharmacogenomics and health risks |
 
 ## Built-in Skills
 
-Health Agent includes 16 skills that activate automatically based on your queries:
+Health Agent includes 21 skills that activate automatically based on your queries:
+
+### Data Collection Skills
+
+| Skill | Trigger Phrases | Description |
+|-------|-----------------|-------------|
+| **generate-questionnaire** | "create questionnaire", "generate questionnaire", "augment health log", "systematically fill gaps" | Generate comprehensive questionnaires to systematically augment health log data |
 
 ### Core Analysis Skills
 
@@ -88,6 +94,15 @@ Health Agent includes 16 skills that activate automatically based on your querie
 | **genetics-snp-lookup** | "look up rs12345", "my genotype for...", "check SNP" | Query specific genetic variants from 23andMe data |
 | **genetics-pharmacogenomics** | "drug metabolism", "CYP2D6 status", "how do I metabolize medications" | Analyze variants affecting drug metabolism (CYP2D6, CYP2C19, etc.) |
 | **genetics-health-risks** | "APOE status", "genetic risks", "Factor V Leiden", "MTHFR" | Interpret health risk variants with clinical context |
+
+### Hypothesis Investigation Skills
+
+| Skill | Trigger Phrases | Description |
+|-------|-----------------|-------------|
+| **investigate-root-cause** | "investigate root cause of...", "why do I have...", "find the cause of...", "what's causing my..." | Automated hypothesis generation and testing for health conditions with multi-turn iterative exploration |
+| **mechanism-search** | "biological mechanism linking...", "how does X cause Y", "pathway between..." | Identify biological pathways and mechanisms connecting observations |
+| **confound-identification** | "what could confound...", "alternative explanations for...", "what else could cause..." | Identify confounding factors that could explain correlations |
+| **evidence-contradiction-check** | "test hypothesis against data", "contradictions to...", "evidence against..." | Search for counter-examples and contradictory evidence |
 
 ### Report Skills
 
@@ -111,6 +126,7 @@ health-agent/
 ├── .claude/
 │   └── skills/
 │       └── health-agent/
+│           ├── generate-questionnaire/SKILL.md
 │           ├── lab-trend/SKILL.md
 │           ├── out-of-range-labs/SKILL.md
 │           ├── exam-catalog/SKILL.md
@@ -121,6 +137,10 @@ health-agent/
 │           ├── genetics-snp-lookup/SKILL.md
 │           ├── genetics-pharmacogenomics/SKILL.md
 │           ├── genetics-health-risks/SKILL.md
+│           ├── investigate-root-cause/SKILL.md
+│           ├── mechanism-search/SKILL.md
+│           ├── confound-identification/SKILL.md
+│           ├── evidence-contradiction-check/SKILL.md
 │           ├── report-medication-list/SKILL.md
 │           ├── report-labs-abnormal/SKILL.md
 │           ├── report-health-events/SKILL.md
@@ -131,9 +151,35 @@ health-agent/
 │               ├── common-markers.md              # Lab marker aliases and ranges
 │               ├── genetics-pharmacogenomics.md   # Drug metabolism variants
 │               ├── genetics-health-risks.md       # Health risk variants
-│               └── genetics-snp-index.md          # Master SNP lookup
+│               ├── genetics-snp-index.md          # Master SNP lookup
+│               └── status-keywords.md             # Status determination keywords
 └── README.md
 ```
+
+## Output Directory Structure
+
+Generated reports, questionnaires, and analyses are saved to `.output/{profile}/`:
+
+```
+.output/{profile}/
+├── sections/                    # Individual report sections
+│   ├── medication-list-YYYY-MM-DD.md
+│   ├── labs-abnormal-YYYY-MM-DD.md
+│   ├── health-events-YYYY-MM-DD.md
+│   ├── pharmacogenomics-YYYY-MM-DD.md
+│   ├── genetic-risks-YYYY-MM-DD.md
+│   └── conditions-status-YYYY-MM-DD.md
+├── hypothesis/                  # Hypothesis investigation reports
+│   ├── hemolysis-YYYY-MM-DD.md
+│   ├── headaches-YYYY-MM-DD.md
+│   └── fatigue-YYYY-MM-DD.md
+├── questionnaires/              # Health log augmentation questionnaires
+│   └── health-log-augmentation-YYYY-MM-DD.md
+└── combined/                    # Assembled reports (future)
+    └── provider-visit-YYYY-MM-DD.md
+```
+
+**Note**: The `.output/` directory is gitignored to protect sensitive health data.
 
 ## Creating Custom Skills
 

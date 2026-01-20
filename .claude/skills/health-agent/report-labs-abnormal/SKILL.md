@@ -18,12 +18,13 @@ This report section provides:
 ## Workflow
 
 1. Load profile and extract `labs_path` and demographics
-2. Extract abnormal values from all.csv using efficient filters
-3. Classify by severity (Critical, Abnormal, Borderline)
-4. Calculate trend indicators by comparing historical values
-5. Apply age/gender context from demographics
-6. Format into standardized section
-7. Save to `.output/{profile}/sections/labs-abnormal-{date}.md`
+2. Check if `{labs_path}/lab_specs.json` exists for canonical names and units
+3. Extract abnormal values from all.csv using efficient filters
+4. Classify by severity (Critical, Abnormal, Borderline)
+5. Calculate trend indicators by comparing historical values
+6. Apply age/gender context from demographics
+7. Format into standardized section using canonical names when available
+8. Save to `.output/{profile}/sections/labs-abnormal-{date}.md`
 
 ## Efficient Data Access
 
@@ -38,8 +39,41 @@ head -1 "{labs_path}/all.csv" && grep "^202[56]-" "{labs_path}/all.csv" | grep -
 ```
 
 ### Get History for Trend Calculation
+
+**With lab_specs.json** (more accurate):
+```bash
+# Source helper functions
+source .claude/skills/health-agent/references/lab-specs-helpers.sh
+
+# Build pattern for marker and get canonical name
+if has_lab_specs "{labs_path}/lab_specs.json"; then
+    pattern=$(build_grep_pattern "{labs_path}/lab_specs.json" "{marker_name}")
+    canonical=$(get_canonical_name "{labs_path}/lab_specs.json" "{marker_name}")
+    if [ -n "$pattern" ]; then
+        head -1 "{labs_path}/all.csv" && grep -iE "$pattern" "{labs_path}/all.csv" | sort -t',' -k1
+    else
+        head -1 "{labs_path}/all.csv" && grep -i "{marker_name}" "{labs_path}/all.csv" | sort -t',' -k1
+    fi
+else
+    head -1 "{labs_path}/all.csv" && grep -i "{marker_name}" "{labs_path}/all.csv" | sort -t',' -k1
+fi
+```
+
+**Without lab_specs.json** (fallback):
 ```bash
 head -1 "{labs_path}/all.csv" && grep -i "{marker_name}" "{labs_path}/all.csv" | sort -t',' -k1
+```
+
+### Display Canonical Names in Report
+
+When lab_specs.json exists, use canonical names for consistency:
+```bash
+# Get canonical name and primary unit
+canonical=$(get_canonical_name "{labs_path}/lab_specs.json" "{raw_marker_name}")
+unit=$(get_primary_unit "{labs_path}/lab_specs.json" "{raw_marker_name}")
+
+# Display as: "{canonical}" instead of raw lab_name from CSV
+# This ensures "A1C", "HbA1c", "Hemoglobin A1c" all appear as "HbA1c" (canonical name)
 ```
 
 ## Severity Classification
@@ -77,7 +111,6 @@ The section must follow this exact format for composability:
 ---
 section: labs-abnormal
 generated: {YYYY-MM-DD}
-profile: {profile_name}
 demographics: {age}yo {gender}
 ---
 
@@ -122,7 +155,7 @@ Markers abnormal on 2+ occasions:
 ## Section Header Requirements
 
 For composability with other report sections:
-1. Include YAML frontmatter with section name, date, profile, and demographics
+1. Include YAML frontmatter with section name, date, and demographics
 2. Use consistent H1 header format
 3. End with horizontal rule and attribution line
 4. Include "No critical values" note if the section would otherwise be empty

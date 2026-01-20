@@ -45,7 +45,7 @@ head -1 "{labs_path}/all.csv" && grep "^{YYYY-MM}" "{labs_path}/all.csv"
 ## Data Gathering
 
 ### Timeline Events
-1. Read `{health_log_path}/health_timeline.csv`
+1. Read `{health_log_path}/health_log.csv`
 2. Find events matching `episode_id` OR search `event` column
 3. Note date range of the episode
 

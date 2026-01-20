@@ -59,6 +59,50 @@ data_sources:
 - Find out-of-range values: compare `value` to `reference_min`/`reference_max`
 - Review recent labs: sort by `date` descending
 
+### Lab Specifications (labs-parser)
+
+**File**: `{labs_path}/lab_specs.json`
+
+Machine-readable lab marker specifications for accurate matching and unit standardization. This file is **optional** - skills gracefully fall back to manual patterns when it's not present.
+
+**Schema**:
+```json
+{
+  "markers": [
+    {
+      "canonical_name": "HbA1c",
+      "aliases": ["Hemoglobin A1c", "Glycated Hemoglobin", "A1C"],
+      "primary_unit": "%",
+      "conversion_factors": { "mmol/mol": 10.93 },
+      "reference_range": { "min": 4.0, "max": 5.6 }
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `canonical_name` | string | Standardized marker name for consistent reporting |
+| `aliases` | array | All alternative names/aliases for the marker |
+| `primary_unit` | string | Standard unit of measurement |
+| `conversion_factors` | object | Conversion factors from primary unit to alternatives |
+| `reference_range` | object | Typical reference range (min/max) |
+
+**Usage**:
+- Skills check for this file when performing marker lookups
+- Helper functions in `.claude/skills/health-agent/references/lab-specs-helpers.sh` provide:
+  - `get_canonical_name()` - Get standard name from any alias
+  - `build_grep_pattern()` - Build grep pattern from all aliases
+  - `get_primary_unit()` - Get standard unit for marker
+  - `get_conversion_factor()` - Convert between units
+- If file is missing, skills fall back to manual patterns from `references/common-markers.md`
+
+**Benefits**:
+- More accurate marker matching (captures all aliases automatically)
+- Consistent naming across reports (all variants display as canonical name)
+- Unit standardization for cross-report comparisons
+- Easier maintenance (add markers in labs-parser without updating skills)
+
 ### Health Timeline (health-log-parser)
 
 **File**: `{health_log_path}/health_log.csv`
@@ -163,7 +207,13 @@ When analyzing health patterns, consider data from all sources:
 
 ## Built-in Skills
 
-Nineteen skills are available in `.claude/skills/health-agent/`:
+Twenty-one skills are available in `.claude/skills/health-agent/`:
+
+### Data Collection Skills
+
+| Skill | Use When |
+|-------|----------|
+| `generate-questionnaire` | User asks to create questionnaire or systematically augment health log data |
 
 ### Analysis Skills
 
@@ -189,6 +239,7 @@ Nineteen skills are available in `.claude/skills/health-agent/`:
 
 | Skill | Use When |
 |-------|----------|
+| `investigate-root-cause` | User asks to investigate root cause of a condition |
 | `mechanism-search` | User asks about biological mechanisms linking observations |
 | `confound-identification` | User asks what could confound a correlation |
 | `evidence-contradiction-check` | User asks to test hypothesis against data |
@@ -228,6 +279,11 @@ Report skills generate saveable markdown sections to `.output/{profile}/sections
 - Master rsID lookup table
 - Batch grep patterns for variant categories
 - 23andMe data format reference
+
+`references/status-keywords.md` contains:
+- Status determination keywords (active, discontinued, suspected, resolved)
+- Status classification algorithm for medications, supplements, conditions, and episodes
+- Used by: medication-supplements, report-medication-list, report-conditions-status, report-health-events
 
 ## Creating Custom Skills
 
@@ -280,6 +336,8 @@ Report skills use the `report-*` prefix:
 │   ├── hemolysis-YYYY-MM-DD.md
 │   ├── headaches-YYYY-MM-DD.md
 │   └── fatigue-YYYY-MM-DD.md
+├── questionnaires/              # Health log augmentation questionnaires
+│   └── health-log-augmentation-YYYY-MM-DD.md
 └── combined/                    # Assembled reports (future)
     └── provider-visit-YYYY-MM-DD.md
 ```
@@ -335,37 +393,38 @@ cat > file.md << 'EOF'  # This will fail with "operation not permitted"
 
 The Write tool works in sandboxed mode for files within the project directory. Bash heredocs and redirections are blocked by sandbox restrictions.
 
-## Hypothesis Generation Workflow
+## Root Cause Investigation
 
-For root cause investigation of health conditions, the hypothesis generation workflow provides iterative, multi-turn investigation that goes beyond single-pass skills.
+The `investigate-root-cause` skill automates comprehensive hypothesis generation and testing for health conditions.
 
-### When to Use Hypothesis Generation
+### Invocation
 
-Use this workflow when:
-- User asks to "investigate root cause of [condition]"
-- User wants to understand why something is happening
-- User asks for competing explanations of a health pattern
-- Single-pass skills (like cross-temporal-correlation) found patterns but not mechanisms
+Use when user asks:
+- "Investigate root cause of [condition]"
+- "Why do I have [condition]?"
+- "Find the cause of [symptom]"
+- "What's causing my [condition]?"
 
 ### How It Works
 
-1. **Invocation**: User says "Investigate root cause of [condition]"
-2. **Process**: Assistant spawns a general-purpose agent that:
+1. **Invocation**: User triggers the skill
+2. **Process**: Skill spawns a general-purpose agent that:
    - Gathers evidence using analysis skills (episode-investigation, cross-temporal-correlation, lab-trend, etc.)
-   - Generates competing hypotheses using hypothesis investigation skills
-   - Tests hypotheses using evidence-contradiction-check
-   - Identifies confounding factors using confound-identification
-   - Proposes biological mechanisms using mechanism-search
+   - Performs comprehensive genetic analysis (checks ALL condition-relevant genes using both genetics skills AND direct SNP lookups)
+   - Generates 3-5 competing hypotheses with biological mechanisms (mechanism-search)
+   - Tests hypotheses against data (evidence-contradiction-check)
+   - Identifies confounding factors (confound-identification)
    - Ranks hypotheses by supporting evidence
    - Iterates and refines based on contradictions
-3. **Output**: Saved to `.output/{profile}/hypothesis/{condition}-YYYY-MM-DD.md`
+3. **Output**: Saved to `.output/{profile}/sections/hypothesis-investigation-{condition}-YYYY-MM-DD.md`
 
 ### Output Format
 
 Hypothesis investigation reports include:
 - **Ranked hypotheses** (High/Medium/Low likelihood)
-- **Supporting evidence** with data citations (dates, lab values, timeline events)
+- **Supporting evidence** with data citations (dates, lab values, timeline events, genetics findings)
 - **Contradictory evidence** with explanations or acknowledgment
+- **Genetic analysis** (comprehensive check of condition-relevant genes with both positive and negative findings)
 - **Biological mechanisms** linking observations (if identifiable)
 - **Confounding factors** that could explain observations
 - **Testable predictions** (what should be true if hypothesis is correct)
@@ -373,13 +432,13 @@ Hypothesis investigation reports include:
 
 ### Integration with Report Skills
 
-Hypothesis investigation reports are saved to `.output/{profile}/hypothesis/` (separate from report sections), enabling future integration with provider visit summaries. For example:
-- **Provider Visit** = conditions-status + hypothesis/fatigue + labs-abnormal + medication-list
-- **Specialist Referral** = hypothesis/headaches + health-events + exam-catalog
+Hypothesis investigation reports are saved to `.output/{profile}/sections/` (same directory as report sections), enabling future integration with provider visit summaries. For example:
+- **Provider Visit** = conditions-status + hypothesis-investigation-fatigue + labs-abnormal + medication-list
+- **Specialist Referral** = hypothesis-investigation-headaches + health-events + exam-catalog
 
 ### Available Tools for Hypothesis Agent
 
-The hypothesis generation agent has access to all 19 health-agent skills:
+The hypothesis generation agent has access to all 20 health-agent skills:
 - **Evidence gathering**: episode-investigation, cross-temporal-correlation, lab-trend, out-of-range-labs, exam-catalog
 - **Mechanism exploration**: mechanism-search (identifies biological pathways)
 - **Confound detection**: confound-identification (rules out alternative explanations)
@@ -394,21 +453,13 @@ The hypothesis generation agent has access to all 19 health-agent skills:
 1. Uses `episode-investigation` to gather all headache events
 2. Uses `cross-temporal-correlation` to find temporal patterns
 3. Identifies potential triggers: poor sleep (5 instances), stress (3 instances), caffeine changes (2 instances)
-4. Uses `mechanism-search` to propose biological pathways:
-   - Poor sleep → cortisol elevation → vasoconstriction → headaches
-   - Caffeine withdrawal → adenosine rebound → headaches
-5. Uses `confound-identification` to check for confounds:
-   - Identifies caffeine intake increased during poor sleep periods (temporal clustering)
-6. Uses `evidence-contradiction-check` to test hypotheses:
-   - Finds 2 headache instances with normal sleep (partial contradiction)
-   - Revises hypothesis: multiple triggers exist, not single cause
-7. Ranks hypotheses:
-   - **High likelihood**: Sleep deprivation as primary trigger (5/7 instances, 71%)
-   - **Moderate likelihood**: Caffeine withdrawal as secondary trigger (2/7 instances, but confounded with sleep)
-   - **Low likelihood**: Stress as independent trigger (overlaps with sleep disruption)
+4. Uses `mechanism-search` to propose biological pathways
+5. Uses `confound-identification` to check for confounds
+6. Uses `evidence-contradiction-check` to test hypotheses
+7. Ranks hypotheses by supporting evidence
 8. Recommends follow-up: Track caffeine intake separately from sleep to discriminate between hypotheses
 
-**Output**: Markdown report saved to `.output/{profile}/hypothesis/headaches-2026-01-20.md`
+**Output**: Markdown report saved to `.output/{profile}/sections/hypothesis-investigation-headaches-2026-01-20.md`
 
 ### Differences from Analysis Skills
 
@@ -417,18 +468,6 @@ The hypothesis generation agent has access to all 19 health-agent skills:
 | **Execution** | Single-pass workflow | Multi-turn iterative exploration |
 | **Output** | Report patterns found | Propose and test competing explanations |
 | **Iteration** | No refinement loop | Refines hypotheses based on contradictions |
-| **Mechanism proposals** | Identify correlations | Propose causal pathways |
-| **Evidence weighing** | Present all findings | Rank by supporting evidence |
-
-### Medical Disclaimers
-
-All hypothesis investigation reports emphasize:
-- Hypotheses are data-driven interpretations, not diagnoses
-- Correlation does not imply causation
-- Multiple mechanisms may coexist
-- Genetics analysis (if included) is limited to 23andMe data
-- Always consult a healthcare provider for clinical interpretation
-- This is not medical advice
 
 ## Important Notes
 
@@ -437,6 +476,7 @@ All hypothesis investigation reports emphasize:
 - **Demographics**: Use `date_of_birth` and `gender` when interpreting reference ranges, as many vary by age and sex.
 - **Confidence Scores**: Lab values with low confidence (<0.8) should be flagged for manual verification.
 - **Large File Handling**: Data files (`all.csv`, `health_log.csv`, `health_log.md`) typically exceed Claude's 256KB/25000 token read limits. Skills include "Efficient Data Access" sections with extraction commands. Always use filtered extraction (grep/head) rather than direct reads for these files.
+- **Lab Specifications**: If `{labs_path}/lab_specs.json` exists, skills use it for more accurate marker matching via canonical names and aliases. Helper functions are in `.claude/skills/health-agent/references/lab-specs-helpers.sh`. If the file is missing, skills gracefully fall back to manual patterns from `references/common-markers.md`. This file is optional and generated by labs-parser.
 - **Sandbox Compliance**: Always use the `Write` tool (not Bash heredocs/redirects) to create files in `.output/`. Bash `mkdir -p` works for directories, but file writing via `cat > file` or heredocs is blocked by sandbox. This ensures reports generate without permission errors.
 
 ## Maintenance

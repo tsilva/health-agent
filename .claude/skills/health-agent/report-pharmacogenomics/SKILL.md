@@ -36,11 +36,6 @@ This report section provides:
 grep -E "^(rs3892097|rs1065852|rs5030655|rs28371725|rs4244285|rs4986893|rs12248560|rs1799853|rs1057910|rs9923231|rs4149056|rs1800460|rs1142345|rs3918290|rs55886062|rs67376798|rs75017182)" "{genetics_23andme_path}"
 ```
 
-### Get Current Medications (Optional)
-```bash
-head -1 "{health_log_path}/health_log.csv" && grep -iE ",(medication)," "{health_log_path}/health_log.csv" | grep -iE "(started|taking|continued|refilled)" | sort -t',' -k1 -r
-```
-
 ## Output Format
 
 The section must follow this exact format for composability:
@@ -102,10 +97,9 @@ Standard dosing expected for medications metabolized by pathways with normal sta
 
 ## Provider Notes
 
-1. **Confirmation recommended**: Consumer genetic testing has limitations; clinical pharmacogenomic testing may be warranted for critical medications
-2. **Copy number variations**: CYP2D6 gene duplications/deletions are NOT detected by this test
-3. **Incomplete coverage**: Not all variants are tested; normal results do not guarantee typical metabolism
-4. **CPIC Guidelines**: For formal dosing recommendations, consult CPIC (cpicpgx.org)
+1. **Copy number variations**: CYP2D6 gene duplications/deletions are NOT detected by this test
+2. **CPIC Guidelines**: For formal dosing recommendations, consult CPIC (cpicpgx.org)
+3. **Consumer test**: Confirm with clinical testing for critical medication decisions
 
 ---
 
@@ -124,7 +118,7 @@ Standard dosing expected for medications metabolized by pathways with normal sta
 ## Section Header Requirements
 
 For composability with other report sections:
-1. Include YAML frontmatter with section name, date, profile, and source
+1. Include YAML frontmatter with section name, date, and source
 2. Use consistent H1 header format
 3. End with horizontal rule and attribution line
 4. Tables must be valid markdown for concatenation

@@ -9,12 +9,23 @@ Generate a standardized section documenting the status of all health conditions,
 
 ## Purpose
 
-This report section provides:
+This report section provides a **condition inventory** focused on diagnosis status and tracking:
 - Active conditions (chronic, stable, being monitored)
 - Suspected/under investigation conditions
 - Recently resolved conditions (last 12 months)
 - Historical resolved conditions
 - Provider discussion points
+
+**Use this skill when:**
+- Completing intake forms or new provider questionnaires
+- Annual wellness visits requiring condition review
+- Insurance or disability documentation
+- Specialist referrals needing diagnosis context
+
+**Use report-health-events instead when:**
+- You need a chronological timeline of recent episodes
+- The focus is on recent events and outcomes (not diagnosis status)
+- Context for an ongoing visit about specific recent issues
 
 ## Workflow
 
@@ -60,43 +71,17 @@ grep -B 2 -A 5 "{condition_name}" "{health_log_path}/health_log.md"
 
 ## Status Classification
 
-### Active Status Keywords
-Conditions are **active** when events contain:
-- started, noted, diagnosed, confirmed
-- stable, monitoring, managed, controlled
-- ongoing, chronic, persistent, recurring
-- flare, worsening, progressing
+Use the standard status determination keywords and algorithm from `references/status-keywords.md`.
 
-### Suspected Status Keywords
-Conditions are **suspected** when events contain:
-- suspected, possible, probable, likely
-- rule out, r/o, investigate, workup
-- differential, consider, evaluate
-- pending confirmation, awaiting results
+For this skill, apply: **Active/Suspected/Resolved** (conditions with condition-specific keywords)
 
-### Resolved Status Keywords
-Conditions are **resolved** when events contain:
-- resolved, recovered, cleared, healed
-- ended, finished, completed, cured
-- remission, negative, normal
-- no longer present, discontinued
+### Additional Sub-classification for Active Conditions
 
-## Condition Classification Logic
-
-1. **Gather all events** for each EpisodeID related to conditions/symptoms
-2. **Find most recent event** for each episode
-3. **Classify by most recent event**:
-   - If contains active keywords → Active
-   - If contains suspected keywords → Suspected
-   - If contains resolved keywords → Resolved
-   - If no keywords but recent (< 90 days) → Active (assume ongoing)
-   - If no keywords and old (> 90 days with no updates) → Resolved (assume resolved)
-
-4. **Sub-classify active conditions**:
-   - **Chronic**: Contains "chronic", "long-term", or diagnosed > 1 year ago with ongoing management
-   - **Stable**: Contains "stable", "controlled", "managed"
-   - **Monitoring**: Contains "monitor", "watch", "follow", "track"
-   - **Under Treatment**: Contains "treating", "treatment", "therapy"
+After determining a condition is active, further classify it:
+- **Chronic**: Contains "chronic", "long-term", or diagnosed > 1 year ago with ongoing management
+- **Stable**: Contains "stable", "controlled", "managed"
+- **Monitoring**: Contains "monitor", "watch", "follow", "track"
+- **Under Treatment**: Contains "treating", "treatment", "therapy"
 
 ## Output Format
 
@@ -106,7 +91,6 @@ The section must follow this exact format for composability:
 ---
 section: conditions-status
 generated: {YYYY-MM-DD}
-profile: {profile_name}
 ---
 
 # Conditions Status
@@ -170,7 +154,7 @@ profile: {profile_name}
 ## Section Header Requirements
 
 For composability with other report sections:
-1. Include YAML frontmatter with section name, date, and profile
+1. Include YAML frontmatter with section name and date
 2. Use consistent H1 header format
 3. Separate major sections with horizontal rules
 4. End with attribution line

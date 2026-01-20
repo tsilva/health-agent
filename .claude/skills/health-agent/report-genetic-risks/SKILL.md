@@ -20,34 +20,20 @@ This report section provides:
 
 - Profile must have `genetics_23andme_path` configured
 - Reference: `references/genetics-health-risks.md`
-- Optional: Labs data for correlation
 
 ## Workflow
 
 1. Load profile and extract `genetics_23andme_path`
 2. Extract all health risk SNPs
 3. Determine APOE isoform and other risk statuses
-4. Cross-reference with relevant labs if available
-5. Format into standardized section
-6. Save to `.output/{profile}/sections/genetic-risks-{date}.md`
+4. Format into standardized section
+5. Save to `.output/{profile}/sections/genetic-risks-{date}.md`
 
 ## Efficient Data Access
 
 ### Extract Health Risk SNPs
 ```bash
 grep -E "^(rs429358|rs7412|rs6025|rs1799963|rs1800562|rs1799945|rs1801133|rs1801131|rs80357906|rs80357914|rs80359550|rs1801155)" "{genetics_23andme_path}"
-```
-
-### Cross-Reference Labs (if relevant)
-```bash
-# Iron studies for HFE
-head -1 "{labs_path}/all.csv" && grep -iE "(ferritin|iron|transferrin|tibc)" "{labs_path}/all.csv" | sort -t',' -k1 -r | head -5
-
-# Lipids for APOE
-head -1 "{labs_path}/all.csv" && grep -iE "(cholesterol|ldl|hdl|triglyceride)" "{labs_path}/all.csv" | sort -t',' -k1 -r | head -5
-
-# Homocysteine for MTHFR
-head -1 "{labs_path}/all.csv" && grep -iE "(homocysteine|folate|b12)" "{labs_path}/all.csv" | sort -t',' -k1 -r | head -5
 ```
 
 ## Output Format
@@ -58,23 +44,10 @@ The section must follow this exact format for composability:
 ---
 section: genetic-risks
 generated: {YYYY-MM-DD}
-profile: {profile_name}
 source: 23andMe raw data (consumer genetic test)
 ---
 
 # Genetic Health Risks Summary
-
-## Test Information
-
-| Field | Value |
-|-------|-------|
-| Data Source | 23andMe raw data |
-| Analysis Date | {YYYY-MM-DD} |
-| Categories Analyzed | Cardiovascular, Clotting, Iron Metabolism, BRCA (limited) |
-
-**Important**: This is a consumer genetic test with significant limitations. Negative results do NOT rule out genetic conditions. Results should be confirmed with clinical testing before medical decisions.
-
----
 
 ## Risk Summary
 
@@ -105,11 +78,7 @@ source: 23andMe raw data (consumer genetic test)
 - Cardiovascular: {LDL tendency, CVD risk}
 - Neurological: {Alzheimer's risk context}
 
-{If labs available:}
-**Recent Lipid Panel**:
-| Marker | Value | Date |
-|--------|-------|------|
-| LDL | {value} | {date} |
+**Cross-Reference**: See Abnormal Labs section for lipid panel values.
 
 ---
 
@@ -134,11 +103,7 @@ source: 23andMe raw data (consumer genetic test)
 
 **Clinical Relevance**: {iron overload risk}
 
-{If labs available:}
-**Recent Iron Studies**:
-| Marker | Value | Date |
-|--------|-------|------|
-| Ferritin | {value} | {date} |
+**Cross-Reference**: See Abnormal Labs section for iron studies.
 
 ---
 
@@ -193,10 +158,9 @@ source: 23andMe raw data (consumer genetic test)
 
 ## Provider Notes
 
-1. **Consumer test limitations**: This is not a clinical genetic test; confirmation testing recommended for actionable findings
-2. **BRCA testing is severely limited**: Only 3 of thousands of mutations tested
-3. **APOE disclosure**: Patient is aware of their APOE status
-4. **Polygenic factors**: Most conditions are influenced by multiple genes and environment
+1. **BRCA testing is severely limited**: Only 3 of thousands of mutations tested
+2. **Confirmation testing**: Recommend clinical testing for actionable findings
+3. **Consumer test**: Not a diagnostic test; results should guide clinical evaluation
 
 ---
 
@@ -234,7 +198,7 @@ Calculate from rs429358 and rs7412:
 
 ## Lab Correlation
 
-When labs are available, include relevant recent values:
+Reference the Abnormal Labs section for relevant biomarkers:
 - **APOE**: Lipid panel (LDL, HDL, triglycerides)
 - **HFE**: Iron, ferritin, TIBC, transferrin saturation
 - **MTHFR**: Homocysteine, folate, B12

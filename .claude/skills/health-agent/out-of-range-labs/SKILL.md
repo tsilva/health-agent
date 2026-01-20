@@ -10,11 +10,12 @@ Identify and prioritize abnormal lab values.
 ## Workflow
 
 1. Get `labs_path` and demographics from the loaded profile
-2. Read `{labs_path}/all.csv`
-3. Parse reference ranges for each lab
-4. Classify values by severity
-5. Apply age/gender context
-6. Present prioritized results
+2. Check if `{labs_path}/lab_specs.json` exists for canonical names and units
+3. Read `{labs_path}/all.csv`
+4. Parse reference ranges for each lab
+5. Classify values by severity
+6. Apply age/gender context
+7. Present prioritized results with canonical names (if available)
 
 ## Efficient Data Access
 
@@ -35,6 +36,21 @@ head -1 "{labs_path}/all.csv" && grep "^202[56]-" "{labs_path}/all.csv" | grep -
 ```bash
 head -1 "{labs_path}/all.csv" && grep "^202[56]-" "{labs_path}/all.csv" | sort -t',' -k1 -r | head -200
 ```
+
+### Using lab_specs.json for Canonical Names
+If `{labs_path}/lab_specs.json` exists:
+```bash
+# Source helper functions
+source .claude/skills/health-agent/references/lab-specs-helpers.sh
+
+# Get canonical name and primary unit for consistent reporting
+canonical=$(get_canonical_name "{labs_path}/lab_specs.json" "{raw_marker_name}")
+unit=$(get_primary_unit "{labs_path}/lab_specs.json" "{raw_marker_name}")
+
+# Display: "{canonical} ({unit})" instead of raw lab_name from CSV
+```
+
+**Benefit**: Ensures consistent marker names across reports even when OCR variations exist.
 
 ## Severity Classification
 

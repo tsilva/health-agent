@@ -15,7 +15,7 @@ data_sources:
   # Path to medical-exams-parser output directory containing *.summary.md files
   exams_path: "/path/to/medical-exams-parser/output/"
 
-  # Path to health-log-parser output directory containing health_log.md and health_timeline.csv
+  # Path to health-log-parser output directory containing health_log.md and health_log.csv
   health_log_path: "/path/to/health-log-parser/output/"
 
   # Path to 23andMe raw data file (optional)

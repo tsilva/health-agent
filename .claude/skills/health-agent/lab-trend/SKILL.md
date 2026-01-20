@@ -10,12 +10,13 @@ Analyze longitudinal trends for a specific lab marker.
 ## Workflow
 
 1. Get `labs_path` from the loaded profile
-2. Read `{labs_path}/all.csv`
-3. Identify the marker (use fuzzy matching, see `references/common-markers.md` for aliases)
-4. Filter rows where `lab_name` matches
-5. Sort by `lab_date` ascending
-6. Calculate statistics and trend
-7. Present findings
+2. Check if `{labs_path}/lab_specs.json` exists for canonical name lookup
+3. Read `{labs_path}/all.csv`
+4. Identify the marker (use lab_specs.json if available, otherwise `references/common-markers.md`)
+5. Filter rows where `lab_name` matches
+6. Sort by `lab_date` ascending
+7. Calculate statistics and trend
+8. Present findings
 
 ## Efficient Data Access
 
@@ -28,6 +29,28 @@ wc -l "{labs_path}/all.csv"
 If >3000 lines, use filtered extraction below instead of direct read.
 
 ### Extract Specific Marker (Recommended)
+
+**With lab_specs.json** (more accurate):
+```bash
+# Source helper functions
+source .claude/skills/health-agent/references/lab-specs-helpers.sh
+
+# Check if lab_specs.json exists and build pattern
+if has_lab_specs "{labs_path}/lab_specs.json"; then
+    pattern=$(build_grep_pattern "{labs_path}/lab_specs.json" "{marker_name}")
+    if [ -n "$pattern" ]; then
+        head -1 "{labs_path}/all.csv" && grep -iE "$pattern" "{labs_path}/all.csv" | sort -t',' -k1
+    else
+        # Marker not in lab_specs.json, fall back to manual pattern
+        head -1 "{labs_path}/all.csv" && grep -i "{marker_name}" "{labs_path}/all.csv" | sort -t',' -k1
+    fi
+else
+    # No lab_specs.json, use manual pattern
+    head -1 "{labs_path}/all.csv" && grep -i "{marker_name}" "{labs_path}/all.csv" | sort -t',' -k1
+fi
+```
+
+**Without lab_specs.json** (fallback):
 ```bash
 head -1 "{labs_path}/all.csv" && grep -i "{marker_name}" "{labs_path}/all.csv" | sort -t',' -k1
 ```
@@ -87,6 +110,16 @@ Replace `{marker_name}` with search term (e.g., "TSH", "glucose", "vitamin d").
 
 ## Marker Matching
 
+### With lab_specs.json (Preferred)
+If `{labs_path}/lab_specs.json` exists:
+1. Use `build_grep_pattern()` from lab-specs-helpers.sh
+2. Get canonical name with `get_canonical_name()` for display
+3. Get primary unit with `get_primary_unit()` for reporting
+4. Provides most accurate matching via canonical names + aliases
+
+### Without lab_specs.json (Fallback)
 Use case-insensitive fuzzy matching. See `../references/common-markers.md` for:
 - Alias mappings (e.g., "A1C" → "HbA1c")
 - Age/gender-specific ranges
+
+**Note**: `common-markers.md` remains the source for clinical annotations (critical values, age/gender adjustments) not included in lab_specs.json.

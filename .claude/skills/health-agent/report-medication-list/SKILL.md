@@ -36,23 +36,11 @@ head -1 "{health_log_path}/health_log.csv" && grep -iE ",(medication|supplement)
 grep -i "{medication_name}" "{health_log_path}/health_log.md" | head -20
 ```
 
-## Status Determination Logic
+## Status Determination
 
-Analyze the `Event` column to determine current status:
+Use the standard status determination keywords and algorithm from `references/status-keywords.md`.
 
-### Active Keywords (most recent event)
-- started, prescribed, continued, refilled
-- increased, decreased, taking, began
-
-### Discontinued Keywords (most recent event)
-- stopped, discontinued, finished, completed
-- replaced by, switched to, ended, no longer
-
-### Algorithm
-1. Group events by `Item` (medication/supplement name)
-2. Sort events by `Date` descending
-3. Check the most recent event for status keywords
-4. Classify as Active or Discontinued based on keywords
+For this skill, apply: **Active/Discontinued only** (medications and supplements)
 
 ## Output Format
 
@@ -62,7 +50,6 @@ The section must follow this exact format for composability:
 ---
 section: medication-list
 generated: {YYYY-MM-DD}
-profile: {profile_name}
 ---
 
 # Medication & Supplement List
@@ -98,7 +85,7 @@ profile: {profile_name}
 ## Section Header Requirements
 
 For composability with other report sections:
-1. Include YAML frontmatter with section name, date, and profile
+1. Include YAML frontmatter with section name and date
 2. Use consistent H1 header format
 3. End with horizontal rule and attribution line
 4. Tables must be valid markdown for concatenation
