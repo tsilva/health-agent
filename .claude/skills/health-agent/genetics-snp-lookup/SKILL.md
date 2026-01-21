@@ -144,7 +144,7 @@ SNPedia returns JSON with MediaWiki page HTML in `parse.text.*` field:
 
 ## Caching Layer
 
-**Cache directory**: `.claude/skills/health-agent/genetics-snp-lookup/cache/`
+**Cache directory**: `.claude/skills/health-agent/genetics-snp-lookup/.cache/`
 
 **Cache TTL**: 30 days (2,592,000 seconds)
 
@@ -176,7 +176,7 @@ Each rsID gets a JSON cache file: `cache/{rsid}.json`
 
 **Before fetching from SNPedia**:
 ```bash
-cache_file=".claude/skills/health-agent/genetics-snp-lookup/cache/${rsid}.json"
+cache_file=".claude/skills/health-agent/genetics-snp-lookup/.cache/${rsid}.json"
 
 if [ -f "$cache_file" ]; then
   # Check cache age
@@ -199,7 +199,7 @@ fi
 **After fetching from SNPedia**:
 ```bash
 # Create cache directory if needed
-mkdir -p ".claude/skills/health-agent/genetics-snp-lookup/cache"
+mkdir -p ".claude/skills/health-agent/genetics-snp-lookup/.cache"
 
 # Save to cache
 cat > "$cache_file" << EOF

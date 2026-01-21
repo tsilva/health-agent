@@ -211,3 +211,6 @@ profiles/*.yaml
 !profiles/_template.yaml
 
 .output/*
+
+# Skill cache directories
+**/.cache/
