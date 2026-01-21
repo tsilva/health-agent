@@ -1,11 +1,16 @@
 <div align="center">
-  <img src="logo.png" alt="health-agent" width="300"/>
+  <img src="logo.png" alt="health-agent" width="512"/>
 
   # health-agent
 
   [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+  [![Claude Code](https://img.shields.io/badge/Claude_Code-Agent-8A2BE2)](https://claude.ai/code)
+  [![Skills](https://img.shields.io/badge/Skills-6-green)](CLAUDE.md)
+  [![Data Sources](https://img.shields.io/badge/Data_Sources-4-orange)](#data-sources)
 
   **Unify lab results, medical exams, and health journals into actionable insights with Claude Code**
+
+  [Documentation](CLAUDE.md) · [Profile Template](profiles/_template.yaml)
 
 </div>
 
@@ -118,8 +123,8 @@ health-agent/
 │           ├── genetics-snp-lookup/SKILL.md
 │           ├── genetics-validate-interpretation/SKILL.md
 │           ├── investigate-root-cause/SKILL.md
-│           ├── prepare-provider-visit/SKILL.md
-│           ├── scientific-literature-search/SKILL.md
+│           ├── prepare-provider-visit/skill.md
+│           ├── scientific-literature-search/skill.md
 │           └── references/
 │               ├── lab-specs-helpers.sh           # Helper functions for lab_specs.json
 │               └── status-keywords.md             # Status determination keywords
@@ -137,16 +142,7 @@ Generated reports and analyses are saved to `.output/{profile}/`:
 └── health-log-augmentation-YYYY-MM-DD.md         # Questionnaires
 ```
 
-**Note**: The `.output/` directory is gitignored to protect sensitive health data.
-
-## Key Improvements (v2.0 Architecture)
-
-- **70% fewer skills** (6 core skills vs 21 previously) — simpler mental model
-- **Natural language first** — ask questions instead of invoking skill names
-- **Literature-backed mechanisms** — all biological pathways include PubMed/Semantic Scholar citations
-- **Smarter provider documentation** — coherent narratives instead of concatenated sections
-- **Comprehensive genetics** — checks all condition-relevant genes via SNPedia, not just hardcoded lists
-- **Analysis patterns** — documented bash query patterns in CLAUDE.md for transparency
+The `.output/` directory is gitignored to protect sensitive health data.
 
 ## Creating Custom Skills
 
@@ -173,7 +169,7 @@ Instructions for performing the analysis...
 
 ## Requirements
 
-- [Claude Code](https://claude.ai/claude-code) CLI
+- [Claude Code](https://claude.ai/code) CLI
 - Output from one or more supported parsers:
   - [labs-parser](https://github.com/tsilva/labs-parser)
   - [medical-exams-parser](https://github.com/tsilva/medical-exams-parser)

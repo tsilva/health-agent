@@ -371,7 +371,7 @@ grep -i "blood pressure" "{labs_path}/all.csv"
    - Propose mechanisms linking observations
    - Check for intermediate biomarkers
    - Assess strength of evidence (high/moderate/low)
-   - Use `scientific-literature-search` skill for authoritative citations
+   - Use `scientific-literature-search` skill for authoritative citations (read `.claude/skills/health-agent/scientific-literature-search/skill.md` first)
 
 ### Understanding Biological Mechanisms
 
@@ -385,7 +385,7 @@ When user asks "what's the connection between X and Y?" or "why does X cause Y?"
 4. **Verify temporal sequence**: Does X consistently precede Y?
 5. **Assess plausibility**: High (well-established) / Moderate (plausible) / Low (speculative)
 
-**IMPORTANT**: Always use `scientific-literature-search` skill to find authoritative citations for proposed mechanisms. Don't rely solely on general knowledge.
+**IMPORTANT**: Always use the `scientific-literature-search` skill to find authoritative citations for proposed mechanisms. Read `.claude/skills/health-agent/scientific-literature-search/skill.md` and follow its instructions to query PubMed/Semantic Scholar.
 
 Example query: "Find papers on the mechanism linking chronic stress to elevated cortisol"
 
@@ -412,13 +412,13 @@ When analyzing any health concern, systematically check all data sources:
    - Note imaging results
 
 5. Genetics (if configured)
-   - Check relevant SNPs via genetics-snp-lookup skill
+   - Check relevant SNPs via genetics-snp-lookup skill (read `.claude/skills/health-agent/genetics-snp-lookup/SKILL.md` first)
    - Consider pharmacogenomic implications
 ```
 
 ### Generating Provider Documentation
 
-When user needs documentation for healthcare visits, use the **`prepare-provider-visit` skill** instead of manual assembly.
+When user needs documentation for healthcare visits, use the **`prepare-provider-visit` skill** instead of manual assembly. Read `.claude/skills/health-agent/prepare-provider-visit/skill.md` and follow its instructions.
 
 The skill intelligently selects relevant sections based on visit type (annual/specialist/follow-up/urgent) and generates coherent narratives rather than concatenated fragments.
 
@@ -447,7 +447,54 @@ All large files (`all.csv`, `health_log.csv`, `health_log.md`) typically exceed 
 
 ## Built-in Skills
 
-Six core skills provide specialized capabilities in `.claude/skills/health-agent/`:
+Six core skills provide specialized capabilities in `.claude/skills/health-agent/`.
+
+### How to Use Skills
+
+**IMPORTANT**: These are project-local skill instruction files, NOT globally-installed skills invocable via the `Skill` tool.
+
+**To use a skill:**
+
+1. **Read the SKILL.md file** for the skill you need:
+   ```
+   Read .claude/skills/health-agent/{skill-name}/SKILL.md
+   ```
+
+2. **Follow the instructions** in the skill file. Skills typically instruct you to either:
+   - Execute specific commands/queries directly
+   - Spawn a Task agent with a detailed prompt template
+   - Follow a multi-step workflow
+
+3. **For orchestration skills** (investigate-root-cause, prepare-provider-visit, generate-questionnaire):
+   - The SKILL.md contains a prompt template for spawning a `general-purpose` Task agent
+   - Read the skill, then spawn the Task with the provided prompt structure
+
+**Example - Using investigate-root-cause:**
+```
+1. Read .claude/skills/health-agent/investigate-root-cause/SKILL.md
+2. Follow instructions to spawn Task agent with:
+   - subagent_type: "general-purpose"
+   - description: "Investigate root cause of {condition}"
+   - prompt: [Use template from SKILL.md with profile data paths filled in]
+```
+
+**Example - Using genetics-snp-lookup:**
+```
+1. Read .claude/skills/health-agent/genetics-snp-lookup/SKILL.md
+2. Follow instructions to query SNPedia API for specific SNPs
+3. Cache results as instructed
+```
+
+### Skill Locations
+
+| Skill | Path |
+|-------|------|
+| `genetics-snp-lookup` | `.claude/skills/health-agent/genetics-snp-lookup/SKILL.md` |
+| `genetics-validate-interpretation` | `.claude/skills/health-agent/genetics-validate-interpretation/SKILL.md` |
+| `scientific-literature-search` | `.claude/skills/health-agent/scientific-literature-search/skill.md` |
+| `investigate-root-cause` | `.claude/skills/health-agent/investigate-root-cause/SKILL.md` |
+| `prepare-provider-visit` | `.claude/skills/health-agent/prepare-provider-visit/skill.md` |
+| `generate-questionnaire` | `.claude/skills/health-agent/generate-questionnaire/SKILL.md` |
 
 ### External Integrations (APIs + Caching)
 
@@ -495,7 +542,11 @@ All genetics interpretations come from **SNPedia** via the `genetics-snp-lookup`
 - **Drug metabolism**: CYP2D6, CYP2C19, CYP2C9, VKORC1, SLCO1B1, TPMT, DPYD
 - **Health risks**: APOE, Factor V Leiden, HFE hemochromatosis, MTHFR, BRCA founder mutations
 
-When users ask about genetics, use `genetics-snp-lookup` directly with natural language queries like:
+When users ask about genetics:
+1. Read `.claude/skills/health-agent/genetics-snp-lookup/SKILL.md`
+2. Follow the skill instructions to query SNPedia for the relevant SNPs
+
+Example user queries that should trigger this skill:
 - "Look up rs12345"
 - "Check my CYP2D6 status"
 - "What's my APOE genotype?"
@@ -522,7 +573,11 @@ Provider documentation is generated via the **`prepare-provider-visit` skill**, 
 
 ### Using prepare-provider-visit
 
-When user asks to prepare documentation for a healthcare visit, invoke the `prepare-provider-visit` skill. The skill:
+When user asks to prepare documentation for a healthcare visit:
+1. Read `.claude/skills/health-agent/prepare-provider-visit/skill.md`
+2. Follow the skill instructions (typically spawns a Task agent with the provided prompt template)
+
+The skill:
 
 1. **Asks minimal questions**: Visit type (annual/specialist/follow-up/urgent) and specific concerns
 2. **Smart defaults**: Automatically determines relevant sections based on visit type
@@ -606,16 +661,23 @@ The `investigate-root-cause` skill automates comprehensive hypothesis generation
 
 ### Invocation
 
-Use when user asks:
+**When to use** - User asks:
 - "Investigate root cause of [condition]"
 - "Why do I have [condition]?"
 - "Find the cause of [symptom]"
 - "What's causing my [condition]?"
 
+**How to invoke**:
+1. Read `.claude/skills/health-agent/investigate-root-cause/SKILL.md`
+2. Follow the skill instructions to spawn a Task agent with:
+   - `subagent_type`: "general-purpose"
+   - `description`: "Investigate root cause of {condition}"
+   - `prompt`: Use the template from SKILL.md, filling in profile data paths
+
 ### How It Works
 
-1. **Invocation**: User triggers the skill
-2. **Process**: Skill spawns a general-purpose agent that:
+1. **Invocation**: Read the SKILL.md and spawn Task agent per its instructions
+2. **Process**: The spawned agent:
    - Gathers evidence using analysis patterns from CLAUDE.md (timeline events, lab trends, abnormal values, medications, exams)
    - Performs comprehensive genetic analysis via `genetics-snp-lookup` (checks ALL condition-relevant genes)
    - Generates 3-5 competing hypotheses with biological mechanisms
@@ -641,8 +703,8 @@ Hypothesis investigation reports include:
 
 The hypothesis investigation agent has access to:
 - **Analysis patterns** from CLAUDE.md "Common Analysis Patterns" section (bash queries for all data sources)
-- **Genetics**: `genetics-snp-lookup` for comprehensive genetic analysis
-- **Literature**: `scientific-literature-search` for mechanism validation (MANDATORY - used automatically)
+- **Genetics**: `genetics-snp-lookup` skill (agent reads `.claude/skills/health-agent/genetics-snp-lookup/SKILL.md`)
+- **Literature**: `scientific-literature-search` skill (agent reads `.claude/skills/health-agent/scientific-literature-search/skill.md`)
 - **Data sources**: All profile data (labs, timeline, exams, health log narrative, genetics)
 
 ### Example Workflow
