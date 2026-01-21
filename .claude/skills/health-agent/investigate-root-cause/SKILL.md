@@ -45,19 +45,50 @@ Investigate the root cause of {condition} in the health data for profile {profil
 
 **Investigation Workflow**:
 
-### Phase 1: Evidence Gathering (Use Analysis Skills)
+### Phase 1: Evidence Gathering (Natural Data Analysis)
 
-Gather comprehensive data about the condition:
+Gather comprehensive data about the condition using the patterns from CLAUDE.md "Common Analysis Patterns":
 
-1. **Timeline Events**: Use `episode-investigation` skill to extract all events related to {condition}
-2. **Temporal Patterns**: Use `cross-temporal-correlation` skill to find correlations and patterns
-3. **Lab Trends**: Use `lab-trend` skill to track relevant biomarkers over time
-4. **Abnormal Labs**: Use `out-of-range-labs` skill to identify flagged values
-5. **Medical Exams**: Use `exam-catalog` skill to search for relevant imaging findings
-6. **Medications**: Use `medication-supplements` skill to identify medication timeline
+1. **Timeline Events**: Extract all events related to {condition} from health_log.csv
+   ```bash
+   grep -i "{condition}" "{health_log_path}/health_log.csv" | head -50
+   # Extract by episode_id if relevant episodes identified
+   ```
+
+2. **Temporal Patterns**: Find correlations and patterns across time
+   - Extract relevant events/markers from same timeframe
+   - Look for temporal clustering
+   - Check time windows between observations
+   - Identify dose-response relationships
+
+3. **Lab Trends**: Track relevant biomarkers over time
+   ```bash
+   # Use lab_specs.json helpers if available
+   source .claude/skills/health-agent/references/lab-specs-helpers.sh
+   pattern=$(build_grep_pattern "{labs_path}/lab_specs.json" "{marker}")
+   grep -iE "$pattern" "{labs_path}/all.csv" | sort -t',' -k1
+   ```
+
+4. **Abnormal Labs**: Identify out-of-range values
+   ```bash
+   awk -F',' -v start="{start_date}" \
+     'NR==1 || ($1 >= start && ($5 > $7 || $5 < $6))' \
+     "{labs_path}/all.csv"
+   ```
+
+5. **Medical Exams**: Search for relevant imaging findings
+   ```bash
+   find "{exams_path}" -name "*.summary.md" | xargs grep -l "{relevant_term}"
+   ```
+
+6. **Medications**: Identify medication timeline
+   ```bash
+   grep -E ",medication,|,supplement," "{health_log_path}/health_log.csv" | tail -100
+   ```
+
 7. **Genetics** (if configured): Perform COMPREHENSIVE genetic analysis - see Genetics Analysis Protocol below
 
-**Important**: Use efficient data access commands from each skill's documentation. Do NOT read large files directly.
+**Important**: Use efficient data access patterns. Do NOT read large files directly.
 
 ### Genetics Analysis Protocol (CRITICAL)
 
@@ -113,10 +144,24 @@ In the report genetics section, include:
 Based on gathered evidence, generate 3-5 competing hypotheses:
 
 1. **Formulate hypotheses**: Propose distinct explanations for the condition
-2. **Biological mechanisms**: Use `mechanism-search` skill to propose pathways for each hypothesis
-3. **Initial likelihood**: Classify each hypothesis as High/Moderate/Low plausibility based on:
+
+2. **Biological mechanisms**: For each hypothesis, propose biological pathways:
+   - Classify observation types (lab value, symptom, event, condition)
+   - Propose known biological pathways based on medical knowledge
+   - Check for intermediate biomarkers (measurable steps between cause and effect)
+   - Verify temporal sequence (does cause precede effect consistently?)
+   - Assess plausibility: High (well-established) / Moderate (plausible) / Low (speculative)
+
+3. **Literature Search (MANDATORY)**: Use `scientific-literature-search` skill to find authoritative citations for ALL proposed mechanisms:
+   - Query PubMed/Semantic Scholar for each mechanism (e.g., "chronic stress elevated cortisol mechanism")
+   - Include citations in the mechanism description
+   - Verify proposed pathways against published research
+   - Note strength of evidence in literature (meta-analyses > RCTs > case studies)
+
+4. **Initial likelihood**: Classify each hypothesis as High/Moderate/Low plausibility based on:
    - Temporal sequence (does timeline support causation?)
    - Biological plausibility (is mechanism known/feasible?)
+   - Literature support (how well-established is the mechanism?)
    - Data support (how much evidence supports this?)
    - Evidence strength (quality and directness of supporting data)
    - Prior probability (how common is this explanation?)
@@ -153,10 +198,26 @@ Generate BOTH hypotheses and let evidence determine ranking.
 
 For each hypothesis, rigorously test against data:
 
-1. **Find contradictions**: Use `evidence-contradiction-check` skill to search for counter-examples
-2. **Identify confounds**: Use `confound-identification` skill to find alternative explanations
+1. **Find contradictions**: Search data for counter-examples:
+   - Look for instances where hypothesis predicts X but data shows Y
+   - Check temporal violations (effect precedes cause)
+   - Identify conflicting biomarker patterns
+   - Note measurements that contradict mechanism
+
+2. **Identify confounds**: Find alternative explanations:
+   - List factors that could produce similar observations
+   - Check for common causes (one factor explains both X and Y)
+   - Consider temporal sequence (does alternative explanation fit timeline?)
+   - Propose tests to discriminate between hypothesis and confound
+
 3. **Quantify support**: Calculate support rate (% of instances supporting hypothesis)
-4. **Assess contradictions**: Determine if contradictions are fatal or explainable
+
+4. **Assess contradictions**: Determine if contradictions are fatal or explainable:
+   - Weigh by quantity (pattern vs single outlier)
+   - Weigh by quality (gold standard test vs screening test)
+   - Weigh by temporal relevance (recent vs old measurements)
+   - Consider clinical context (measurement during relevant state?)
+
 5. **Handle missing data correctly**: Distinguish between:
    - **Negative test result**: Test performed, result is negative → Evidence AGAINST hypothesis
    - **Missing test**: Test not performed → NEUTRAL, does NOT count as evidence against hypothesis
@@ -192,7 +253,12 @@ Generate a comprehensive report following the Output Format below and save to:
 
 ---
 
-**Available Skills**: You have access to all 19 health-agent skills. Use them extensively throughout the investigation.
+**Available Skills**: You have access to the core health-agent skills:
+- `genetics-snp-lookup` - For SNP lookups and genetic analysis
+- `genetics-validate-interpretation` - For validating genetic interpretations
+- `scientific-literature-search` - **MANDATORY** for mechanism citations and biological plausibility
+
+Use data access patterns from CLAUDE.md "Common Analysis Patterns" for querying labs, timeline, and exams.
 
 **Iteration**: If initial hypotheses are weak, iterate and generate alternative explanations. Aim for at least 3 distinct hypotheses.
 
@@ -572,13 +638,14 @@ Bash heredocs fail in sandbox mode. Always use Write tool for report generation.
 **Assistant Process**:
 1. Load profile and extract data source paths
 2. Spawn Task agent with investigation prompt specifying "recurring headaches"
-3. Agent uses episode-investigation to gather headache events
-4. Agent uses cross-temporal-correlation to find patterns (poor sleep, stress, caffeine)
-5. Agent uses mechanism-search to propose biological pathways
-6. Agent uses confound-identification to check for confounds (caffeine changes during poor sleep)
-7. Agent uses evidence-contradiction-check to test hypotheses
-8. Agent ranks hypotheses: HIGH (sleep deprivation), MODERATE (caffeine withdrawal), LOW (stress)
-9. Agent generates report saved to `.output/{profile}/sections/hypothesis-investigation-headaches-{date}.md`
+3. Agent gathers headache events from health_log.csv
+4. Agent finds temporal patterns (poor sleep, stress, caffeine) via correlation analysis
+5. Agent proposes biological pathways for each trigger
+6. Agent uses `scientific-literature-search` to find citations for each mechanism
+7. Agent identifies confounds (caffeine changes during poor sleep)
+8. Agent searches for contradictory evidence
+9. Agent ranks hypotheses: HIGH (sleep deprivation), MODERATE (caffeine withdrawal), LOW (stress)
+10. Agent generates report saved to `.output/{profile}/sections/hypothesis-investigation-headaches-{date}.md`
 
 ---
 
@@ -587,13 +654,14 @@ Bash heredocs fail in sandbox mode. Always use Write tool for report generation.
 **Assistant Process**:
 1. Load profile and extract data source paths
 2. Spawn Task agent with investigation prompt specifying "elevated liver enzymes"
-3. Agent uses lab-trend to track AST/ALT over time
-4. Agent uses medication-supplements to identify hepatotoxic medications
-5. Agent uses health-summary to check for liver disease risk factors
-6. Agent uses genetics-pharmacogenomics (if configured) to check CYP variants
+3. Agent tracks AST/ALT trends over time from all.csv
+4. Agent identifies hepatotoxic medications from health_log.csv
+5. Agent gathers liver disease risk factors from timeline
+6. Agent uses `genetics-snp-lookup` (if configured) to check relevant genes
 7. Agent proposes hypotheses: medication-induced, NAFLD, alcohol, viral hepatitis
-8. Agent tests each hypothesis and ranks by evidence
-9. Agent generates comprehensive report with follow-up recommendations
+8. Agent uses `scientific-literature-search` to verify mechanisms
+9. Agent tests each hypothesis and ranks by evidence
+10. Agent generates comprehensive report with follow-up recommendations
 
 ---
 
@@ -602,13 +670,14 @@ Bash heredocs fail in sandbox mode. Always use Write tool for report generation.
 **Assistant Process**:
 1. Load profile and extract data source paths
 2. Spawn Task agent with investigation prompt specifying "chronic fatigue"
-3. Agent uses episode-investigation to gather fatigue timeline
-4. Agent uses out-of-range-labs to check thyroid, iron, vitamin B12, cortisol
-5. Agent uses cross-temporal-correlation to find temporal associations
+3. Agent gathers fatigue timeline from health_log.csv
+4. Agent checks thyroid, iron, vitamin B12, cortisol from all.csv
+5. Agent finds temporal associations across data sources
 6. Agent proposes hypotheses: hypothyroidism, anemia, sleep apnea, chronic infection
-7. Agent uses evidence-contradiction-check and confound-identification
-8. Agent ranks hypotheses and proposes discriminating tests
-9. Agent generates report with clinical management recommendations
+7. Agent uses `scientific-literature-search` for mechanism validation
+8. Agent identifies contradictions and confounds
+9. Agent ranks hypotheses and proposes discriminating tests
+10. Agent generates report with clinical management recommendations
 
 ---
 

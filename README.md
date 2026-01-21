@@ -11,11 +11,12 @@
 
 ## Features
 
+- **Natural Language Health Queries** — Ask questions in plain English; no need to memorize skill names or commands
 - **Unified Health Data Access** — Query labs, exams, health journals, and genetic data from a single conversational interface
-- **23andMe Genetics Integration** — Pharmacogenomics analysis and health risk variant interpretation
+- **23andMe Genetics Integration** — SNP lookups, pharmacogenomics analysis, and health risk variant interpretation via SNPedia
 - **Profile-Based Configuration** — Support multiple users with separate data sources and demographics
 - **Cross-Source Correlation** — Connect lab results, genetics, symptoms, treatments, and imaging findings across time
-- **Skill-Extensible** — Create custom analysis skills for recurring health queries
+- **Literature-Backed Analysis** — Root cause investigations include authoritative citations from PubMed and Semantic Scholar
 - **Privacy-First Design** — No health data stored in repo; profile paths are gitignored by default
 
 ## Quick Start
@@ -45,15 +46,18 @@ data_sources:
 
 Open Claude Code in this directory. You'll be prompted to select a profile.
 
-### 3. Query Your Health Data
+### 3. Ask Natural Questions
 
 ```
 "Show me my cholesterol trends over the past year"
+"What abnormal labs do I have in the last 6 months?"
 "Find all symptoms related to episode_003"
 "What did my last ultrasound show?"
-"Correlate my fatigue entries with my iron levels"
+"Does my fatigue correlate with my iron levels?"
 "What's my CYP2D6 metabolizer status?"
 "Look up my APOE genotype"
+"Investigate the root cause of my elevated bilirubin"
+"Prepare a summary for my doctor's appointment next week"
 ```
 
 ## Data Sources
@@ -65,55 +69,39 @@ Open Claude Code in this directory. You'll be prompted to select a profile.
 | [health-log-parser](https://github.com/tsilva/health-log-parser) | `health_log.md` + `health_log.csv` | Health journal entries and structured timeline |
 | 23andMe | Raw data download | Genetic variants for pharmacogenomics and health risks |
 
-## Built-in Skills
+## Core Capabilities
 
-Health Agent includes 21 skills that activate automatically based on your queries:
+Health Agent provides 6 specialized skills for complex workflows, plus natural language analysis for everyday queries.
 
-### Data Collection Skills
+### External Integrations (APIs + Caching)
 
-| Skill | Trigger Phrases | Description |
-|-------|-----------------|-------------|
-| **generate-questionnaire** | "create questionnaire", "generate questionnaire", "augment health log", "systematically fill gaps" | Generate comprehensive questionnaires to systematically augment health log data |
+| Capability | When It's Used | Description |
+|------------|----------------|-------------|
+| **genetics-snp-lookup** | "Look up rs12345", "Check my CYP2D6 status", "What's my APOE genotype?" | Queries SNPedia API for genetic variant interpretations. Handles SNP lookups, pharmacogenomics genes (CYP2D6, CYP2C19, etc.), and health risk variants (APOE, Factor V Leiden, etc.). Results cached for 30 days. |
+| **genetics-validate-interpretation** | Validating genetic interpretations or cross-referencing allele orientation | Validates genetic findings against SNPedia and verifies allele orientation for accuracy. |
+| **scientific-literature-search** | "Find papers on X mechanism", automatic use in root cause investigations | Queries PubMed and Semantic Scholar for authoritative research citations. Used automatically to validate biological mechanisms in hypothesis investigations. Results cached for 30 days. |
 
-### Core Analysis Skills
+### Orchestration Workflows
 
-| Skill | Trigger Phrases | Description |
-|-------|-----------------|-------------|
-| **lab-trend** | "track my glucose", "cholesterol trend", "how has my TSH changed" | Analyze longitudinal trends for specific biomarkers |
-| **out-of-range-labs** | "abnormal labs", "which labs are out of range", "labs that need attention" | Identify and prioritize abnormal lab values by severity |
-| **exam-catalog** | "list my exams", "find my MRI", "show ultrasounds" | Index and search medical imaging records |
-| **episode-investigation** | "tell me about episode_001", "investigate my cold", "what happened with my back pain" | Deep-dive into health episodes across all data sources |
-| **health-summary** | "summarize my health", "doctor visit prep", "health overview for 2024" | Generate comprehensive reports for provider visits |
-| **cross-temporal-correlation** | "correlation between X and Y", "patterns in my data", "do symptoms affect labs" | Discover patterns between events and biomarkers |
-| **medication-supplements** | "my medications", "medication list", "what supplements am I taking", "current meds" | Generate medication and supplement reports with active/discontinued status |
+| Capability | When It's Used | Description |
+|------------|----------------|-------------|
+| **investigate-root-cause** | "Investigate root cause of [condition]", "Why do I have [symptom]?", "What's causing my [abnormal finding]?" | Multi-turn hypothesis investigation with evidence gathering, literature-backed mechanism validation, comprehensive genetic analysis, and ranked competing explanations. Saves detailed reports to `.output/`. |
+| **prepare-provider-visit** | "Prepare for my doctor visit", "Generate a summary for my appointment", "Create medical documentation" | Intelligent orchestration of medications, labs, health events, conditions, and genetics (when relevant) into coherent provider-appropriate narratives. Adapts content based on visit type (annual/specialist/follow-up/urgent). |
+| **generate-questionnaire** | "Create questionnaire", "Systematically augment health log data" | Generates comprehensive questionnaires to identify gaps in health log data and systematically collect missing information. |
 
-### Genetics Skills
+### Natural Language Analysis
 
-| Skill | Trigger Phrases | Description |
-|-------|-----------------|-------------|
-| **genetics-snp-lookup** | "look up rs12345", "my genotype for...", "check SNP" | Query specific genetic variants from 23andMe data |
-| **genetics-pharmacogenomics** | "drug metabolism", "CYP2D6 status", "how do I metabolize medications" | Analyze variants affecting drug metabolism (CYP2D6, CYP2C19, etc.) |
-| **genetics-health-risks** | "APOE status", "genetic risks", "Factor V Leiden", "MTHFR" | Interpret health risk variants with clinical context |
+All other health data analysis is performed naturally through conversational queries:
 
-### Hypothesis Investigation Skills
+- **Lab trends** — "How has my HbA1c changed over time?"
+- **Abnormal values** — "What labs are out of range?"
+- **Episode investigation** — "Tell me about my headache episode"
+- **Temporal correlations** — "Does stress correlate with my blood pressure?"
+- **Medication tracking** — "What am I currently taking?"
+- **Health summaries** — "Summarize my health in 2024"
+- **Exam searches** — "List my imaging studies"
 
-| Skill | Trigger Phrases | Description |
-|-------|-----------------|-------------|
-| **investigate-root-cause** | "investigate root cause of...", "why do I have...", "find the cause of...", "what's causing my..." | Automated hypothesis generation and testing for health conditions with multi-turn iterative exploration |
-| **mechanism-search** | "biological mechanism linking...", "how does X cause Y", "pathway between..." | Identify biological pathways and mechanisms connecting observations |
-| **confound-identification** | "what could confound...", "alternative explanations for...", "what else could cause..." | Identify confounding factors that could explain correlations |
-| **evidence-contradiction-check** | "test hypothesis against data", "contradictions to...", "evidence against..." | Search for counter-examples and contradictory evidence |
-
-### Report Skills
-
-| Skill | Trigger Phrases | Description |
-|-------|-----------------|-------------|
-| **report-medication-list** | "medication list for doctor", "generate med report" | Generate provider-ready medication and supplement list |
-| **report-labs-abnormal** | "abnormal labs report", "labs summary for provider" | Generate provider-ready abnormal labs summary |
-| **report-health-events** | "health events report", "recent health timeline" | Generate provider-ready health events timeline |
-| **report-pharmacogenomics** | "pharmacogenomics report for doctor" | Generate provider-ready pharmacogenomics summary |
-| **report-genetic-risks** | "genetic risks for provider" | Generate provider-ready health risks summary |
-| **report-conditions-status** | "conditions report", "active diagnoses", "medical conditions list" | Generate provider-ready active/resolved conditions summary |
+These queries use bash patterns (grep, awk) combined with Claude's reasoning—no separate skills required.
 
 ## Directory Structure
 
@@ -127,26 +115,11 @@ health-agent/
 │   └── skills/
 │       └── health-agent/
 │           ├── generate-questionnaire/SKILL.md
-│           ├── lab-trend/SKILL.md
-│           ├── out-of-range-labs/SKILL.md
-│           ├── exam-catalog/SKILL.md
-│           ├── episode-investigation/SKILL.md
-│           ├── health-summary/SKILL.md
-│           ├── cross-temporal-correlation/SKILL.md
-│           ├── medication-supplements/SKILL.md
 │           ├── genetics-snp-lookup/SKILL.md
-│           ├── genetics-pharmacogenomics/SKILL.md
-│           ├── genetics-health-risks/SKILL.md
+│           ├── genetics-validate-interpretation/SKILL.md
 │           ├── investigate-root-cause/SKILL.md
-│           ├── mechanism-search/SKILL.md
-│           ├── confound-identification/SKILL.md
-│           ├── evidence-contradiction-check/SKILL.md
-│           ├── report-medication-list/SKILL.md
-│           ├── report-labs-abnormal/SKILL.md
-│           ├── report-health-events/SKILL.md
-│           ├── report-pharmacogenomics/SKILL.md
-│           ├── report-genetic-risks/SKILL.md
-│           ├── report-conditions-status/SKILL.md
+│           ├── prepare-provider-visit/SKILL.md
+│           ├── scientific-literature-search/SKILL.md
 │           └── references/
 │               ├── lab-specs-helpers.sh           # Helper functions for lab_specs.json
 │               └── status-keywords.md             # Status determination keywords
@@ -155,28 +128,25 @@ health-agent/
 
 ## Output Directory Structure
 
-Generated reports, questionnaires, and analyses are saved to `.output/{profile}/`:
+Generated reports and analyses are saved to `.output/{profile}/`:
 
 ```
 .output/{profile}/
-├── sections/                    # Individual report sections
-│   ├── medication-list-YYYY-MM-DD.md
-│   ├── labs-abnormal-YYYY-MM-DD.md
-│   ├── health-events-YYYY-MM-DD.md
-│   ├── pharmacogenomics-YYYY-MM-DD.md
-│   ├── genetic-risks-YYYY-MM-DD.md
-│   └── conditions-status-YYYY-MM-DD.md
-├── hypothesis/                  # Hypothesis investigation reports
-│   ├── hemolysis-YYYY-MM-DD.md
-│   ├── headaches-YYYY-MM-DD.md
-│   └── fatigue-YYYY-MM-DD.md
-├── questionnaires/              # Health log augmentation questionnaires
-│   └── health-log-augmentation-YYYY-MM-DD.md
-└── combined/                    # Assembled reports (future)
-    └── provider-visit-YYYY-MM-DD.md
+├── provider-visit-{visit_type}-YYYY-MM-DD.md     # Provider summaries
+├── hypothesis-investigation-{condition}-YYYY-MM-DD.md  # Root cause analyses
+└── health-log-augmentation-YYYY-MM-DD.md         # Questionnaires
 ```
 
 **Note**: The `.output/` directory is gitignored to protect sensitive health data.
+
+## Key Improvements (v2.0 Architecture)
+
+- **70% fewer skills** (6 core skills vs 21 previously) — simpler mental model
+- **Natural language first** — ask questions instead of invoking skill names
+- **Literature-backed mechanisms** — all biological pathways include PubMed/Semantic Scholar citations
+- **Smarter provider documentation** — coherent narratives instead of concatenated sections
+- **Comprehensive genetics** — checks all condition-relevant genes via SNPedia, not just hardcoded lists
+- **Analysis patterns** — documented bash query patterns in CLAUDE.md for transparency
 
 ## Creating Custom Skills
 

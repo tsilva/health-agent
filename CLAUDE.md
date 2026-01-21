@@ -183,110 +183,323 @@ grep -E "^(rs123|rs456|rs789)" "{genetics_23andme_path}"
 - Health risks: APOE, Factor V Leiden, HFE hemochromatosis, MTHFR
 - Limited BRCA testing: Only 3 Ashkenazi founder mutations
 
-## Analysis Patterns
+## Common Analysis Patterns
 
-### Cross-Source Correlation
+This section provides query patterns for common health data analysis tasks. These patterns can be combined and adapted based on user questions.
 
-When analyzing health patterns, consider data from all sources:
+### Tracking Lab Trends Over Time
 
-1. **Labs** - Objective biomarker data with timestamps
-2. **Timeline** - Structured event tracking with episode linking
-3. **Exams** - Imaging and procedure findings
-4. **Health Log** - Narrative context and subjective symptoms
-5. **Genetics** - Pharmacogenomics and health risk variants (if configured)
+When user asks to track a marker (e.g., "How has my HbA1c changed?"):
 
-### Example: Investigating a Health Concern
+```bash
+# 1. Get canonical name and build pattern (if lab_specs.json exists)
+source .claude/skills/health-agent/references/lab-specs-helpers.sh
+pattern=$(build_grep_pattern "{labs_path}/lab_specs.json" "HbA1c")
 
+# 2. Extract all measurements for this marker
+head -1 "{labs_path}/all.csv" && grep -iE "$pattern" "{labs_path}/all.csv" | sort -t',' -k1
+
+# 3. Analyze the results:
+# - Calculate min/max/mean values
+# - Identify trend direction (compare first 3 to last 3 measurements)
+# - Flag out-of-range values (value > reference_max or value < reference_min)
+# - Note low confidence scores (< 0.8)
+# - Calculate rate of change if appropriate
 ```
-1. Search health_log.csv for related events by category
-2. Find linked events via episode_id
-3. Check health_log.md for detailed context around those dates
-4. Look for relevant lab values near those dates
-5. Search exam summaries for related findings
+
+**If lab_specs.json doesn't exist**, use case-insensitive grep:
+```bash
+head -1 "{labs_path}/all.csv" && grep -i "hba1c" "{labs_path}/all.csv" | sort -t',' -k1
 ```
+
+### Finding Abnormal Lab Values
+
+When user asks about abnormal labs (e.g., "What labs are out of range?"):
+
+```bash
+# All abnormal values in last 12 months
+awk -F',' -v start="$(date -v-12m +%Y-%m-%d)" \
+  'NR==1 || ($1 >= start && ($5 > $7 || $5 < $6))' \
+  "{labs_path}/all.csv"
+
+# Or for specific timeframe
+awk -F',' 'NR==1 || ($1 >= "2025-01-01" && ($5 > $7 || $5 < $6))' \
+  "{labs_path}/all.csv"
+```
+
+**Analysis approach**:
+1. Group by marker name (use canonical names if lab_specs.json exists)
+2. For each abnormal value:
+   - Note direction (High/Low)
+   - Check severity (how far from reference range)
+   - Look for trends (improving/worsening over time)
+   - Consider clinical significance
+
+### Investigating Health Episodes
+
+When user asks about a specific episode (e.g., "Tell me about my headache episode"):
+
+```bash
+# 1. Find episode by searching health_log.csv
+grep -i "headache" "{health_log_path}/health_log.csv" | head -20
+
+# 2. Extract all events from identified episode_id
+grep ",episode_042," "{health_log_path}/health_log.csv"
+
+# 3. Get narrative context from health_log.md
+grep -A10 -B10 "episode_042\|headache" "{health_log_path}/health_log.md"
+
+# 4. Find temporally related labs (within episode date range)
+awk -F',' -v start="2025-10-15" -v end="2025-10-20" \
+  'NR==1 || ($1 >= start && $1 <= end)' \
+  "{labs_path}/all.csv"
+```
+
+**Synthesis approach**:
+- Group events by category (symptoms, treatments, outcomes)
+- Identify temporal sequence
+- Note what worked/didn't work
+- Look for patterns across similar episodes
+
+### Listing Current Medications & Supplements
+
+When user asks about medications (e.g., "What am I currently taking?"):
+
+```bash
+# Extract all medication and supplement events
+grep -E ",medication,|,supplement," "{health_log_path}/health_log.csv" | \
+  awk -F',' '{print $1","$3","$5","$6}' | \
+  tail -100  # Recent entries
+```
+
+**Status determination** (use `.claude/skills/health-agent/references/status-keywords.md`):
+
+1. **Active**: Latest mention has active keywords ("taking", "continuing", "started", "prescribed")
+2. **Discontinued**: Latest mention has stop keywords ("discontinued", "stopped", "ended")
+3. **As-needed**: Mentioned with PRN keywords ("as needed", "when", "if")
+
+**Analysis approach**:
+- Group by medication/supplement name
+- Find latest status for each
+- Note start dates and dosages
+- Flag potential interactions or duplicates
+
+### Cataloging Medical Exams
+
+When user asks about exams (e.g., "What imaging have I had?"):
+
+```bash
+# List all exam summaries
+find "{exams_path}" -name "*.summary.md" | sort
+
+# Filter by type (after reading frontmatter)
+for file in $(find "{exams_path}" -name "*.summary.md"); do
+  exam_type=$(grep "^exam_type:" "$file" | cut -d'"' -f2)
+  exam_date=$(grep "^exam_date:" "$file" | cut -d'"' -f2)
+  echo "$exam_date,$exam_type,$file"
+done | sort -t',' -k1 -r
+```
+
+**Analysis approach**:
+- Group by body region or exam type
+- Note temporal progression (follow-up exams)
+- Identify significant findings
+- Cross-reference with symptoms/labs from similar dates
+
+### Generating Health Summaries
+
+When user asks for overall health summary:
+
+**Systematic approach**:
+
+1. **Demographics**: Extract from profile YAML (age, gender)
+
+2. **Active Conditions**:
+```bash
+grep ",condition," "{health_log_path}/health_log.csv" | tail -50
+```
+Apply status determination to identify active vs resolved.
+
+3. **Current Medications**: Use pattern above
+
+4. **Recent Labs** (last 6-12 months):
+```bash
+awk -F',' -v start="$(date -v-12m +%Y-%m-%d)" 'NR==1 || $1 >= start' \
+  "{labs_path}/all.csv" | head -100
+```
+
+5. **Recent Health Events**:
+```bash
+awk -F',' -v start="$(date -v-6m +%Y-%m-%d)" 'NR==1 || $1 >= start' \
+  "{health_log_path}/health_log.csv"
+```
+
+6. **Recent Exams**: Use catalog pattern above
+
+7. **Genetics** (if configured): Key findings from pharmacogenomics and health risks
+
+**Synthesis**: Create narrative connecting findings across sources.
+
+### Finding Temporal Correlations
+
+When user asks about patterns (e.g., "Does X correlate with Y?"):
+
+**Systematic approach**:
+
+1. **Extract both variables across same timeframe**:
+```bash
+# Variable 1 (e.g., stress events)
+grep -i "stress" "{health_log_path}/health_log.csv"
+
+# Variable 2 (e.g., blood pressure)
+grep -i "blood pressure" "{labs_path}/all.csv"
+```
+
+2. **Temporal analysis**:
+   - Look for clustering (events occur together)
+   - Check time windows (X precedes Y by consistent interval)
+   - Assess frequency (how often they co-occur)
+   - Identify dose-response (stronger X → stronger Y)
+
+3. **Confound identification**:
+   - List alternative explanations
+   - Check for common causes
+   - Consider temporal sequence (correlation vs causation)
+   - Look for contradictory instances
+
+4. **Biological plausibility**:
+   - Propose mechanisms linking observations
+   - Check for intermediate biomarkers
+   - Assess strength of evidence (high/moderate/low)
+   - Use `scientific-literature-search` skill for authoritative citations
+
+### Understanding Biological Mechanisms
+
+When user asks "what's the connection between X and Y?" or "why does X cause Y?":
+
+**Reasoning approach**:
+
+1. **Classify observation types**: lab value, symptom, event, condition
+2. **Propose known pathways**: Based on medical knowledge
+3. **Check for intermediate markers**: Are there measurable steps between X and Y?
+4. **Verify temporal sequence**: Does X consistently precede Y?
+5. **Assess plausibility**: High (well-established) / Moderate (plausible) / Low (speculative)
+
+**IMPORTANT**: Always use `scientific-literature-search` skill to find authoritative citations for proposed mechanisms. Don't rely solely on general knowledge.
+
+Example query: "Find papers on the mechanism linking chronic stress to elevated cortisol"
+
+### Cross-Source Integration
+
+When analyzing any health concern, systematically check all data sources:
+
+**Standard workflow**:
+```
+1. Health Timeline (health_log.csv)
+   - Search by category for relevant events
+   - Identify episode_id for related events
+
+2. Health Narrative (health_log.md)
+   - Get detailed context around dates
+   - Find subjective descriptions
+
+3. Labs (all.csv)
+   - Find relevant markers near event dates
+   - Check for abnormalities
+
+4. Exams (*/summary.md)
+   - Search for related findings
+   - Note imaging results
+
+5. Genetics (if configured)
+   - Check relevant SNPs via genetics-snp-lookup skill
+   - Consider pharmacogenomic implications
+```
+
+### Generating Provider Documentation
+
+When user needs documentation for healthcare visits, use the **`prepare-provider-visit` skill** instead of manual assembly.
+
+The skill intelligently selects relevant sections based on visit type (annual/specialist/follow-up/urgent) and generates coherent narratives rather than concatenated fragments.
+
+**When to use the skill**:
+- "Prepare summary for my doctor"
+- "Generate documentation for my appointment"
+- "Create a provider visit summary"
+
+**For custom reports** not covered by the skill, gather data using patterns above and format as markdown with:
+- Clear section headers
+- Tables for structured data
+- Bullet points for narrative
+- Data citations (file:line references + dates)
+- Medical disclaimers
+
+### Efficient Data Access Notes
+
+All large files (`all.csv`, `health_log.csv`, `health_log.md`) typically exceed Claude's read limits. Always use:
+
+- **Filtered extraction**: grep, awk, head/tail commands
+- **Date ranges**: Filter by relevant timeframe first
+- **Targeted queries**: Search for specific terms before broad reads
+- **Incremental reading**: Start narrow, expand if needed
+
+**Never** attempt to read these files entirely - use the extraction patterns above.
 
 ## Built-in Skills
 
-Twenty-one skills are available in `.claude/skills/health-agent/`:
+Six core skills provide specialized capabilities in `.claude/skills/health-agent/`:
 
-### Data Collection Skills
-
-| Skill | Use When |
-|-------|----------|
-| `generate-questionnaire` | User asks to create questionnaire or systematically augment health log data |
-
-### Analysis Skills
+### External Integrations (APIs + Caching)
 
 | Skill | Use When |
 |-------|----------|
-| `lab-trend` | User asks to track a specific marker over time |
-| `out-of-range-labs` | User asks for abnormal or flagged lab values |
-| `exam-catalog` | User asks to list or search medical exams |
-| `episode-investigation` | User asks about a specific health episode |
-| `health-summary` | User needs a comprehensive health overview |
-| `cross-temporal-correlation` | User asks about patterns or correlations |
-| `medication-supplements` | User asks for medication list or supplement tracking |
+| `genetics-snp-lookup` | User asks to look up specific SNPs (e.g., "rs12345"), check pharmacogenomics genes (CYP2D6, CYP2C19, etc.), or query health risk variants (APOE, Factor V Leiden, etc.). Queries SNPedia API with 30-day caching. |
+| `genetics-validate-interpretation` | User wants to validate genetic interpretations against SNPedia or cross-reference allele orientation. |
+| `scientific-literature-search` | User asks to find research papers, verify biological mechanisms, or needs authoritative citations. Queries PubMed + Semantic Scholar with 30-day caching. Used automatically in root cause investigations. |
 
-### Genetics Skills
+### Orchestration Workflows
 
 | Skill | Use When |
 |-------|----------|
-| `genetics-snp-lookup` | User asks to look up a specific SNP (e.g., "rs12345") |
-| `genetics-pharmacogenomics` | User asks about drug metabolism or CYP status |
-| `genetics-health-risks` | User asks about APOE, Factor V Leiden, or genetic risks |
+| `investigate-root-cause` | User asks "investigate root cause of [condition]", "why do I have [condition]", "find the cause of [symptom]", or "what's causing my [condition]". Performs multi-turn hypothesis investigation with evidence gathering, mechanism validation via literature search, and comprehensive genetic analysis. |
+| `prepare-provider-visit` | User asks to "prepare for doctor visit", "generate provider summary", or "create medical documentation". Intelligently orchestrates data gathering based on visit type (annual/specialist/follow-up/urgent) and generates coherent provider-appropriate narratives. |
+| `generate-questionnaire` | User asks to create questionnaire or systematically augment health log data with structured gap analysis. |
 
-### Hypothesis Investigation Skills
+### Analysis Patterns (Not Skills)
 
-| Skill | Use When |
-|-------|----------|
-| `investigate-root-cause` | User asks to investigate root cause of a condition |
-| `mechanism-search` | User asks about biological mechanisms linking observations |
-| `confound-identification` | User asks what could confound a correlation |
-| `evidence-contradiction-check` | User asks to test hypothesis against data |
-
-### Report Skills
-
-Report skills generate saveable markdown sections to `.output/{profile}/sections/`:
-
-| Skill | Use When |
-|-------|----------|
-| `report-medication-list` | User needs medication list for provider visit |
-| `report-labs-abnormal` | User needs abnormal labs summary for provider |
-| `report-health-events` | User needs recent health timeline for provider |
-| `report-pharmacogenomics` | User needs pharmacogenomics summary for provider |
-| `report-genetic-risks` | User needs genetic risks summary for provider |
-| `report-conditions-status` | User needs active/resolved conditions list for provider |
+All health data analysis (lab trends, abnormal values, episodes, correlations, medications, health summaries, exams) is performed naturally using query patterns documented in the "Common Analysis Patterns" section above. These patterns combine bash commands (grep, awk) with Claude's reasoning to answer user questions directly.
 
 ### Shared References
 
-`references/lab-specs-helpers.sh` contains:
+`.claude/skills/health-agent/references/` contains shared resources:
+
+**`lab-specs-helpers.sh`**:
 - Helper functions for querying `{labs_path}/lab_specs.json`
 - `get_canonical_name()` - Get standard name from any alias
 - `build_grep_pattern()` - Build grep pattern from all aliases
 - `get_primary_unit()` - Get standard unit for marker
 - `get_conversion_factor()` - Convert between units
 
-`references/status-keywords.md` contains:
+**`status-keywords.md`**:
 - Status determination keywords (active, discontinued, suspected, resolved)
 - Status classification algorithm for medications, supplements, conditions, and episodes
-- Used by: medication-supplements, report-medication-list, report-conditions-status, report-health-events
+- Used when analyzing medication timelines and condition status
 
 ### Genetics Data Sources
 
 All genetics interpretations come from **SNPedia** via the `genetics-snp-lookup` skill:
-- **Centralized lookup mechanism**: All genetics skills delegate to genetics-snp-lookup
+- **Centralized lookup mechanism**: Single skill handles all genetic queries
 - **Online data source**: Queries SNPedia MediaWiki API for up-to-date interpretations
 - **Caching**: 30-day TTL to minimize API calls and improve performance
-- **Coverage**: 631k+ SNPs vs 30 previously hardcoded
+- **Coverage**: 631k+ SNPs from 23andMe data
 - **Drug metabolism**: CYP2D6, CYP2C19, CYP2C9, VKORC1, SLCO1B1, TPMT, DPYD
 - **Health risks**: APOE, Factor V Leiden, HFE hemochromatosis, MTHFR, BRCA founder mutations
 
-**Architecture**:
-- `genetics-snp-lookup` ← Queries SNPedia, caches results, extracts SNPs from 23andMe data
-- `genetics-pharmacogenomics` ← Delegates to genetics-snp-lookup, formats for analysis
-- `genetics-health-risks` ← Delegates to genetics-snp-lookup, formats for analysis
-- `report-pharmacogenomics` ← Delegates to genetics-snp-lookup, formats for providers
-- `report-genetic-risks` ← Delegates to genetics-snp-lookup, formats for providers
+When users ask about genetics, use `genetics-snp-lookup` directly with natural language queries like:
+- "Look up rs12345"
+- "Check my CYP2D6 status"
+- "What's my APOE genotype?"
+- "Search for Factor V Leiden"
 
 ## Creating Custom Skills
 
@@ -303,92 +516,83 @@ description: "What it does and trigger phrases"
 Instructions for performing the analysis...
 ```
 
-## Report Skills System
+## Provider Documentation System
 
-Report skills are a special category of skills that generate **composable** markdown sections for provider visits or personal records.
+Provider documentation is generated via the **`prepare-provider-visit` skill**, which intelligently orchestrates data gathering and generates coherent narratives based on visit type.
 
-### Design Philosophy
+### Using prepare-provider-visit
 
-Reports are **building blocks**. Each report skill generates a focused section that:
-1. Can be generated independently
-2. Can be combined with other report sections into comprehensive documents
-3. Has a consistent header/format for easy concatenation
+When user asks to prepare documentation for a healthcare visit, invoke the `prepare-provider-visit` skill. The skill:
 
-### Naming Convention
-
-Report skills use the `report-*` prefix:
-- `report-medication-list`
-- `report-labs-abnormal`
-- `report-health-events`
-- `report-pharmacogenomics`
-- `report-genetic-risks`
-- `report-conditions-status`
+1. **Asks minimal questions**: Visit type (annual/specialist/follow-up/urgent) and specific concerns
+2. **Smart defaults**: Automatically determines relevant sections based on visit type
+3. **Intelligent data gathering**: Uses analysis patterns to extract medications, labs, events, conditions, and genetics (if relevant)
+4. **Coherent narrative**: Generates connected prose, not concatenated sections
+5. **Provider-appropriate**: Professional medical documentation style
 
 ### Output Structure
 
 ```
 .output/{profile}/
-├── sections/                    # Individual report sections
-│   ├── medication-list-YYYY-MM-DD.md
-│   ├── labs-abnormal-YYYY-MM-DD.md
-│   ├── health-events-YYYY-MM-DD.md
-│   ├── pharmacogenomics-YYYY-MM-DD.md
-│   ├── genetic-risks-YYYY-MM-DD.md
-│   └── conditions-status-YYYY-MM-DD.md
-├── hypothesis/                  # Hypothesis investigation reports
-│   ├── hemolysis-YYYY-MM-DD.md
-│   ├── headaches-YYYY-MM-DD.md
-│   └── fatigue-YYYY-MM-DD.md
-├── questionnaires/              # Health log augmentation questionnaires
-│   └── health-log-augmentation-YYYY-MM-DD.md
-└── combined/                    # Assembled reports (future)
-    └── provider-visit-YYYY-MM-DD.md
+├── provider-visit-{visit_type}-{YYYY-MM-DD}.md  # Generated by prepare-provider-visit
+├── hypothesis-investigation-{condition}-{YYYY-MM-DD}.md  # Generated by investigate-root-cause
+└── health-log-augmentation-{YYYY-MM-DD}.md  # Generated by generate-questionnaire
 ```
 
-### Section Format
+### Report Format
 
-Each report section follows a consistent format for composability:
+Provider visit summaries follow this structure:
 
 ```markdown
 ---
-section: {section-name}
+document_type: provider_visit_summary
+visit_type: {annual|specialist|follow_up|urgent}
 generated: {YYYY-MM-DD}
 profile: {profile_name}
+timeframe: {description}
 ---
 
-# {Section Title}
+# Provider Visit Summary
+**Patient**: {name}
+**Visit Type**: {type}
+**Generated**: {date}
 
-{Content with tables and structured data}
+## Visit Context
+{2-3 sentences on reason for visit and overall status}
+
+## Current Medications & Supplements
+{Narrative + table of active medications}
+
+## Recent Health Events
+{Grouped by category with narrative synthesis}
+
+## Laboratory Results
+{Abnormal values with interpretation}
+
+## Active Medical Conditions
+{Bulleted list with status}
+
+## Relevant Genetic Findings (if applicable)
+{Only included when directly relevant to visit purpose}
+
+## Summary & Considerations
+{2-4 key discussion points for provider}
 
 ---
-*Section generated by health-agent {skill-name} skill*
+*Generated by health-agent to support clinical decision-making.*
 ```
 
-### Combining Sections
-
-To create a combined report:
-1. Generate individual section reports
-2. Concatenate sections in desired order
-3. Add a cover page/header if needed
-4. Save to `.output/{profile}/combined/`
-
-Example combined reports:
-- **Provider Visit** = medication-list + labs-abnormal + health-events + conditions-status
-- **Genetics Review** = pharmacogenomics + genetic-risks
-- **Comprehensive Visit** = medication-list + pharmacogenomics + labs-abnormal + health-events + conditions-status + genetic-risks
-- **Annual Review** = all sections + exam summaries + trends
-
-### Creating Report Directories and Files
+### Creating Output Directories
 
 **Directory Creation** - Use Bash (works in sandbox):
 ```bash
-mkdir -p .output/{profile}/sections
+mkdir -p .output/{profile}
 ```
 
 **File Writing** - Use the `Write` tool, NOT Bash heredocs:
 ```
 # CORRECT: Use Write tool for report files
-Write tool with file_path=".output/{profile}/sections/report-name-YYYY-MM-DD.md"
+Write tool with file_path=".output/{profile}/provider-visit-annual-2026-01-21.md"
 
 # WRONG: Bash heredocs fail in sandbox mode
 cat > file.md << 'EOF'  # This will fail with "operation not permitted"
@@ -412,65 +616,58 @@ Use when user asks:
 
 1. **Invocation**: User triggers the skill
 2. **Process**: Skill spawns a general-purpose agent that:
-   - Gathers evidence using analysis skills (episode-investigation, cross-temporal-correlation, lab-trend, etc.)
-   - Performs comprehensive genetic analysis (checks ALL condition-relevant genes using both genetics skills AND direct SNP lookups)
-   - Generates 3-5 competing hypotheses with biological mechanisms (mechanism-search)
-   - Tests hypotheses against data (evidence-contradiction-check)
-   - Identifies confounding factors (confound-identification)
+   - Gathers evidence using analysis patterns from CLAUDE.md (timeline events, lab trends, abnormal values, medications, exams)
+   - Performs comprehensive genetic analysis via `genetics-snp-lookup` (checks ALL condition-relevant genes)
+   - Generates 3-5 competing hypotheses with biological mechanisms
+   - **Queries scientific literature** via `scientific-literature-search` for ALL proposed mechanisms (MANDATORY)
+   - Tests hypotheses against data (searches for contradictions, identifies confounds)
    - Ranks hypotheses by supporting evidence
    - Iterates and refines based on contradictions
-3. **Output**: Saved to `.output/{profile}/sections/hypothesis-investigation-{condition}-YYYY-MM-DD.md`
+3. **Output**: Saved to `.output/{profile}/hypothesis-investigation-{condition}-YYYY-MM-DD.md`
 
 ### Output Format
 
 Hypothesis investigation reports include:
-- **Ranked hypotheses** (High/Medium/Low likelihood)
+- **Ranked hypotheses** (High/Medium/Low likelihood with percentages)
 - **Supporting evidence** with data citations (dates, lab values, timeline events, genetics findings)
 - **Contradictory evidence** with explanations or acknowledgment
 - **Genetic analysis** (comprehensive check of condition-relevant genes with both positive and negative findings)
-- **Biological mechanisms** linking observations (if identifiable)
+- **Biological mechanisms** with literature citations from PubMed/Semantic Scholar
 - **Confounding factors** that could explain observations
 - **Testable predictions** (what should be true if hypothesis is correct)
 - **Recommended follow-up investigations** (what data to collect next)
 
-### Integration with Report Skills
+### Available Tools for Investigation Agent
 
-Hypothesis investigation reports are saved to `.output/{profile}/sections/` (same directory as report sections), enabling future integration with provider visit summaries. For example:
-- **Provider Visit** = conditions-status + hypothesis-investigation-fatigue + labs-abnormal + medication-list
-- **Specialist Referral** = hypothesis-investigation-headaches + health-events + exam-catalog
-
-### Available Tools for Hypothesis Agent
-
-The hypothesis generation agent has access to all 20 health-agent skills:
-- **Evidence gathering**: episode-investigation, cross-temporal-correlation, lab-trend, out-of-range-labs, exam-catalog
-- **Mechanism exploration**: mechanism-search (identifies biological pathways)
-- **Confound detection**: confound-identification (rules out alternative explanations)
-- **Hypothesis testing**: evidence-contradiction-check (searches for counter-examples)
-- **Supporting data**: health-summary, medication-supplements, genetics skills (if configured)
+The hypothesis investigation agent has access to:
+- **Analysis patterns** from CLAUDE.md "Common Analysis Patterns" section (bash queries for all data sources)
+- **Genetics**: `genetics-snp-lookup` for comprehensive genetic analysis
+- **Literature**: `scientific-literature-search` for mechanism validation (MANDATORY - used automatically)
+- **Data sources**: All profile data (labs, timeline, exams, health log narrative, genetics)
 
 ### Example Workflow
 
 **User**: "Investigate root cause of my recurring headaches"
 
 **Agent Process**:
-1. Uses `episode-investigation` to gather all headache events
-2. Uses `cross-temporal-correlation` to find temporal patterns
+1. Gathers all headache events from health_log.csv via grep
+2. Finds temporal patterns via correlation analysis
 3. Identifies potential triggers: poor sleep (5 instances), stress (3 instances), caffeine changes (2 instances)
-4. Uses `mechanism-search` to propose biological pathways
-5. Uses `confound-identification` to check for confounds
-6. Uses `evidence-contradiction-check` to test hypotheses
-7. Ranks hypotheses by supporting evidence
-8. Recommends follow-up: Track caffeine intake separately from sleep to discriminate between hypotheses
+4. Proposes biological pathways for each mechanism
+5. **Queries PubMed** for citations on "sleep deprivation headache mechanism", "caffeine withdrawal mechanism", "stress headache pathway"
+6. Identifies confounds (caffeine changes during poor sleep)
+7. Searches for contradictory evidence
+8. Ranks hypotheses: HIGH (sleep deprivation - 85%), MODERATE (caffeine withdrawal - 55%), LOW (stress - 30%)
+9. Recommends follow-up: Track caffeine intake separately from sleep to discriminate between hypotheses
 
-**Output**: Markdown report saved to `.output/{profile}/sections/hypothesis-investigation-headaches-2026-01-20.md`
+**Output**: Markdown report saved to `.output/{profile}/hypothesis-investigation-headaches-2026-01-21.md`
 
-### Differences from Analysis Skills
+### Key Improvements
 
-| Feature | Analysis Skills | Hypothesis Generation |
-|---------|----------------|----------------------|
-| **Execution** | Single-pass workflow | Multi-turn iterative exploration |
-| **Output** | Report patterns found | Propose and test competing explanations |
-| **Iteration** | No refinement loop | Refines hypotheses based on contradictions |
+- **Literature-backed mechanisms**: Every biological pathway includes authoritative citations
+- **Natural data analysis**: Uses bash query patterns instead of invoking multiple skills
+- **Comprehensive genetics**: Checks all condition-relevant genes via SNPedia
+- **Iterative refinement**: Multi-turn investigation with evidence-based ranking
 
 ## Important Notes
 
