@@ -12,10 +12,15 @@ Maximize diagnostic accuracy through independent reasoning paths, mandatory adve
 Simple consensus can fail if all agents make the same error. This skill incorporates techniques to maximize accuracy:
 
 1. **Independent reasoning paths** - Different starting points reduce correlated errors
-2. **Mandatory adversarial validation** - Red team agent actively tries to disprove top hypotheses
-3. **Evidence verification** - Verify cited evidence actually exists and supports claims
-4. **Blind spot detection** - Identify hypotheses ALL agents may have missed
-5. **Calibrated confidence** - Weight by evidence quality, not just agreement count
+2. **Mandatory adversarial validation** - Red team agent actively tries to disprove AND propose alternatives
+3. **Cross-agent refinement** - Agents review each other's findings and revise hypotheses
+4. **Evidence verification** - Verify cited evidence exists AND interpretations are valid
+5. **Interpretation validation** - Check unit consistency, temporal logic, statistical reasonableness
+6. **Diagnostic gap penalty** - Reduce confidence when key tests are missing
+7. **Epidemiological priors** - Weight by condition prevalence, not just evidence fit
+8. **Blind spot detection** - Identify hypotheses ALL agents may have missed
+9. **Falsification criteria** - Each hypothesis specifies what would confirm/refute it
+10. **Calibrated confidence** - Weight by evidence quality, gap penalty, and priors
 
 ## Architecture Overview
 
@@ -24,18 +29,26 @@ Phase 1: Spawn 4 investigators in parallel (single message)
     ├─ Agent 1: Bottom-Up (data-driven, no preconceptions)
     ├─ Agent 2: Top-Down (differential diagnosis, then seek evidence)
     ├─ Agent 3: Genetics-First (genetic etiology prioritized)
-    └─ Agent 4: RED TEAM (actively disprove emerging hypotheses) [MANDATORY]
+    └─ Agent 4: RED TEAM (actively disprove AND propose alternatives) [MANDATORY]
 
 Phase 2: Wait for all agents to complete
 
+Phase 2.5: Cross-Agent Refinement (NEW)
+    ├─ Each agent reviews summaries of other 3 agents
+    ├─ Agents can revise hypotheses, adopt insights, note disagreements
+    └─ Red Team reviews if critiques were addressed
+
 Phase 3: Evidence Verification Agent
-    └─ Verify all cited evidence exists and supports claims
+    ├─ Verify all cited evidence exists and supports claims
+    └─ Validate interpretations are reasonable (unit consistency, temporal logic, etc.)
 
 Phase 4: Consensus & Blind Spot Agent
     ├─ Merge verified findings
     ├─ Detect hypotheses ALL agents missed
     ├─ Query literature for other known causes
-    └─ Produce calibrated final ranking
+    ├─ Apply diagnostic gap penalty for missing tests
+    ├─ Incorporate epidemiological priors
+    └─ Produce calibrated final ranking with falsification criteria
 
 Phase 5: Return final consensus report path
 ```
@@ -275,9 +288,31 @@ Data-driven approach: Extract all abnormal findings, identify patterns, let hypo
 ## Genetic Findings
 [If genetics configured, include all checked SNPs with results]
 
+## Falsification Criteria (REQUIRED)
+
+For EACH hypothesis, specify what would confirm or refute it:
+
+### Hypothesis 1: {Name}
+
+**Would be CONFIRMED if**:
+- [ ] {Specific test result}
+- [ ] {Specific finding}
+
+**Would be REFUTED if**:
+- [ ] {Specific contradicting evidence}
+- [ ] {Specific test result}
+
+**Recommended tests to discriminate** (ordered by cost/invasiveness):
+1. {Test 1}
+2. {Test 2}
+
+### Hypothesis 2: {Name}
+[Same structure]
+
 ## Confidence Assessment
 - Primary Hypothesis: {name} - {likelihood}
 - Confidence Basis: [What data patterns support this confidence]
+- Key Uncertainties: [What would need to change your mind]
 ```
 
 **AVOID**: Anchoring on obvious diagnoses. The goal is to find what the data shows, not confirm what you expect.
@@ -408,9 +443,33 @@ Systematic differential diagnosis: List known causes, then seek/refute evidence 
 ## Causes Ruled Out
 [List causes with strong refuting evidence]
 
+## Falsification Criteria (REQUIRED)
+
+For each top-ranked diagnosis, specify what would confirm or refute it:
+
+### Diagnosis 1: {Name}
+
+**Would be CONFIRMED if**:
+- [ ] {Specific test result (gold standard if available)}
+- [ ] {Specific clinical finding}
+
+**Would be REFUTED if**:
+- [ ] {Specific contradicting evidence}
+- [ ] {Alternative diagnosis confirmed}
+
+**Key discriminating tests**:
+| Test | Expected if This Diagnosis | Expected if Alternative |
+|------|---------------------------|------------------------|
+| {Test 1} | {Result} | {Result} |
+| {Test 2} | {Result} | {Result} |
+
+### Diagnosis 2: {Name}
+[Same structure]
+
 ## Confidence Assessment
 - Primary Diagnosis: {name} - {likelihood}%
 - Confidence Basis: [Systematic evidence review supports this]
+- Diagnostic Gaps: [What tests would increase confidence]
 ```
 
 **GOAL**: Ensure common causes aren't missed. Systematic coverage over insight.
@@ -544,9 +603,40 @@ If genetic testing gaps exist:
 - Recommend clinical genetic testing for {genes}
 - Note: 23andMe covers ~631k SNPs, may miss rare variants
 
+## Falsification Criteria (REQUIRED)
+
+For each hypothesis, specify genetic and clinical confirmation/refutation:
+
+### Hypothesis 1: {Genetic Cause}
+
+**Would be CONFIRMED if**:
+- [ ] Clinical sequencing confirms pathogenic variant in {gene}
+- [ ] Functional test (e.g., enzyme assay) shows deficiency
+- [ ] Family segregation analysis supports inheritance
+
+**Would be REFUTED if**:
+- [ ] Clinical sequencing shows no pathogenic variants
+- [ ] Functional test normal
+- [ ] Family history negative after detailed inquiry
+
+**Recommended genetic follow-up**:
+1. {Clinical gene panel for condition}
+2. {Specific functional test}
+
+### Hypothesis 2: {Acquired Cause}
+
+**Would be CONFIRMED if**:
+- [ ] {Specific test identifying acquired cause}
+- [ ] {Temporal relationship established}
+
+**Would be REFUTED if**:
+- [ ] Genetic cause confirmed instead
+- [ ] {Specific exclusion test}
+
 ## Confidence Assessment
 - Primary Hypothesis: {name} - {likelihood}%
 - Genetic Confidence: [Based on coverage and findings]
+- 23andMe Limitations: [What variants might be missed]
 ```
 
 **RATIONALE**: Genetic causes explain chronic, persistent patterns better than environmental factors. If there's a genetic explanation, it should be top-ranked.
@@ -565,7 +655,7 @@ Perform RED TEAM adversarial validation for hypotheses about {condition}.
 
 ## YOUR STRATEGY: Red Team / Devil's Advocate
 
-Your job is to DISPROVE the likely hypotheses, NOT support them.
+Your job is to DISPROVE the likely hypotheses AND PROPOSE ALTERNATIVES for the same evidence.
 
 ### Step 1: Identify Likely Hypotheses
 
@@ -574,7 +664,7 @@ Based on {condition}, the most commonly proposed hypotheses are typically:
 - {Common hypothesis 2 for this condition}
 - {Common hypothesis 3 for this condition}
 
-Your goal: Try to DESTROY each one.
+Your goal: Try to DESTROY each one AND propose what ELSE could explain the evidence.
 
 ### Step 2: For Each Hypothesis, Attack Systematically
 
@@ -590,10 +680,11 @@ For each plausible hypothesis:
    - Did the proposed effect appear BEFORE the proposed cause?
    - Is the time course inconsistent with the mechanism?
 
-3. **Identify ALTERNATIVE explanations**:
-   - Could the same evidence support a different hypothesis?
-   - Is there a simpler explanation?
-   - Are there confounding factors?
+3. **PROPOSE ALTERNATIVE EXPLANATIONS** (NEW - REQUIRED):
+   For EACH piece of evidence supporting a hypothesis:
+   - List at least 2 ALTERNATIVE explanations for that evidence
+   - Rate which explanation is more likely given ALL data
+   - If you DESTROY a hypothesis, propose what diagnosis fits better
 
 4. **Check for CHERRY-PICKING**:
    - Did proponents of this hypothesis ignore contradictory data?
@@ -608,13 +699,20 @@ For each plausible hypothesis:
 For each hypothesis tested:
 - **SURVIVED**: No fatal flaws found. Hypothesis is strengthened.
 - **WEAKENED**: Minor contradictions found. Hypothesis still possible but less likely.
-- **DESTROYED**: Fatal contradiction found. Hypothesis should be abandoned.
+- **DESTROYED**: Fatal contradiction found. **MUST specify alternative diagnosis**.
 
 ### Step 4: Identify What Would Change Your Mind
 
 For each hypothesis that survived:
 - What evidence would definitively disprove it?
 - What tests could discriminate between competing hypotheses?
+
+### Step 5: Propose Counter-Hypotheses (NEW - REQUIRED)
+
+Based on your adversarial analysis:
+1. List 1-3 alternative hypotheses that better explain the evidence
+2. For each alternative, explain why it fits the contradictions you found
+3. Rate your confidence in each alternative
 
 ---
 
@@ -631,7 +729,7 @@ profile: {profile}
 # Red Team Attack Report: {Condition}
 
 ## Strategy
-Adversarial validation: Actively try to DISPROVE likely hypotheses. A hypothesis that survives Red Team scrutiny is more likely correct.
+Adversarial validation: Actively try to DISPROVE likely hypotheses AND propose alternatives. A hypothesis that survives Red Team scrutiny is more likely correct.
 
 ## Hypotheses Under Attack
 
@@ -648,13 +746,18 @@ Adversarial validation: Actively try to DISPROVE likely hypotheses. A hypothesis
 **Temporal Violations**:
 - {Any cause-effect timing issues}
 
-**Alternative Explanations**:
-- {Simpler or equally valid alternatives}
+**Alternative Explanations for Same Evidence** (REQUIRED):
+| Evidence | Original Interpretation | Alternative 1 | Alternative 2 | Most Likely |
+|----------|------------------------|---------------|---------------|-------------|
+| {Evidence 1} | {Supports Hyp A} | {Could mean X} | {Could mean Y} | {Winner} |
+| {Evidence 2} | {Supports Hyp A} | {Could mean X} | {Could mean Y} | {Winner} |
 
 **Cherry-Picking Assessment**:
 - {Did proponents ignore this contradictory evidence?}
 
 **SURVIVAL RATING**: SURVIVED / WEAKENED / DESTROYED
+
+**If DESTROYED - Replacement Diagnosis**: {What diagnosis fits better and why}
 
 **Attack Summary**: {Why this hypothesis survived or was destroyed}
 
@@ -671,12 +774,24 @@ Adversarial validation: Actively try to DISPROVE likely hypotheses. A hypothesis
 ## Evidence Citations
 [Required structured citation table - see format above]
 
+## Counter-Hypotheses Proposed (REQUIRED)
+
+Based on adversarial analysis, these alternative diagnoses may better explain the evidence:
+
+### Counter-Hypothesis 1: {Name}
+**Why Proposed**: {What contradictions/evidence led to this alternative}
+**Supporting Evidence**: {Evidence that fits this better than original hypotheses}
+**Confidence**: {X}%
+
+### Counter-Hypothesis 2: {Name}
+[Same structure]
+
 ## Discriminating Tests
 
-To distinguish between surviving hypotheses:
+To distinguish between surviving hypotheses AND counter-hypotheses:
 
-| Test | Expected if Hypothesis A True | Expected if Hypothesis B True |
-|------|------------------------------|-------------------------------|
+| Test | Expected if Hypothesis A True | Expected if Counter-Hypothesis True |
+|------|------------------------------|-------------------------------------|
 | {Test 1} | {Result A} | {Result B} |
 | {Test 2} | {Result A} | {Result B} |
 
@@ -687,14 +802,17 @@ To distinguish between surviving hypotheses:
 2. {Name} - Survival confidence: {X}%
 
 **Hypotheses Destroyed**:
-1. {Name} - Fatal flaw: {Description}
+1. {Name} - Fatal flaw: {Description} - **Replaced by**: {Counter-hypothesis}
+
+**Counter-Hypotheses Worth Investigating**:
+1. {Name} - Confidence: {X}%
 
 **Strongest Hypothesis Post-Attack**: {Name}
 
 **Confidence**: {X}% (based on survival of adversarial testing)
 ```
 
-**SUCCESS CRITERIA**: A hypothesis that survives Red Team scrutiny is more likely correct. You WANT to find fatal flaws. If you can't, that strengthens the hypothesis.
+**SUCCESS CRITERIA**: A hypothesis that survives Red Team scrutiny is more likely correct. You WANT to find fatal flaws AND propose alternatives. If you can't find flaws, that strengthens the hypothesis. If you destroy a hypothesis, you MUST suggest what fits better.
 ```
 
 ---
@@ -716,6 +834,265 @@ If any agent fails or times out (>15 minutes):
 
 ---
 
+## Phase 2.5: Cross-Agent Refinement (NEW)
+
+After all 4 agents complete, spawn a refinement round where each agent reviews others' findings.
+
+### Why Cross-Agent Refinement?
+
+Without refinement:
+- Agents work in isolation and can't learn from each other's insights
+- Red Team critiques may go unaddressed
+- Novel findings from one agent aren't considered by others
+- Correlated errors persist across all agents
+
+With refinement:
+- Agents can revise hypotheses based on new evidence from others
+- Red Team critiques get explicitly addressed
+- Cross-pollination of insights improves coverage
+- Reduces correlated errors by forcing reconsideration
+
+### Refinement Agent Spawning
+
+Spawn 4 refinement agents in parallel (single message):
+
+```
+Task tool call 1:
+- subagent_type: "general-purpose"
+- description: "Refine bottom-up findings for {condition}"
+- prompt: [Refinement Prompt Template - Bottom-Up]
+- run_in_background: true
+
+Task tool call 2:
+- subagent_type: "general-purpose"
+- description: "Refine top-down findings for {condition}"
+- prompt: [Refinement Prompt Template - Top-Down]
+- run_in_background: true
+
+Task tool call 3:
+- subagent_type: "general-purpose"
+- description: "Refine genetics-first findings for {condition}"
+- prompt: [Refinement Prompt Template - Genetics-First]
+- run_in_background: true
+
+Task tool call 4:
+- subagent_type: "general-purpose"
+- description: "Red team review critiques for {condition}"
+- prompt: [Refinement Prompt Template - Red Team Review]
+- run_in_background: true
+```
+
+### Refinement Prompt Template (For Bottom-Up, Top-Down, Genetics-First)
+
+```markdown
+Review findings from other agents investigating {condition} and refine your analysis.
+
+**Your Original Report**: .output/{profile}/ensemble-{condition}-{date}/agent-{your-strategy}.md
+
+**Other Agent Reports to Review**:
+- .output/{profile}/ensemble-{condition}-{date}/agent-bottomup.md (if not you)
+- .output/{profile}/ensemble-{condition}-{date}/agent-topdown.md (if not you)
+- .output/{profile}/ensemble-{condition}-{date}/agent-genetics.md (if not you)
+- .output/{profile}/ensemble-{condition}-{date}/agent-redteam.md
+
+---
+
+## YOUR TASK: Cross-Agent Refinement
+
+### Step 1: Review Other Agents' Hypotheses
+
+For each hypothesis from other agents:
+- Did they find evidence you missed?
+- Do they propose causes you didn't consider?
+- Is their confidence higher or lower than yours for the same hypothesis?
+
+### Step 2: Review Red Team Critiques
+
+For each Red Team critique relevant to your hypotheses:
+- Was the critique valid?
+- Can you address it with additional evidence?
+- Should you revise your confidence based on it?
+
+### Step 3: Decide on Revisions
+
+For EACH of your original hypotheses, choose one:
+- **MAINTAIN**: No change based on new information
+- **REVISE UP**: Increase confidence due to corroborating evidence from others
+- **REVISE DOWN**: Decrease confidence due to valid critiques or contradictions
+- **ADOPT**: Add a hypothesis from another agent you hadn't considered
+- **ABANDON**: Remove a hypothesis based on fatal critique
+
+### Step 4: Address Critiques Explicitly
+
+For each Red Team critique of your hypotheses:
+- Quote the critique
+- Provide your response (refutation, acknowledgment, or revision)
+
+---
+
+## Output Format
+
+Save to: `.output/{profile}/ensemble-{condition}-{date}/refined-{your-strategy}.md`
+
+```markdown
+---
+phase: refinement
+agent: {your-strategy}
+condition: {condition}
+generated: {YYYY-MM-DD}
+---
+
+# Refined Analysis: {Condition}
+
+## Changes Summary
+
+| Hypothesis | Original Confidence | Revised Confidence | Change Type | Reason |
+|------------|--------------------|--------------------|-------------|--------|
+| {Hyp 1} | 80% | 85% | REVISE UP | Corroborated by genetics-first agent |
+| {Hyp 2} | 60% | 40% | REVISE DOWN | Red Team found valid temporal violation |
+| {Hyp 3} | N/A | 45% | ADOPT | From top-down agent, overlooked initially |
+
+## Insights Adopted from Other Agents
+
+### From Bottom-Up Agent
+- {Insight 1}: {How it changed your analysis}
+
+### From Top-Down Agent
+- {Insight 1}: {How it changed your analysis}
+
+### From Genetics-First Agent
+- {Insight 1}: {How it changed your analysis}
+
+## Red Team Critiques Addressed
+
+### Critique 1: "{Quote from Red Team}"
+**Response**: {Your refutation, acknowledgment, or how you revised}
+
+### Critique 2: "{Quote from Red Team}"
+**Response**: {Your refutation, acknowledgment, or how you revised}
+
+## Unresolved Disagreements
+
+| Topic | Your View | Other Agent's View | Why Unresolved |
+|-------|-----------|-------------------|----------------|
+| {Topic} | {Your position} | {Their position} | {Why you still disagree} |
+
+## Revised Hypothesis Ranking
+
+1. **{Hypothesis Name}**: {Revised confidence}% ({direction} from original)
+2. **{Hypothesis Name}**: {Revised confidence}%
+3. **{Hypothesis Name}**: {Revised confidence}%
+
+## Key Evidence Integrated
+
+[Include any new evidence citations from other agents that you now consider relevant]
+```
+```
+
+### Red Team Review Prompt Template
+
+```markdown
+Review whether other agents addressed your critiques for {condition} investigation.
+
+**Your Original Report**: .output/{profile}/ensemble-{condition}-{date}/agent-redteam.md
+
+**Other Agent Reports**:
+- .output/{profile}/ensemble-{condition}-{date}/agent-bottomup.md
+- .output/{profile}/ensemble-{condition}-{date}/agent-topdown.md
+- .output/{profile}/ensemble-{condition}-{date}/agent-genetics.md
+
+---
+
+## YOUR TASK: Verify Critiques Were Addressed
+
+### Step 1: Inventory Your Critiques
+
+List each contradiction, temporal violation, and alternative explanation you identified.
+
+### Step 2: Check if Other Agents Could Address Them
+
+For each critique:
+- Did any agent have evidence that addresses this?
+- Was the critique actually valid given all evidence?
+- Should you revise your attack based on new information?
+
+### Step 3: Update Survival Ratings
+
+Based on full information from all agents:
+- Did any DESTROYED hypothesis deserve resurrection?
+- Did any SURVIVED hypothesis deserve downgrade?
+
+### Step 4: Revise Counter-Hypotheses
+
+Based on evidence from all agents:
+- Are your counter-hypotheses still viable?
+- Should you add new counter-hypotheses based on others' findings?
+
+---
+
+## Output Format
+
+Save to: `.output/{profile}/ensemble-{condition}-{date}/refined-redteam.md`
+
+```markdown
+---
+phase: refinement
+agent: red-team
+condition: {condition}
+generated: {YYYY-MM-DD}
+---
+
+# Red Team Refinement Review
+
+## Critique Resolution Status
+
+| Critique | Target Hypothesis | Addressed By | Resolution |
+|----------|------------------|--------------|------------|
+| {Critique 1} | {Hypothesis} | {Agent or none} | RESOLVED/UNRESOLVED/INVALID |
+| {Critique 2} | {Hypothesis} | {Agent or none} | RESOLVED/UNRESOLVED/INVALID |
+
+## Revised Survival Ratings
+
+| Hypothesis | Original Rating | Revised Rating | Reason for Change |
+|------------|-----------------|----------------|-------------------|
+| {Hyp 1} | WEAKENED | SURVIVED | Critique was addressed with evidence from genetics agent |
+| {Hyp 2} | SURVIVED | WEAKENED | Found additional contradiction in top-down report |
+
+## Counter-Hypotheses Update
+
+| Counter-Hypothesis | Original Confidence | Revised Confidence | Reason |
+|--------------------|--------------------|--------------------|--------|
+| {Counter 1} | 30% | 45% | New supporting evidence from bottom-up agent |
+| {Counter 2} | 25% | 10% | Genetics ruled out key mechanism |
+
+## Unresolved Critiques
+
+These critiques remain unaddressed and should factor into consensus:
+
+1. **{Critique}**: {Why it remains important}
+2. **{Critique}**: {Why it remains important}
+
+## Final Red Team Assessment
+
+**Strongest Hypothesis Post-Refinement**: {Name} ({confidence}%)
+**Most Viable Counter-Hypothesis**: {Name} ({confidence}%)
+```
+```
+
+### Wait for Refinement Completion
+
+After spawning refinement agents:
+
+```bash
+# Check if all refined output files exist
+ls -la .output/{profile}/ensemble-{condition}-{date}/
+# Expected additions: refined-bottomup.md, refined-topdown.md, refined-genetics.md, refined-redteam.md
+```
+
+Proceed to Phase 3 when all refinement reports complete.
+
+---
+
 ## Phase 3: Evidence Verification Agent
 
 Spawn verification agent AFTER Phase 2 completes:
@@ -730,28 +1107,35 @@ Task tool with:
 ### Evidence Verification Prompt Template
 
 ```markdown
-Verify evidence citations from the ensemble investigation of {condition}.
+Verify evidence citations AND interpretations from the ensemble investigation of {condition}.
 
-**Input Files**:
+**Input Files (include refined versions)**:
 - .output/{profile}/ensemble-{condition}-{date}/agent-bottomup.md
 - .output/{profile}/ensemble-{condition}-{date}/agent-topdown.md
 - .output/{profile}/ensemble-{condition}-{date}/agent-genetics.md
 - .output/{profile}/ensemble-{condition}-{date}/agent-redteam.md
+- .output/{profile}/ensemble-{condition}-{date}/refined-bottomup.md
+- .output/{profile}/ensemble-{condition}-{date}/refined-topdown.md
+- .output/{profile}/ensemble-{condition}-{date}/refined-genetics.md
+- .output/{profile}/ensemble-{condition}-{date}/refined-redteam.md
 
 **Profile Data Sources**:
 - Labs: {labs_path}/all.csv
 - Health Timeline: {health_log_path}/health_log.csv
 - Genetics: {genetics_23andme_path}
 
+**Reference Documentation**:
+- Read `.claude/skills/health-agent/references/interpretation-validation.md` for validation rules
+
 ---
 
-## YOUR TASK: Verify All Evidence Citations
+## YOUR TASK: Verify Evidence AND Interpretations
 
 ### Step 1: Extract All Evidence Citations
 
-Read each agent report and extract the "Evidence Citations" table.
+Read each agent report (original + refined) and extract the "Evidence Citations" table.
 
-### Step 2: Verify Each Citation
+### Step 2: Verify Each Citation Exists
 
 For each citation:
 
@@ -772,11 +1156,42 @@ For each citation:
    grep "^{rsid}" "{genetics_23andme_path}"
    ```
 
-3. **Verify interpretation is reasonable**:
-   - Does the actual value support the claimed interpretation?
-   - Is the direction (high/low/normal) correct?
+### Step 3: Interpretation Validation (NEW - CRITICAL)
 
-### Step 3: Cherry-Picking Detection
+For each interpretation claim, validate using rules from `interpretation-validation.md`:
+
+#### 3a. Unit Consistency Check
+- Extract all citations of the same marker across agents
+- Verify units are consistent or conversions are correct
+- Flag any unit mismatches
+
+#### 3b. Reference Range Accuracy
+- For each "abnormal/elevated/low" claim, verify against actual reference range
+- Check if margin is significant (borderline vs truly abnormal)
+- Flag overclaims (e.g., "significantly elevated" for borderline values)
+
+#### 3c. Pattern Validity
+- For "trend" claims: Verify ≥3 data points AND direction is consistent
+- For "consistent" claims: Verify ≥75% of data points fit the pattern
+- For "correlation" claims: Verify ≥5 paired observations
+- Flag patterns based on insufficient data
+
+#### 3d. Temporal Logic
+- Verify causes precede effects in all causal claims
+- Check time gaps are plausible for claimed mechanisms
+- Flag any temporal violations
+
+#### 3e. Statistical Reasonableness
+- Verify confidence claims match evidence quantity
+- Flag overclaiming from small samples
+- Check if statistical language is appropriate
+
+#### 3f. Causal Overclaiming
+- Distinguish correlation vs causation in agent claims
+- Verify causal language matches evidence strength
+- Flag "causes" claims that should be "associated with"
+
+### Step 4: Cherry-Picking Detection
 
 For each hypothesis:
 - Search for CONTRADICTORY evidence the agent may have ignored
@@ -789,7 +1204,7 @@ Example:
 grep -i "bilirubin" "{labs_path}/all.csv" | awk -F',' '$5 <= $7 && $5 >= $6'
 ```
 
-### Step 4: Completeness Check
+### Step 5: Completeness Check
 
 For each agent, assess:
 - What % of relevant data sources did they query?
@@ -844,6 +1259,58 @@ generated: {YYYY-MM-DD}
 
 ---
 
+## Interpretation Validation Results (NEW)
+
+### Unit Consistency
+| Marker | Agent 1 Unit | Agent 2 Unit | Conversion Valid | Status |
+|--------|-------------|--------------|------------------|--------|
+| {Marker} | {Unit 1} | {Unit 2} | YES/NO | ✓/⚠️/❌ |
+
+**Issues Found**: {List any unit inconsistencies}
+
+### Reference Range Accuracy
+| Claim | Cited Value | Actual Range | True Status | Verdict |
+|-------|-------------|--------------|-------------|---------|
+| "Elevated bilirubin" | 1.3 mg/dL | 0.1-1.2 | Borderline high | ⚠️ Overclaim |
+| "Normal ferritin" | 12 ng/mL | 15-150 | Actually low | ❌ Error |
+
+**Overclaims Detected**: {Count}
+**Errors Detected**: {Count}
+
+### Pattern Validity
+| Pattern Claim | Data Points | Minimum Required | Fit % | Verdict |
+|---------------|-------------|------------------|-------|---------|
+| "Trending upward" | 4 | 3 | 75% | ✓ Valid |
+| "Consistently elevated" | 3 | 4 | 67% | ⚠️ Insufficient |
+
+**Invalid Pattern Claims**: {List}
+
+### Temporal Logic
+| Causal Claim | Cause Date | Effect Date | Time Gap | Verdict |
+|--------------|------------|-------------|----------|---------|
+| "Supplement fixed deficiency" | 2025-01 | 2025-04 | 3 months | ✓ Plausible |
+| "Stress caused headache" | 2025-03-15 | 2025-03-10 | -5 days | ❌ Effect before cause |
+
+**Temporal Violations**: {Count}
+
+### Statistical Reasonableness
+| Claim | Data Size | Appropriate | Verdict |
+|-------|-----------|-------------|---------|
+| "85% confidence" | 2 data points | NO | ❌ Overconfident |
+| "Moderate confidence" | 8 data points | YES | ✓ Reasonable |
+
+**Overclaimed Confidence**: {List}
+
+### Causal Overclaiming
+| Original Claim | Should Be | Severity |
+|----------------|-----------|----------|
+| "X causes Y" | "X associated with Y" | Moderate |
+| "Definitely due to" | "Likely contributes to" | Minor |
+
+**Causal Overclaims**: {Count}
+
+---
+
 ## Cherry-Picking Detection
 
 ### Hypothesis: {Name}
@@ -868,12 +1335,22 @@ generated: {YYYY-MM-DD}
 
 ## Verification Summary
 
-**Total Citations**: X
-**Verified**: Y (Z%)
-**Flagged**: W citations
+**Citation Verification**:
+- Total Citations: X
+- Verified: Y (Z%)
+- Flagged: W citations
 
-**High-Confidence Findings**: [List citations all agents agreed on AND verified]
-**Questionable Findings**: [List citations with verification issues]
+**Interpretation Validation**:
+- Total Interpretations: X
+- Valid: Y (Z%)
+- Overclaims: W
+- Errors: V
+
+**Overall Quality Score**: {X}% (citations verified × interpretations valid)
+
+**High-Confidence Findings**: [Citations verified AND interpretations valid]
+**Questionable Findings**: [Citations or interpretations with issues]
+**Errors Requiring Correction**: [Factual errors that must be addressed in consensus]
 ```
 ```
 
@@ -895,14 +1372,19 @@ Task tool with:
 ```markdown
 Generate calibrated consensus from ensemble investigation of {condition}.
 
-**Input Files**:
+**Input Files (include refined versions)**:
 - .output/{profile}/ensemble-{condition}-{date}/agent-bottomup.md
 - .output/{profile}/ensemble-{condition}-{date}/agent-topdown.md
 - .output/{profile}/ensemble-{condition}-{date}/agent-genetics.md
 - .output/{profile}/ensemble-{condition}-{date}/agent-redteam.md
+- .output/{profile}/ensemble-{condition}-{date}/refined-bottomup.md
+- .output/{profile}/ensemble-{condition}-{date}/refined-topdown.md
+- .output/{profile}/ensemble-{condition}-{date}/refined-genetics.md
+- .output/{profile}/ensemble-{condition}-{date}/refined-redteam.md
 - .output/{profile}/ensemble-{condition}-{date}/evidence-verification.md
 
-**Skills Available**:
+**Reference Documentation**:
+- Read `.claude/skills/health-agent/references/confidence-calibration.md` for calibration formulas
 - Read `.claude/skills/health-agent/scientific-literature-search/skill.md` for blind spot detection
 
 ---
@@ -911,12 +1393,15 @@ Generate calibrated consensus from ensemble investigation of {condition}.
 
 ### Step 1: Hypothesis Inventory
 
-List ALL unique hypotheses across all 4 agent reports:
+List ALL unique hypotheses across all agent reports (use refined versions):
 
-| Hypothesis | Bottom-Up | Top-Down | Genetics | Red-Team |
-|------------|-----------|----------|----------|----------|
-| {Name 1} | ✓ 80% | ✓ 75% | ✗ | SURVIVED |
-| {Name 2} | ✗ | ✓ 40% | ✓ 90% | WEAKENED |
+| Hypothesis | Bottom-Up | Top-Down | Genetics | Red-Team | Counter-Hyp |
+|------------|-----------|----------|----------|----------|-------------|
+| {Name 1} | ✓ 80% | ✓ 75% | ✗ | SURVIVED | No |
+| {Name 2} | ✗ | ✓ 40% | ✓ 90% | WEAKENED | No |
+| {Name 3} | ✗ | ✗ | ✗ | N/A | Yes (RT proposed) |
+
+Include counter-hypotheses from Red Team in the inventory.
 
 ### Step 2: Verified Agreement Scoring
 
@@ -935,7 +1420,7 @@ Example:
 
 ### Step 3: Contradiction Weighting
 
-Adjust scores based on Red Team results:
+Adjust scores based on Red Team results (use refined ratings):
 
 ```
 Contradiction Survival Factor:
@@ -944,7 +1429,65 @@ Contradiction Survival Factor:
 - DESTROYED by Red Team (fatal contradiction): × 0.1
 ```
 
-### Step 4: Blind Spot Detection (CRITICAL)
+### Step 4: Diagnostic Gap Penalty (NEW - CRITICAL)
+
+Reduce confidence when key diagnostic tests are unavailable. Reference: `confidence-calibration.md`
+
+**Step 4a: Identify Missing Tests**
+
+For each hypothesis, list diagnostic tests that could confirm/refute it but are unavailable:
+
+| Hypothesis | Missing Test | Test Type | P(would change dx) |
+|------------|--------------|-----------|-------------------|
+| {Hyp 1} | EMA binding test | Gold standard | 30% |
+| {Hyp 1} | Direct Coombs | Confirmatory | 40% |
+
+**Step 4b: Calculate Gap Penalty**
+
+```
+Individual Penalty = P(test would change diagnosis) × 0.10
+Total Gap Penalty = min(Σ Individual Penalties, 0.30)  # Capped at 30%
+
+Gap-Adjusted Confidence = Raw Confidence × (1 - Gap Penalty)
+```
+
+Example:
+- Raw confidence: 78%
+- Missing EMA: 3%, Missing Coombs: 4%, Missing bone marrow: 1.5%
+- Total gap penalty: 8.5%
+- Gap-adjusted: 78% × (1 - 0.085) = 71.4%
+
+### Step 5: Epidemiological Priors (NEW)
+
+Adjust for condition prevalence. Reference: `confidence-calibration.md`
+
+**Step 5a: Obtain Priors**
+
+Query literature for prevalence of each hypothesis:
+1. Search: "epidemiology {condition}" or "prevalence {condition}"
+2. Adjust for patient demographics (age, gender, ancestry)
+
+**Step 5b: Apply Bayesian Adjustment**
+
+```
+Posterior = (Likelihood × Prior) / Σ(Likelihood_i × Prior_i)
+
+Where:
+- Likelihood = Evidence support score (0-1)
+- Prior = Population prevalence
+```
+
+| Hypothesis | Evidence Likelihood | Raw Prior | Demo-Adjusted Prior |
+|------------|--------------------|-----------|--------------------|
+| {Hyp 1} | 0.75 | 1:2000 | 1:2000 |
+| {Hyp 2} | 0.70 | 1:100000 | 1:100000 |
+
+**When to skip priors**:
+- Evidence is overwhelming (likelihood >0.95)
+- Patient has known risk factors changing their prior
+- Rare disease specialist referral (selection bias)
+
+### Step 6: Blind Spot Detection (CRITICAL)
 
 Query literature for known causes of {condition} NOT proposed by any agent:
 
@@ -956,10 +1499,17 @@ Query literature for known causes of {condition} NOT proposed by any agent:
    - Generate brief assessment (could this apply?)
    - Note if worth investigating
 
-### Step 5: Calibrated Confidence Calculation
+### Step 7: Full Calibrated Confidence Calculation
+
+Reference: `confidence-calibration.md`
 
 ```
-Final Confidence = Base × Agreement × Evidence_Quality × Contradiction_Survival
+Calibrated Confidence =
+    Raw_Confidence
+    × (1 - Gap_Penalty)
+    × Evidence_Quality
+    × Red_Team_Survival
+    × Prior_Adjustment  # If applicable
 
 Evidence Quality Weights:
 - Genetics confirmation: 1.0
@@ -976,9 +1526,19 @@ Contradiction Survival:
 - Fatal contradiction found: 0.1
 ```
 
-### Step 6: Generate Final Ranking
+### Step 8: Generate Final Ranking with Falsification Criteria
 
-Order hypotheses by calibrated confidence with uncertainty ranges.
+Order hypotheses by calibrated confidence. For EACH hypothesis, include:
+
+1. **What would CONFIRM this hypothesis**:
+   - Specific test results
+   - Specific findings
+
+2. **What would REFUTE this hypothesis**:
+   - Specific contradicting evidence
+   - Specific test results
+
+3. **Recommended next steps** (ordered by cost/invasiveness)
 
 ---
 
@@ -993,7 +1553,8 @@ condition: {condition}
 generated: {YYYY-MM-DD}
 profile: {profile}
 agents: 4
-phases: 5
+phases: 6
+refinement: true
 ---
 
 # Ensemble Root Cause Investigation: {Condition}
@@ -1004,6 +1565,7 @@ phases: 5
 **Calibrated Confidence**: {XX}% (±Y%)
 **Agreement**: X/4 agents
 **Red Team Status**: SURVIVED / WEAKENED
+**Gap Penalty Applied**: {X}% (for missing tests)
 
 {2-3 sentence summary of investigation findings}
 
@@ -1015,13 +1577,50 @@ This investigation used 4 parallel agents with different reasoning strategies:
 1. **Bottom-Up**: Data-driven pattern discovery
 2. **Top-Down**: Systematic differential diagnosis
 3. **Genetics-First**: Genetic etiology prioritization
-4. **Red Team**: Adversarial hypothesis testing
+4. **Red Team**: Adversarial hypothesis testing with alternative proposals
 
-All evidence citations were verified. Blind spot analysis checked for missed causes.
+Enhanced with:
+- **Cross-Agent Refinement**: Agents reviewed each other's findings and revised
+- **Interpretation Validation**: Verified not just citations but interpretation validity
+- **Diagnostic Gap Penalty**: Confidence reduced for missing confirmatory tests
+- **Epidemiological Priors**: Adjusted for condition prevalence
+- **Falsification Criteria**: Each hypothesis specifies confirmation/refutation conditions
 
 ---
 
-## Hypothesis Ranking (Calibrated)
+## Diagnostic Gap Assessment (NEW)
+
+### Missing Tests That Could Change Diagnosis
+
+| Missing Test | Test Type | Relevant Hypotheses | P(would change dx) | Penalty |
+|--------------|-----------|---------------------|-------------------|---------|
+| {Test 1} | Gold standard | {Hyp A, B} | 30% | 3% |
+| {Test 2} | Confirmatory | {Hyp A} | 20% | 2% |
+| {Test 3} | Rule-out | {Hyp C} | 40% | 4% |
+
+**Total Gap Penalty**: {X}% (capped at 30%)
+
+**Interpretation**: Confidence is reduced by {X}% because these tests, if available, could confirm or refute the hypotheses. This is a limitation, not a flaw in the investigation.
+
+---
+
+## Epidemiological Prior Analysis (NEW)
+
+### Condition Prevalence Comparison
+
+| Hypothesis | Evidence Likelihood | Population Prevalence | Demo-Adjusted | Bayesian Posterior |
+|------------|--------------------|-----------------------|---------------|-------------------|
+| {Hyp 1} | 0.75 | 1:2000 (0.05%) | Same | 85% |
+| {Hyp 2} | 0.70 | 1:100000 (0.001%) | Same | 3% |
+| {Hyp 3} | 0.50 | 1:20 (5%) | Same | 12% |
+
+**Prior Sources**: [PMID citations for epidemiology data]
+
+**Adjustment Applied**: {YES with explanation / NO with reason (e.g., evidence overwhelming)}
+
+---
+
+## Hypothesis Ranking (Fully Calibrated)
 
 ### Rank 1: {Hypothesis Name}
 
@@ -1029,42 +1628,78 @@ All evidence citations were verified. Blind spot analysis checked for missed cau
 
 | Metric | Value |
 |--------|-------|
-| Agent Agreement | X/4 |
+| Agent Agreement | X/4 (refined) |
 | Verified Citations | Y% |
+| Interpretation Validity | Z% |
 | Evidence Quality | {HIGH/MODERATE/LOW} |
 | Red Team Status | SURVIVED/WEAKENED |
+| Gap Penalty | -{X}% |
+| Prior Adjustment | {×Y or N/A} |
 | Blind Spot Risk | LOW |
 
-**Calculation**:
+**Full Calculation**:
 ```
-Base: {X}%
-× Agreement (X/4): {Y}%
-× Evidence Quality: {Z}%
-× Red Team Survival: {W}%
-= Final: {XX}%
+Raw Confidence: {X}%
+× (1 - Gap Penalty {Y}%): {Z}%
+× Evidence Quality: {W}%
+× Red Team Survival: {V}%
+× Prior Adjustment: {U}
+= Calibrated: {XX}%
+Uncertainty: ±{Y}%
 ```
 
-**Supporting Evidence** (verified):
+**Supporting Evidence** (verified + interpretation validated):
 1. ✅ {Evidence 1 with citation}
 2. ✅ {Evidence 2 with citation}
 
-**Contradictions** (addressed):
-1. ⚠️ {Contradiction 1 - explanation}
+**Contradictions** (addressed in refinement):
+1. ⚠️ {Contradiction 1 - explanation from refined report}
 
 **Mechanism** (literature-supported):
 {Biological pathway with PMID citations}
+
+#### Falsification Criteria (NEW)
+
+**This hypothesis would be CONFIRMED if**:
+- [ ] {Specific test result (e.g., "EMA binding test positive")}
+- [ ] {Specific finding (e.g., "Bone marrow shows specific morphology")}
+- [ ] {Specific genetic test (e.g., "Clinical sequencing finds pathogenic variant")}
+
+**This hypothesis would be REFUTED if**:
+- [ ] {Specific contradicting evidence (e.g., "Direct Coombs test positive")}
+- [ ] {Specific test result (e.g., "Normal osmotic fragility")}
+- [ ] {Specific finding (e.g., "No family history after detailed inquiry")}
+
+**Recommended Next Steps** (ordered by cost/invasiveness):
+1. {Low cost/invasive}: {Test and expected result}
+2. {Moderate}: {Test and expected result}
+3. {Higher}: {Test and expected result if still unresolved}
 
 ---
 
 ### Rank 2: {Hypothesis Name}
 
-[Same structure]
+[Same structure including falsification criteria]
 
 ---
 
 ### Rank 3: {Hypothesis Name}
 
-[Same structure]
+[Same structure including falsification criteria]
+
+---
+
+## Counter-Hypotheses from Red Team
+
+Red Team proposed these alternatives that deserve consideration:
+
+### Counter-Hypothesis: {Name}
+
+**Origin**: Proposed by Red Team when destroying/weakening {original hypothesis}
+**Red Team Confidence**: {X}%
+**Evidence Supporting**: {List}
+**Why Not Ranked Higher**: {Explanation}
+**Worth Investigating**: YES/NO
 
 ---
 
@@ -1080,15 +1715,33 @@ Base: {X}%
 
 ---
 
+## Cross-Agent Refinement Impact
+
+### How Refinement Changed Results
+
+| Hypothesis | Pre-Refinement | Post-Refinement | Change |
+|------------|----------------|-----------------|--------|
+| {Hyp 1} | 75% | 80% | +5% (corroborated) |
+| {Hyp 2} | 60% | 45% | -15% (critique addressed) |
+
+### Red Team Critiques Resolution
+
+| Critique | Status | Resolution |
+|----------|--------|------------|
+| {Critique 1} | RESOLVED | {How addressed} |
+| {Critique 2} | UNRESOLVED | {Still factors into confidence} |
+
+---
+
 ## Unresolved Conflicts
 
-Where agents disagreed:
+Where agents disagreed after refinement:
 
 | Topic | Bottom-Up | Top-Down | Genetics | Red-Team |
 |-------|-----------|----------|----------|----------|
 | {Issue 1} | {View} | {View} | {View} | {View} |
 
-**Resolution**: {How to resolve this disagreement}
+**Resolution Path**: {How to resolve this disagreement}
 
 ---
 
@@ -1100,22 +1753,37 @@ Where agents disagreed:
 | Lab pattern | Y | 0.8 | {YY}% |
 | Timeline correlation | Z | 0.5 | {ZZ}% |
 
+**Interpretation Validation**:
+- Valid interpretations: {X}%
+- Overclaims corrected: {Y}
+- Errors identified: {Z}
+
 ---
 
 ## Recommended Follow-Up
 
-### High Priority
-1. {Test/Investigation 1}: Would confirm/refute primary hypothesis
-2. {Test/Investigation 2}: Would resolve blind spot
+### High Priority (Would Resolve Diagnosis)
+1. {Test 1}: Would {confirm/refute} primary hypothesis
+   - If positive: Confirms {hypothesis}
+   - If negative: Refutes {hypothesis}, investigate {alternative}
 
-### Moderate Priority
-3. {Test/Investigation 3}: Additional confirmation
+2. {Test 2}: Would resolve diagnostic gap
+   - Addresses missing test penalty of {X}%
+
+### Moderate Priority (Additional Confirmation)
+3. {Test 3}: Additional supporting evidence
+
+### Blind Spot Investigation
+4. {Test 4}: Would rule out {blind spot condition}
 
 ---
 
 ## Limitations
 
 - Agent agreement ≠ correctness (all agents can make same error)
+- Cross-agent refinement helps but doesn't eliminate correlated errors
+- Gap penalty estimates are approximate
+- Epidemiological priors may not reflect patient-specific risk factors
 - 23andMe genetics limited to ~631k SNPs
 - Timeline data depends on user's recording accuracy
 - Literature search limited to PubMed/Semantic Scholar
@@ -1124,16 +1792,19 @@ Where agents disagreed:
 
 ## Medical Disclaimer
 
-This ensemble investigation is a data-driven analysis using multiple reasoning strategies. **This is not medical advice**.
+This ensemble investigation is a data-driven analysis using multiple reasoning strategies, cross-agent refinement, and calibrated confidence calculations. **This is not medical advice**.
 
-- Calibrated confidence reflects data support, not diagnostic certainty
+- Calibrated confidence reflects data support and uncertainty, not diagnostic certainty
+- Gap-adjusted confidence acknowledges missing diagnostic tests
 - Multiple mechanisms may coexist
 - Blind spots may still exist despite detection efforts
-- Always consult healthcare provider for clinical decisions
+- Falsification criteria are for informational purposes
+- Always consult healthcare provider for clinical decisions and diagnostic testing
 
 ---
 
-*Ensemble investigation completed using 4 parallel agents + verification + consensus*
+*Ensemble investigation completed using 4 parallel agents + refinement + verification + consensus*
+*Phases: 6 (spawn → refine → verify → consensus → blind spots → report)*
 *Generated: {YYYY-MM-DD}*
 *Profile: {profile}*
 ```
@@ -1151,12 +1822,16 @@ ls -la .output/{profile}/ensemble-{condition}-{date}/
 ```
 
 Expected files:
-- `agent-bottomup.md`
-- `agent-topdown.md`
-- `agent-genetics.md`
-- `agent-redteam.md`
-- `evidence-verification.md`
-- `consensus-final.md`
+- `agent-bottomup.md` (Phase 1)
+- `agent-topdown.md` (Phase 1)
+- `agent-genetics.md` (Phase 1)
+- `agent-redteam.md` (Phase 1)
+- `refined-bottomup.md` (Phase 2.5)
+- `refined-topdown.md` (Phase 2.5)
+- `refined-genetics.md` (Phase 2.5)
+- `refined-redteam.md` (Phase 2.5)
+- `evidence-verification.md` (Phase 3)
+- `consensus-final.md` (Phase 4)
 
 2. Return summary to user:
 
@@ -1167,11 +1842,18 @@ Expected files:
 **Output Directory**: `.output/{profile}/ensemble-{condition}-{date}/`
 
 **Files Generated**:
-- 4 agent investigation reports
-- Evidence verification report
-- Final consensus report
+- 4 agent investigation reports (Phase 1)
+- 4 refined reports after cross-agent review (Phase 2.5)
+- Evidence & interpretation verification report (Phase 3)
+- Final consensus report with calibrated confidence (Phase 4)
 
-**Primary Hypothesis**: {Name} ({XX}% calibrated confidence)
+**Primary Hypothesis**: {Name}
+**Calibrated Confidence**: {XX}% (±Y%)
+**Gap Penalty Applied**: -{Z}% (for {N} missing tests)
+
+### Key Falsification Criteria
+**Would confirm**: {top 2 confirmation criteria}
+**Would refute**: {top 2 refutation criteria}
 
 **Read full consensus**: `.output/{profile}/ensemble-{condition}-{date}/consensus-final.md`
 ```
@@ -1184,10 +1866,15 @@ Expected files:
 |----------|--------|
 | **Agent timeout (>15 min)** | Proceed with available agents; note gap in consensus |
 | **Agent fails** | Log error; reduce consensus confidence |
+| **Refinement agent fails** | Use original (unrefined) report; note limitation |
 | **No genetics data** | Genetics-first agent adapts; notes limitation |
 | **All agents agree on wrong hypothesis** | Blind spot detection queries literature for alternatives |
 | **Verification finds >30% citation errors** | Flag low-quality investigation; recommend re-run |
+| **Interpretation validation finds >20% errors** | Flag interpretation issues; adjust confidence accordingly |
 | **No clear consensus** | Report uncertainty; list discriminating tests needed |
+| **Red Team proposes no alternatives** | Flag incomplete Red Team analysis; reduce adversarial confidence weight |
+| **Gap penalty exceeds 30%** | Cap at 30%; note severe diagnostic limitations |
+| **Epidemiological priors unavailable** | Skip prior adjustment; note limitation in report |
 
 ---
 
@@ -1199,33 +1886,52 @@ Expected files:
 
 1. Load profile and extract data source paths
 
-2. Spawn 4 agents in parallel (single message with 4 Task calls):
+2. **Phase 1**: Spawn 4 agents in parallel (single message with 4 Task calls):
    - Bottom-Up: Start with all abnormal labs, find hemolysis patterns
    - Top-Down: Differential diagnosis of hemolysis (hereditary vs acquired)
    - Genetics-First: Check spherocytosis genes, G6PD, pyruvate kinase, etc.
-   - Red Team: Try to disprove hemolysis hypotheses
+   - Red Team: Try to disprove hemolysis hypotheses AND propose alternatives
 
-3. Wait for all agents to complete (background)
+3. **Phase 2**: Wait for all agents to complete (background)
 
-4. Spawn Evidence Verification Agent:
+4. **Phase 2.5 (NEW)**: Spawn 4 refinement agents in parallel:
+   - Each agent reviews others' findings
+   - Agents revise hypotheses based on new evidence
+   - Red Team verifies if critiques were addressed
+   - Results in refined-*.md files
+
+5. **Phase 3**: Spawn Evidence Verification Agent:
    - Check all lab value citations
    - Verify genetic findings
+   - **Validate interpretations** (unit consistency, temporal logic, pattern validity)
    - Detect cherry-picking
 
-5. Spawn Consensus Agent:
-   - Merge verified findings
-   - Calculate calibrated confidence
+6. **Phase 4**: Spawn Consensus Agent:
+   - Merge verified findings (use refined versions)
+   - **Apply diagnostic gap penalty** for missing tests
+   - **Incorporate epidemiological priors**
+   - Calculate fully calibrated confidence
    - Check blind spots (query literature for other hemolysis causes)
+   - **Add falsification criteria** for each hypothesis
    - Generate final ranking
 
-6. Return:
+7. **Phase 5**: Return:
    ```
    ## Ensemble Investigation Complete
 
-   **Primary Hypothesis**: Hereditary Spherocytosis (85% calibrated confidence)
-   - 4/4 agents proposed
-   - Survived Red Team
-   - Genetics confirmed
+   **Primary Hypothesis**: Hereditary Spherocytosis
+   **Calibrated Confidence**: 54% (±10%)
+   **Gap Penalty Applied**: -10.5% (missing EMA, Coombs, bone marrow)
+
+   ### Key Falsification Criteria
+   **Would confirm**: Positive EMA binding test, clinical gene panel confirms ANK1/SPTB
+   **Would refute**: Positive direct Coombs (autoimmune), normal osmotic fragility
+
+   - 4/4 agents proposed (refined)
+   - Survived Red Team (critiques addressed in refinement)
+   - Genetics support found (23andMe variant)
+   - Interpretation validation: 95% valid
+   - Red Team counter-hypothesis: Congenital Dyserythropoietic Anemia (15% confidence)
 
    **Output**: .output/{profile}/ensemble-chronic-hemolysis-2026-01-22/consensus-final.md
    ```
@@ -1236,13 +1942,19 @@ Expected files:
 
 | Aspect | Standard | Ensemble |
 |--------|----------|----------|
-| **Agents** | 1 | 4 parallel + 2 sequential |
+| **Agents** | 1 | 4 parallel + 4 refinement + 2 sequential |
 | **Reasoning paths** | Single | 4 independent strategies |
-| **Adversarial testing** | Optional | Mandatory |
+| **Cross-agent learning** | No | Yes (Phase 2.5 refinement) |
+| **Adversarial testing** | Optional | Mandatory + alternatives required |
 | **Evidence verification** | No | Yes |
+| **Interpretation validation** | No | Yes (unit, temporal, statistical checks) |
 | **Blind spot detection** | No | Yes |
-| **Confidence calibration** | Subjective | Calculated from metrics |
-| **Execution time** | ~5-10 min | ~15-20 min |
+| **Diagnostic gap penalty** | No | Yes (reduces overconfidence) |
+| **Epidemiological priors** | No | Yes (Bayesian adjustment) |
+| **Falsification criteria** | No | Yes (per hypothesis) |
+| **Confidence calibration** | Subjective | Fully calculated from metrics |
+| **Counter-hypotheses** | No | Yes (from Red Team) |
+| **Execution time** | ~5-10 min | ~20-30 min |
 | **Use case** | Routine investigation | High-stakes, complex cases |
 
-Use standard `investigate-root-cause` for routine cases. Use ensemble for complex cases requiring maximum diagnostic accuracy.
+Use standard `investigate-root-cause` for routine cases. Use ensemble for complex cases requiring maximum diagnostic accuracy and calibrated confidence.
