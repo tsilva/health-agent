@@ -8,7 +8,7 @@
   [![Skills](https://img.shields.io/badge/Skills-6-green)](CLAUDE.md)
   [![Data Sources](https://img.shields.io/badge/Data_Sources-4-orange)](#data-sources)
 
-  **Unify lab results, medical exams, and health journals into actionable insights with Claude Code**
+  **🩺 Unify lab results, medical exams, and health journals into actionable insights with Claude Code 📊**
 
   [Documentation](CLAUDE.md) · [Profile Template](profiles/_template.yaml)
 
