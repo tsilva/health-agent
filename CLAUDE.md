@@ -447,7 +447,7 @@ All large files (`all.csv`, `health_log.csv`, `health_log.md`) typically exceed 
 
 ## Built-in Skills
 
-Six core skills provide specialized capabilities in `.claude/skills/health-agent/`.
+Seven core skills provide specialized capabilities in `.claude/skills/health-agent/`.
 
 ### How to Use Skills
 
@@ -493,6 +493,7 @@ Six core skills provide specialized capabilities in `.claude/skills/health-agent
 | `genetics-validate-interpretation` | `.claude/skills/health-agent/genetics-validate-interpretation/SKILL.md` |
 | `scientific-literature-search` | `.claude/skills/health-agent/scientific-literature-search/skill.md` |
 | `investigate-root-cause` | `.claude/skills/health-agent/investigate-root-cause/SKILL.md` |
+| `ensemble-investigate-root-cause` | `.claude/skills/health-agent/ensemble-investigate-root-cause/SKILL.md` |
 | `prepare-provider-visit` | `.claude/skills/health-agent/prepare-provider-visit/skill.md` |
 | `generate-questionnaire` | `.claude/skills/health-agent/generate-questionnaire/SKILL.md` |
 
@@ -509,6 +510,7 @@ Six core skills provide specialized capabilities in `.claude/skills/health-agent
 | Skill | Use When |
 |-------|----------|
 | `investigate-root-cause` | User asks "investigate root cause of [condition]", "why do I have [condition]", "find the cause of [symptom]", or "what's causing my [condition]". Performs multi-turn hypothesis investigation with evidence gathering, mechanism validation via literature search, and comprehensive genetic analysis. |
+| `ensemble-investigate-root-cause` | User asks for "high-confidence investigation", "maximum diagnostic accuracy", "ensemble investigation", or when standard investigate-root-cause is inconclusive. Runs 4 parallel agents (bottom-up, top-down, genetics-first, red team) with evidence verification and blind spot detection for calibrated confidence. |
 | `prepare-provider-visit` | User asks to "prepare for doctor visit", "generate provider summary", or "create medical documentation". Intelligently orchestrates data gathering based on visit type (annual/specialist/follow-up/urgent) and generates coherent provider-appropriate narratives. |
 | `generate-questionnaire` | User asks to create questionnaire or systematically augment health log data with structured gap analysis. |
 
