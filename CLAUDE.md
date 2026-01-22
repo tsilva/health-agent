@@ -34,6 +34,12 @@ data_sources:
   exams_path: "/path/to/medical-exams-parser/output/"
   health_log_path: "/path/to/health-log-parser/output/"
   genetics_23andme_path: "/path/to/23andme_raw_data.txt"  # Optional
+
+  # SelfDecode (optional - for imputed SNP coverage beyond 23andMe)
+  selfdecode:
+    enabled: false
+    username_env: "SELFDECODE_USERNAME"   # Environment variable name
+    password_env: "SELFDECODE_PASSWORD"   # Environment variable name
 ```
 
 ## Data Source Schemas
@@ -466,16 +472,14 @@ Seven core skills provide specialized capabilities in `.claude/skills/health-age
    - Follow a multi-step workflow
 
 3. **For orchestration skills** (investigate-root-cause, prepare-provider-visit, generate-questionnaire):
-   - The SKILL.md contains a prompt template for spawning a `general-purpose` Task agent
-   - Read the skill, then spawn the Task with the provided prompt structure
+   - The SKILL.md contains a prompt template for spawning `general-purpose` Task agents
+   - Read the skill, then spawn the Tasks with the provided prompt structure
 
 **Example - Using investigate-root-cause:**
 ```
-1. Read .claude/skills/health-agent/investigate-root-cause/SKILL.md
-2. Follow instructions to spawn Task agent with:
-   - subagent_type: "general-purpose"
-   - description: "Investigate root cause of {condition}"
-   - prompt: [Use template from SKILL.md with profile data paths filled in]
+1. Read .claude/skills/health-agent/ensemble-investigate-root-cause/SKILL.md
+2. Follow instructions to spawn 4 parallel Task agents (Phase 1), then refinement agents (Phase 2.5), verification (Phase 3), and consensus (Phase 4)
+3. The skill provides complete prompt templates for each agent type
 ```
 
 **Example - Using genetics-snp-lookup:**
@@ -490,10 +494,10 @@ Seven core skills provide specialized capabilities in `.claude/skills/health-age
 | Skill | Path |
 |-------|------|
 | `genetics-snp-lookup` | `.claude/skills/health-agent/genetics-snp-lookup/SKILL.md` |
+| `genetics-selfdecode-lookup` | `.claude/skills/health-agent/genetics-selfdecode-lookup/SKILL.md` |
 | `genetics-validate-interpretation` | `.claude/skills/health-agent/genetics-validate-interpretation/SKILL.md` |
 | `scientific-literature-search` | `.claude/skills/health-agent/scientific-literature-search/skill.md` |
-| `investigate-root-cause` | `.claude/skills/health-agent/investigate-root-cause/SKILL.md` |
-| `ensemble-investigate-root-cause` | `.claude/skills/health-agent/ensemble-investigate-root-cause/SKILL.md` |
+| `investigate-root-cause` | `.claude/skills/health-agent/ensemble-investigate-root-cause/SKILL.md` |
 | `prepare-provider-visit` | `.claude/skills/health-agent/prepare-provider-visit/skill.md` |
 | `generate-questionnaire` | `.claude/skills/health-agent/generate-questionnaire/SKILL.md` |
 
@@ -502,6 +506,7 @@ Seven core skills provide specialized capabilities in `.claude/skills/health-age
 | Skill | Use When |
 |-------|----------|
 | `genetics-snp-lookup` | User asks to look up specific SNPs (e.g., "rs12345"), check pharmacogenomics genes (CYP2D6, CYP2C19, etc.), or query health risk variants (APOE, Factor V Leiden, etc.). Queries SNPedia API with 30-day caching. |
+| `genetics-selfdecode-lookup` | User asks for imputed SNP data, SNP not found in 23andMe, or specifically requests SelfDecode lookup. Requires authenticated web scraping with 30-day caching. Provides ~20M+ imputed SNPs vs 631k raw. |
 | `genetics-validate-interpretation` | User wants to validate genetic interpretations against SNPedia or cross-reference allele orientation. |
 | `scientific-literature-search` | User asks to find research papers, verify biological mechanisms, or needs authoritative citations. Queries PubMed + Semantic Scholar with 30-day caching. Used automatically in root cause investigations. |
 
@@ -509,8 +514,7 @@ Seven core skills provide specialized capabilities in `.claude/skills/health-age
 
 | Skill | Use When |
 |-------|----------|
-| `investigate-root-cause` | User asks "investigate root cause of [condition]", "why do I have [condition]", "find the cause of [symptom]", or "what's causing my [condition]". Performs multi-turn hypothesis investigation with evidence gathering, mechanism validation via literature search, and comprehensive genetic analysis. |
-| `ensemble-investigate-root-cause` | User asks for "high-confidence investigation", "maximum diagnostic accuracy", "ensemble investigation", or when standard investigate-root-cause is inconclusive. Runs 4 parallel agents (bottom-up, top-down, genetics-first, red team) with evidence verification and blind spot detection for calibrated confidence. |
+| `investigate-root-cause` | User asks "investigate root cause of [condition]", "why do I have [condition]", "find the cause of [symptom]", or "what's causing my [condition]". Runs 4 parallel agents (bottom-up, top-down, genetics-first, red team) with cross-agent refinement, interpretation validation, diagnostic gap penalties, epidemiological priors, and calibrated confidence with falsification criteria. |
 | `prepare-provider-visit` | User asks to "prepare for doctor visit", "generate provider summary", or "create medical documentation". Intelligently orchestrates data gathering based on visit type (annual/specialist/follow-up/urgent) and generates coherent provider-appropriate narratives. |
 | `generate-questionnaire` | User asks to create questionnaire or systematically augment health log data with structured gap analysis. |
 
@@ -536,23 +540,36 @@ All health data analysis (lab trends, abnormal values, episodes, correlations, m
 
 ### Genetics Data Sources
 
-All genetics interpretations come from **SNPedia** via the `genetics-snp-lookup` skill:
-- **Centralized lookup mechanism**: Single skill handles all genetic queries
-- **Online data source**: Queries SNPedia MediaWiki API for up-to-date interpretations
-- **Caching**: 30-day TTL to minimize API calls and improve performance
-- **Coverage**: 631k+ SNPs from 23andMe data
+Two genetics data sources are available:
+
+**SNPedia** via `genetics-snp-lookup`:
+- **Primary source**: Public API, no authentication required
+- **Coverage**: 631k+ SNPs from 23andMe raw data
+- **Interpretations**: Community-curated research summaries
+- **Caching**: 30-day TTL
+
+**SelfDecode** via `genetics-selfdecode-lookup` (optional):
+- **Secondary source**: Authenticated web scraping
+- **Coverage**: ~20M+ imputed SNPs (more than raw 23andMe)
+- **Interpretations**: SelfDecode's health effect assessments
+- **Caching**: 30-day TTL
+- **Requires**: SelfDecode account + credentials in environment variables
+
+**Lookup strategy**:
+1. **First**: Check 23andMe raw data via `genetics-snp-lookup` (most reliable, directly genotyped)
+2. **Second**: If SNP not found and SelfDecode is configured, check `genetics-selfdecode-lookup` for imputed data
+3. **Always**: Use SNPedia for interpretation context (research citations, mechanisms)
+
+**Supported variants**:
 - **Drug metabolism**: CYP2D6, CYP2C19, CYP2C9, VKORC1, SLCO1B1, TPMT, DPYD
 - **Health risks**: APOE, Factor V Leiden, HFE hemochromatosis, MTHFR, BRCA founder mutations
 
-When users ask about genetics:
-1. Read `.claude/skills/health-agent/genetics-snp-lookup/SKILL.md`
-2. Follow the skill instructions to query SNPedia for the relevant SNPs
-
-Example user queries that should trigger this skill:
-- "Look up rs12345"
-- "Check my CYP2D6 status"
-- "What's my APOE genotype?"
-- "Search for Factor V Leiden"
+**Example user queries**:
+- "Look up rs12345" → `genetics-snp-lookup`
+- "Check my CYP2D6 status" → `genetics-snp-lookup`
+- "What's my APOE genotype?" → `genetics-snp-lookup`
+- "Check selfdecode for rs12345" → `genetics-selfdecode-lookup`
+- "Look up imputed genotype for rs..." → `genetics-selfdecode-lookup`
 
 ## Creating Custom Skills
 
@@ -659,7 +676,7 @@ The Write tool works in sandboxed mode for files within the project directory. B
 
 ## Root Cause Investigation
 
-The `investigate-root-cause` skill automates comprehensive hypothesis generation and testing for health conditions.
+The `investigate-root-cause` skill automates comprehensive hypothesis generation and testing for health conditions using an ensemble of 4 parallel agents with different reasoning strategies.
 
 ### Invocation
 
@@ -670,68 +687,69 @@ The `investigate-root-cause` skill automates comprehensive hypothesis generation
 - "What's causing my [condition]?"
 
 **How to invoke**:
-1. Read `.claude/skills/health-agent/investigate-root-cause/SKILL.md`
-2. Follow the skill instructions to spawn a Task agent with:
-   - `subagent_type`: "general-purpose"
-   - `description`: "Investigate root cause of {condition}"
-   - `prompt`: Use the template from SKILL.md, filling in profile data paths
+1. Read `.claude/skills/health-agent/ensemble-investigate-root-cause/SKILL.md`
+2. Follow the skill instructions to spawn agents across 6 phases
 
 ### How It Works
 
-1. **Invocation**: Read the SKILL.md and spawn Task agent per its instructions
-2. **Process**: The spawned agent:
-   - Gathers evidence using analysis patterns from CLAUDE.md (timeline events, lab trends, abnormal values, medications, exams)
-   - Performs comprehensive genetic analysis via `genetics-snp-lookup` (checks ALL condition-relevant genes)
-   - Generates 3-5 competing hypotheses with biological mechanisms
-   - **Queries scientific literature** via `scientific-literature-search` for ALL proposed mechanisms (MANDATORY)
-   - Tests hypotheses against data (searches for contradictions, identifies confounds)
-   - Ranks hypotheses by supporting evidence
-   - Iterates and refines based on contradictions
-3. **Output**: Saved to `.output/{profile}/hypothesis-investigation-{condition}-YYYY-MM-DD.md`
+The investigation uses 4 parallel agents with different reasoning strategies, followed by refinement and verification:
+
+**Phase 1**: Spawn 4 investigation agents in parallel:
+- **Bottom-Up**: Data-driven pattern discovery (no preconceptions)
+- **Top-Down**: Systematic differential diagnosis
+- **Genetics-First**: Genetic etiology prioritization
+- **Red Team**: Adversarial testing with alternative proposals
+
+**Phase 2.5**: Cross-agent refinement - each agent reviews others' findings and revises
+
+**Phase 3**: Evidence verification + interpretation validation (unit consistency, temporal logic, statistical reasonableness)
+
+**Phase 4**: Consensus with calibrated confidence calculation including:
+- Diagnostic gap penalty (reduces confidence for missing tests)
+- Epidemiological priors (Bayesian adjustment for condition prevalence)
+- Falsification criteria (what would confirm/refute each hypothesis)
+
+**Output**: Saved to `.output/{profile}/ensemble-{condition}-{date}/consensus-final.md`
 
 ### Output Format
 
-Hypothesis investigation reports include:
-- **Ranked hypotheses** (High/Medium/Low likelihood with percentages)
-- **Supporting evidence** with data citations (dates, lab values, timeline events, genetics findings)
-- **Contradictory evidence** with explanations or acknowledgment
-- **Genetic analysis** (comprehensive check of condition-relevant genes with both positive and negative findings)
-- **Biological mechanisms** with literature citations from PubMed/Semantic Scholar
-- **Confounding factors** that could explain observations
-- **Testable predictions** (what should be true if hypothesis is correct)
-- **Recommended follow-up investigations** (what data to collect next)
+Investigation reports include:
+- **Ranked hypotheses** with fully calibrated confidence (±uncertainty)
+- **Diagnostic gap assessment** (missing tests and their impact on confidence)
+- **Epidemiological prior analysis** (prevalence-adjusted probabilities)
+- **Supporting evidence** (verified citations with interpretation validation)
+- **Contradictions addressed** (from cross-agent refinement)
+- **Genetic analysis** (comprehensive check via SNPedia)
+- **Biological mechanisms** with literature citations
+- **Falsification criteria** (what would confirm/refute each hypothesis)
+- **Counter-hypotheses** from Red Team
+- **Blind spots detected** (causes no agent investigated)
+- **Recommended follow-up** (ordered by cost/invasiveness)
 
-### Available Tools for Investigation Agent
+### Key Features
 
-The hypothesis investigation agent has access to:
-- **Analysis patterns** from CLAUDE.md "Common Analysis Patterns" section (bash queries for all data sources)
-- **Genetics**: `genetics-snp-lookup` skill (agent reads `.claude/skills/health-agent/genetics-snp-lookup/SKILL.md`)
-- **Literature**: `scientific-literature-search` skill (agent reads `.claude/skills/health-agent/scientific-literature-search/skill.md`)
-- **Data sources**: All profile data (labs, timeline, exams, health log narrative, genetics)
+- **4 independent reasoning strategies**: Reduces correlated errors
+- **Cross-agent refinement**: Agents learn from each other's insights
+- **Adversarial validation**: Red Team proposes alternatives, not just contradictions
+- **Interpretation validation**: Catches unit errors, temporal violations, statistical overclaiming
+- **Diagnostic gap penalty**: Honest confidence when key tests unavailable
+- **Epidemiological priors**: Rare conditions need stronger evidence
+- **Falsification criteria**: Actionable next steps to confirm/refute
+- **Calibrated confidence**: Calculated from metrics, not subjective assessment
 
-### Example Workflow
+### Example Output Summary
 
-**User**: "Investigate root cause of my recurring headaches"
+```
+## Ensemble Investigation Complete
 
-**Agent Process**:
-1. Gathers all headache events from health_log.csv via grep
-2. Finds temporal patterns via correlation analysis
-3. Identifies potential triggers: poor sleep (5 instances), stress (3 instances), caffeine changes (2 instances)
-4. Proposes biological pathways for each mechanism
-5. **Queries PubMed** for citations on "sleep deprivation headache mechanism", "caffeine withdrawal mechanism", "stress headache pathway"
-6. Identifies confounds (caffeine changes during poor sleep)
-7. Searches for contradictory evidence
-8. Ranks hypotheses: HIGH (sleep deprivation - 85%), MODERATE (caffeine withdrawal - 55%), LOW (stress - 30%)
-9. Recommends follow-up: Track caffeine intake separately from sleep to discriminate between hypotheses
+**Primary Hypothesis**: Hereditary Spherocytosis
+**Calibrated Confidence**: 54% (±10%)
+**Gap Penalty Applied**: -10.5% (missing EMA, Coombs, bone marrow)
 
-**Output**: Markdown report saved to `.output/{profile}/hypothesis-investigation-headaches-2026-01-21.md`
-
-### Key Improvements
-
-- **Literature-backed mechanisms**: Every biological pathway includes authoritative citations
-- **Natural data analysis**: Uses bash query patterns instead of invoking multiple skills
-- **Comprehensive genetics**: Checks all condition-relevant genes via SNPedia
-- **Iterative refinement**: Multi-turn investigation with evidence-based ranking
+### Key Falsification Criteria
+**Would confirm**: Positive EMA binding test, clinical gene panel confirms ANK1/SPTB
+**Would refute**: Positive direct Coombs (autoimmune), normal osmotic fragility
+```
 
 ## Important Notes
 
@@ -741,7 +759,7 @@ The hypothesis investigation agent has access to:
 - **Confidence Scores**: Lab values with low confidence (<0.8) should be flagged for manual verification.
 - **Large File Handling**: Data files (`all.csv`, `health_log.csv`, `health_log.md`) typically exceed Claude's 256KB/25000 token read limits. Skills include "Efficient Data Access" sections with extraction commands. Always use filtered extraction (grep/head) rather than direct reads for these files.
 - **Lab Specifications**: If `{labs_path}/lab_specs.json` exists, skills use it for more accurate marker matching via canonical names and aliases. Helper functions are in `.claude/skills/health-agent/references/lab-specs-helpers.sh`. If the file is missing, skills use case-insensitive fuzzy matching on lab_name values. This file is optional and generated by labs-parser.
-- **Genetics Data**: All genetics interpretations come from SNPedia via the `genetics-snp-lookup` skill. Data is cached for 30 days. Skills delegate to genetics-snp-lookup rather than using hardcoded reference files.
+- **Genetics Data**: Primary genetics interpretations come from SNPedia via `genetics-snp-lookup`. SelfDecode provides optional imputed SNP coverage via `genetics-selfdecode-lookup` (requires authentication). Both skills cache for 30 days.
 - **Sandbox Compliance**: Always use the `Write` tool (not Bash heredocs/redirects) to create files in `.output/`. Bash `mkdir -p` works for directories, but file writing via `cat > file` or heredocs is blocked by sandbox. This ensures reports generate without permission errors.
 
 ## Maintenance

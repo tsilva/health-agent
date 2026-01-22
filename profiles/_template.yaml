@@ -21,3 +21,11 @@ data_sources:
   # Path to 23andMe raw data file (optional)
   # Download from: 23andMe > Settings > 23andMe Data > Download Raw Data
   genetics_23andme_path: "/path/to/23andme_raw_data.txt"
+
+  # SelfDecode credentials (optional - for imputed SNP coverage)
+  # SelfDecode provides ~20M+ imputed SNPs vs 631k raw SNPs from 23andMe
+  # Requires authenticated web scraping - credentials stored in environment variables
+  selfdecode:
+    enabled: false  # Set to true to enable SelfDecode lookups
+    username_env: "SELFDECODE_USERNAME"   # Environment variable containing your email
+    password_env: "SELFDECODE_PASSWORD"   # Environment variable containing your password
