@@ -25,6 +25,18 @@ Simple consensus can fail if all agents make the same error. This skill incorpor
 ## Architecture Overview
 
 ```
+Phase 0: SelfDecode Configuration Check
+    ├─ Read profile YAML
+    ├─ Check if selfdecode.enabled is false
+    │   ├─ If disabled: Ask user if they want to enable it
+    │   │   ├─ If YES: Guide credential setup, test connection
+    │   │   └─ If NO: Continue without SelfDecode (note limitation)
+    │   └─ If enabled: Test connection immediately
+    ├─ Connection test: curl to SelfDecode API with test SNP (rs429358)
+    │   ├─ If success: Proceed to Phase 1
+    │   └─ If auth error: Prompt user to update credentials, retry
+    └─ Loop credential update until success or user declines
+
 Phase 1: Spawn 4 investigators in parallel (single message)
     ├─ Agent 1: Bottom-Up (data-driven, no preconceptions)
     ├─ Agent 2: Top-Down (differential diagnosis, then seek evidence)
@@ -64,6 +76,161 @@ Use ensemble investigation when:
 - High stakes require thorough investigation (treatment decisions)
 
 For routine investigations, use standard `investigate-root-cause` which is faster and sufficient for most cases.
+
+**Note**: Phase 0 automatically checks SelfDecode configuration at the start of every investigation. If SelfDecode is disabled, you'll be prompted to enable it for expanded genetic coverage (~20M imputed SNPs vs 631k from 23andMe alone).
+
+---
+
+## Phase 0: SelfDecode Configuration Check
+
+Before spawning investigation agents, verify SelfDecode configuration to maximize genetic coverage.
+
+### Step 0.1: Read Profile and Check SelfDecode Status
+
+```bash
+# Read profile YAML to check selfdecode configuration
+cat profiles/{profile}.yaml | grep -A 4 "selfdecode:"
+```
+
+Check the output:
+- `enabled: true` → Proceed to connection test (Step 0.3)
+- `enabled: false` or missing → Prompt user (Step 0.2)
+
+### Step 0.2: Prompt User to Enable SelfDecode (If Disabled)
+
+Use the AskUserQuestion tool:
+
+```
+AskUserQuestion:
+  questions:
+    - question: "SelfDecode is currently disabled. Would you like to enable it for expanded genetic coverage? SelfDecode provides ~20M imputed SNPs compared to 631k from 23andMe alone, which can reveal variants not directly genotyped."
+      header: "SelfDecode"
+      options:
+        - label: "Yes, enable SelfDecode"
+          description: "I'll guide you through adding your SelfDecode credentials to the profile"
+        - label: "No, continue without"
+          description: "Investigation will use 23andMe data only (some genetic variants may be unavailable)"
+      multiSelect: false
+```
+
+**If user selects "Yes, enable SelfDecode"**:
+
+Guide them to update their profile:
+
+```markdown
+To enable SelfDecode, you'll need to add credentials to your profile:
+
+1. **Get your profile_id**:
+   - Log into SelfDecode → Settings → look for your profile UUID in the URL
+
+2. **Get your JWT token**:
+   - In SelfDecode, open browser DevTools (F12) → Network tab
+   - Navigate to any page → find a request to api.selfdecode.com
+   - Copy the Authorization header value (without "JWT " prefix)
+
+3. **Update your profile** (`profiles/{profile}.yaml`):
+   ```yaml
+   selfdecode:
+     enabled: true
+     profile_id: "your-profile-uuid"
+     jwt_token: "eyJhbGciOiJSUzI1NiIs..."  # Full token, no "JWT " prefix
+   ```
+
+Let me know when you've updated the profile, and I'll test the connection.
+```
+
+After user confirms update, proceed to Step 0.3.
+
+**If user selects "No, continue without"**:
+
+Note the limitation and proceed to Phase 1:
+
+```markdown
+Continuing without SelfDecode. Note: Some genetic variants may not be available from 23andMe raw data alone. The investigation will proceed with available data.
+```
+
+### Step 0.3: Test SelfDecode Connection
+
+Test the connection using a known SNP (rs429358 - APOE variant):
+
+```bash
+# Read profile to get credentials
+profile_id=$(grep "profile_id:" profiles/{profile}.yaml | awk '{print $2}' | tr -d '"')
+jwt_token=$(grep "jwt_token:" profiles/{profile}.yaml | awk '{print $2}' | tr -d '"')
+
+# Test API connection with rs429358
+curl -s -X GET "https://api.selfdecode.com/v2/users/${profile_id}/snps/rs429358" \
+  -H "Authorization: JWT ${jwt_token}" \
+  -H "Content-Type: application/json"
+```
+
+**Expected success response** (200 OK with genotype data):
+```json
+{
+  "rsid": "rs429358",
+  "genotype": "CT",
+  ...
+}
+```
+
+**If success**: Proceed to Phase 1.
+
+**If authentication error** (401/403): Proceed to Step 0.4.
+
+### Step 0.4: Handle Authentication Errors
+
+If the connection test fails with an authentication error:
+
+```
+AskUserQuestion:
+  questions:
+    - question: "SelfDecode connection failed (authentication error). Your JWT token may have expired. Would you like to update it?"
+      header: "Auth Error"
+      options:
+        - label: "Yes, I'll update the token"
+          description: "Get a fresh JWT token from SelfDecode DevTools and update your profile"
+        - label: "Skip SelfDecode for now"
+          description: "Continue investigation with 23andMe data only"
+      multiSelect: false
+```
+
+**If user selects "Yes"**:
+
+```markdown
+To get a fresh JWT token:
+
+1. Log into SelfDecode in your browser
+2. Open DevTools (F12) → Network tab
+3. Refresh the page or navigate to any section
+4. Find a request to `api.selfdecode.com`
+5. Copy the `Authorization` header value (without "JWT " prefix)
+6. Update `profiles/{profile}.yaml` with the new token
+
+Let me know when ready, and I'll test again.
+```
+
+Return to Step 0.3 to re-test.
+
+**If user selects "Skip"**:
+
+Note the limitation and proceed to Phase 1.
+
+### Step 0.5: Record SelfDecode Status for Investigation
+
+Before proceeding to Phase 1, record the SelfDecode status that agents should use:
+
+| Status | Action for Agents |
+|--------|-------------------|
+| **Enabled + Connected** | Use two-tier lookup: 23andMe first, then SelfDecode for missing SNPs |
+| **Disabled by user choice** | Use 23andMe only; note limitation in reports |
+| **Disabled due to auth failure** | Use 23andMe only; note limitation in reports |
+
+Pass this status to all investigation agents in Phase 1 via the Common Preamble:
+
+```markdown
+**SelfDecode Status**: {ENABLED|DISABLED}
+**Reason**: {User choice / Auth failure / Not configured}
+```
 
 ---
 
