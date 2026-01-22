@@ -35,11 +35,11 @@ data_sources:
   health_log_path: "/path/to/health-log-parser/output/"
   genetics_23andme_path: "/path/to/23andme_raw_data.txt"  # Optional
 
-  # SelfDecode (optional - for imputed SNP coverage beyond 23andMe)
+  # SelfDecode API (optional - for imputed SNP coverage beyond 23andMe)
   selfdecode:
     enabled: false
-    username_env: "SELFDECODE_USERNAME"   # Environment variable name
-    password_env: "SELFDECODE_PASSWORD"   # Environment variable name
+    profile_id: ""  # Your SelfDecode profile UUID
+    jwt_token: ""  # eyJhbGciOiJSUzI1NiIs... (from authorization header, without "JWT " prefix)
 ```
 
 ## Data Source Schemas
@@ -477,7 +477,7 @@ Seven core skills provide specialized capabilities in `.claude/skills/health-age
 
 **Example - Using investigate-root-cause:**
 ```
-1. Read .claude/skills/health-agent/ensemble-investigate-root-cause/SKILL.md
+1. Read .claude/skills/health-agent/investigate-root-cause/SKILL.md
 2. Follow instructions to spawn 4 parallel Task agents (Phase 1), then refinement agents (Phase 2.5), verification (Phase 3), and consensus (Phase 4)
 3. The skill provides complete prompt templates for each agent type
 ```
@@ -497,7 +497,7 @@ Seven core skills provide specialized capabilities in `.claude/skills/health-age
 | `genetics-selfdecode-lookup` | `.claude/skills/health-agent/genetics-selfdecode-lookup/SKILL.md` |
 | `genetics-validate-interpretation` | `.claude/skills/health-agent/genetics-validate-interpretation/SKILL.md` |
 | `scientific-literature-search` | `.claude/skills/health-agent/scientific-literature-search/skill.md` |
-| `investigate-root-cause` | `.claude/skills/health-agent/ensemble-investigate-root-cause/SKILL.md` |
+| `investigate-root-cause` | `.claude/skills/health-agent/investigate-root-cause/SKILL.md` |
 | `prepare-provider-visit` | `.claude/skills/health-agent/prepare-provider-visit/skill.md` |
 | `generate-questionnaire` | `.claude/skills/health-agent/generate-questionnaire/SKILL.md` |
 
@@ -687,7 +687,7 @@ The `investigate-root-cause` skill automates comprehensive hypothesis generation
 - "What's causing my [condition]?"
 
 **How to invoke**:
-1. Read `.claude/skills/health-agent/ensemble-investigate-root-cause/SKILL.md`
+1. Read `.claude/skills/health-agent/investigate-root-cause/SKILL.md`
 2. Follow the skill instructions to spawn agents across 6 phases
 
 ### How It Works
@@ -709,7 +709,7 @@ The investigation uses 4 parallel agents with different reasoning strategies, fo
 - Epidemiological priors (Bayesian adjustment for condition prevalence)
 - Falsification criteria (what would confirm/refute each hypothesis)
 
-**Output**: Saved to `.output/{profile}/ensemble-{condition}-{date}/consensus-final.md`
+**Output**: Saved to `.output/{profile}/investigation-{condition}-{date}/consensus-final.md`
 
 ### Output Format
 

@@ -22,10 +22,18 @@ data_sources:
   # Download from: 23andMe > Settings > 23andMe Data > Download Raw Data
   genetics_23andme_path: "/path/to/23andme_raw_data.txt"
 
-  # SelfDecode credentials (optional - for imputed SNP coverage)
+  # SelfDecode API (optional - for imputed SNP coverage)
   # SelfDecode provides ~20M+ imputed SNPs vs 631k raw SNPs from 23andMe
-  # Requires authenticated web scraping - credentials stored in environment variables
+  #
+  # To get profile_id and JWT token:
+  #   1. Log in to SelfDecode and go to any SNP page (e.g., https://selfdecode.com/app/snp/rs429358)
+  #   2. Open DevTools (F12) > Network tab > filter by "genotype"
+  #   3. Find request to: /service/health-analysis/genes/genotype/?...
+  #   4. From the Request URL, copy the "profile_id" parameter value
+  #   5. From Request Headers, copy "authorization" value (just the eyJ... part, without "JWT " prefix)
+  #
+  # JWT tokens expire after ~48 hours - refresh when you get auth errors
   selfdecode:
     enabled: false  # Set to true to enable SelfDecode lookups
-    username_env: "SELFDECODE_USERNAME"   # Environment variable containing your email
-    password_env: "SELFDECODE_PASSWORD"   # Environment variable containing your password
+    profile_id: ""  # From URL: ?profile_id=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    jwt_token: ""   # From authorization header: eyJhbGciOiJSUzI1NiIs... (without "JWT " prefix)

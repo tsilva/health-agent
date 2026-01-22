@@ -1,6 +1,6 @@
 ---
-name: ensemble-investigate-root-cause
-description: High-confidence root cause investigation using 4 parallel agents with different reasoning strategies, mandatory adversarial validation, evidence verification, and blind spot detection. Use when user asks for "high-confidence investigation", "maximum diagnostic accuracy", "ensemble investigation", or when standard investigate-root-cause results are inconclusive.
+name: investigate-root-cause
+description: High-confidence root cause investigation using 4 parallel agents with different reasoning strategies, mandatory adversarial validation, evidence verification, and blind spot detection. Use when user asks to "investigate root cause of [condition]", "why do I have [condition]", "find the cause of [symptom]", or "what's causing my [condition]".
 ---
 
 # Ensemble Root Cause Investigation
@@ -148,9 +148,9 @@ Use efficient extraction commands from CLAUDE.md "Common Analysis Patterns":
 - `scientific-literature-search` - Read `.claude/skills/health-agent/scientific-literature-search/skill.md` first
 
 **Output Location**:
-Save report to: `.output/{profile}/ensemble-{condition}-{date}/agent-{strategy}.md`
+Save report to: `.output/{profile}/investigation-{condition}-{date}/agent-{strategy}.md`
 
-Create directory first: `mkdir -p .output/{profile}/ensemble-{condition}-{date}`
+Create directory first: `mkdir -p .output/{profile}/investigation-{condition}-{date}`
 Use Write tool (NOT bash heredocs) to create report file.
 ```
 
@@ -823,7 +823,7 @@ After spawning all 4 agents, wait for completion:
 
 ```bash
 # Check if all output files exist
-ls -la .output/{profile}/ensemble-{condition}-{date}/
+ls -la .output/{profile}/investigation-{condition}-{date}/
 # Expected: agent-bottomup.md, agent-topdown.md, agent-genetics.md, agent-redteam.md
 ```
 
@@ -887,13 +887,13 @@ Task tool call 4:
 ```markdown
 Review findings from other agents investigating {condition} and refine your analysis.
 
-**Your Original Report**: .output/{profile}/ensemble-{condition}-{date}/agent-{your-strategy}.md
+**Your Original Report**: .output/{profile}/investigation-{condition}-{date}/agent-{your-strategy}.md
 
 **Other Agent Reports to Review**:
-- .output/{profile}/ensemble-{condition}-{date}/agent-bottomup.md (if not you)
-- .output/{profile}/ensemble-{condition}-{date}/agent-topdown.md (if not you)
-- .output/{profile}/ensemble-{condition}-{date}/agent-genetics.md (if not you)
-- .output/{profile}/ensemble-{condition}-{date}/agent-redteam.md
+- .output/{profile}/investigation-{condition}-{date}/agent-bottomup.md (if not you)
+- .output/{profile}/investigation-{condition}-{date}/agent-topdown.md (if not you)
+- .output/{profile}/investigation-{condition}-{date}/agent-genetics.md (if not you)
+- .output/{profile}/investigation-{condition}-{date}/agent-redteam.md
 
 ---
 
@@ -932,7 +932,7 @@ For each Red Team critique of your hypotheses:
 
 ## Output Format
 
-Save to: `.output/{profile}/ensemble-{condition}-{date}/refined-{your-strategy}.md`
+Save to: `.output/{profile}/investigation-{condition}-{date}/refined-{your-strategy}.md`
 
 ```markdown
 ---
@@ -994,12 +994,12 @@ generated: {YYYY-MM-DD}
 ```markdown
 Review whether other agents addressed your critiques for {condition} investigation.
 
-**Your Original Report**: .output/{profile}/ensemble-{condition}-{date}/agent-redteam.md
+**Your Original Report**: .output/{profile}/investigation-{condition}-{date}/agent-redteam.md
 
 **Other Agent Reports**:
-- .output/{profile}/ensemble-{condition}-{date}/agent-bottomup.md
-- .output/{profile}/ensemble-{condition}-{date}/agent-topdown.md
-- .output/{profile}/ensemble-{condition}-{date}/agent-genetics.md
+- .output/{profile}/investigation-{condition}-{date}/agent-bottomup.md
+- .output/{profile}/investigation-{condition}-{date}/agent-topdown.md
+- .output/{profile}/investigation-{condition}-{date}/agent-genetics.md
 
 ---
 
@@ -1032,7 +1032,7 @@ Based on evidence from all agents:
 
 ## Output Format
 
-Save to: `.output/{profile}/ensemble-{condition}-{date}/refined-redteam.md`
+Save to: `.output/{profile}/investigation-{condition}-{date}/refined-redteam.md`
 
 ```markdown
 ---
@@ -1085,7 +1085,7 @@ After spawning refinement agents:
 
 ```bash
 # Check if all refined output files exist
-ls -la .output/{profile}/ensemble-{condition}-{date}/
+ls -la .output/{profile}/investigation-{condition}-{date}/
 # Expected additions: refined-bottomup.md, refined-topdown.md, refined-genetics.md, refined-redteam.md
 ```
 
@@ -1110,14 +1110,14 @@ Task tool with:
 Verify evidence citations AND interpretations from the ensemble investigation of {condition}.
 
 **Input Files (include refined versions)**:
-- .output/{profile}/ensemble-{condition}-{date}/agent-bottomup.md
-- .output/{profile}/ensemble-{condition}-{date}/agent-topdown.md
-- .output/{profile}/ensemble-{condition}-{date}/agent-genetics.md
-- .output/{profile}/ensemble-{condition}-{date}/agent-redteam.md
-- .output/{profile}/ensemble-{condition}-{date}/refined-bottomup.md
-- .output/{profile}/ensemble-{condition}-{date}/refined-topdown.md
-- .output/{profile}/ensemble-{condition}-{date}/refined-genetics.md
-- .output/{profile}/ensemble-{condition}-{date}/refined-redteam.md
+- .output/{profile}/investigation-{condition}-{date}/agent-bottomup.md
+- .output/{profile}/investigation-{condition}-{date}/agent-topdown.md
+- .output/{profile}/investigation-{condition}-{date}/agent-genetics.md
+- .output/{profile}/investigation-{condition}-{date}/agent-redteam.md
+- .output/{profile}/investigation-{condition}-{date}/refined-bottomup.md
+- .output/{profile}/investigation-{condition}-{date}/refined-topdown.md
+- .output/{profile}/investigation-{condition}-{date}/refined-genetics.md
+- .output/{profile}/investigation-{condition}-{date}/refined-redteam.md
 
 **Profile Data Sources**:
 - Labs: {labs_path}/all.csv
@@ -1215,7 +1215,7 @@ For each agent, assess:
 
 ## Output Format
 
-Save to: `.output/{profile}/ensemble-{condition}-{date}/evidence-verification.md`
+Save to: `.output/{profile}/investigation-{condition}-{date}/evidence-verification.md`
 
 ```markdown
 ---
@@ -1373,15 +1373,15 @@ Task tool with:
 Generate calibrated consensus from ensemble investigation of {condition}.
 
 **Input Files (include refined versions)**:
-- .output/{profile}/ensemble-{condition}-{date}/agent-bottomup.md
-- .output/{profile}/ensemble-{condition}-{date}/agent-topdown.md
-- .output/{profile}/ensemble-{condition}-{date}/agent-genetics.md
-- .output/{profile}/ensemble-{condition}-{date}/agent-redteam.md
-- .output/{profile}/ensemble-{condition}-{date}/refined-bottomup.md
-- .output/{profile}/ensemble-{condition}-{date}/refined-topdown.md
-- .output/{profile}/ensemble-{condition}-{date}/refined-genetics.md
-- .output/{profile}/ensemble-{condition}-{date}/refined-redteam.md
-- .output/{profile}/ensemble-{condition}-{date}/evidence-verification.md
+- .output/{profile}/investigation-{condition}-{date}/agent-bottomup.md
+- .output/{profile}/investigation-{condition}-{date}/agent-topdown.md
+- .output/{profile}/investigation-{condition}-{date}/agent-genetics.md
+- .output/{profile}/investigation-{condition}-{date}/agent-redteam.md
+- .output/{profile}/investigation-{condition}-{date}/refined-bottomup.md
+- .output/{profile}/investigation-{condition}-{date}/refined-topdown.md
+- .output/{profile}/investigation-{condition}-{date}/refined-genetics.md
+- .output/{profile}/investigation-{condition}-{date}/refined-redteam.md
+- .output/{profile}/investigation-{condition}-{date}/evidence-verification.md
 
 **Reference Documentation**:
 - Read `.claude/skills/health-agent/references/confidence-calibration.md` for calibration formulas
@@ -1544,7 +1544,7 @@ Order hypotheses by calibrated confidence. For EACH hypothesis, include:
 
 ## Output Format
 
-Save to: `.output/{profile}/ensemble-{condition}-{date}/consensus-final.md`
+Save to: `.output/{profile}/investigation-{condition}-{date}/consensus-final.md`
 
 ```markdown
 ---
@@ -1818,7 +1818,7 @@ After consensus report is generated:
 
 1. Verify all output files exist:
 ```bash
-ls -la .output/{profile}/ensemble-{condition}-{date}/
+ls -la .output/{profile}/investigation-{condition}-{date}/
 ```
 
 Expected files:
@@ -1839,7 +1839,7 @@ Expected files:
 ## Ensemble Investigation Complete
 
 **Condition**: {condition}
-**Output Directory**: `.output/{profile}/ensemble-{condition}-{date}/`
+**Output Directory**: `.output/{profile}/investigation-{condition}-{date}/`
 
 **Files Generated**:
 - 4 agent investigation reports (Phase 1)
@@ -1855,7 +1855,7 @@ Expected files:
 **Would confirm**: {top 2 confirmation criteria}
 **Would refute**: {top 2 refutation criteria}
 
-**Read full consensus**: `.output/{profile}/ensemble-{condition}-{date}/consensus-final.md`
+**Read full consensus**: `.output/{profile}/investigation-{condition}-{date}/consensus-final.md`
 ```
 
 ---
@@ -1933,7 +1933,7 @@ Expected files:
    - Interpretation validation: 95% valid
    - Red Team counter-hypothesis: Congenital Dyserythropoietic Anemia (15% confidence)
 
-   **Output**: .output/{profile}/ensemble-chronic-hemolysis-2026-01-22/consensus-final.md
+   **Output**: .output/{profile}/investigation-chronic-hemolysis-2026-01-22/consensus-final.md
    ```
 
 ---

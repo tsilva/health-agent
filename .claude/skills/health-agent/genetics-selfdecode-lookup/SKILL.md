@@ -1,20 +1,19 @@
 ---
 name: genetics-selfdecode-lookup
-description: Look up SNP genotypes and interpretations from SelfDecode (imputed genetics data). Requires authentication. Use for expanded SNP coverage beyond 23andMe raw data. Triggers on "check selfdecode for rs...", "selfdecode lookup", "imputed genotype for...", or when SNP not found in 23andMe data.
+description: Look up SNP genotypes from SelfDecode (imputed genetics data). Requires JWT token from browser. Use for expanded SNP coverage beyond 23andMe raw data. Triggers on "check selfdecode for rs...", "selfdecode lookup", "imputed genotype for...", or when SNP not found in 23andMe data.
 ---
 
 # SelfDecode SNP Lookup
 
 **Authenticated genetics lookup** for SelfDecode's imputed SNP data. SelfDecode provides:
 - **Imputed SNPs**: More coverage than raw 23andMe data (~20M+ vs 631k SNPs)
-- **Health interpretations**: Risk assessments and recommendations
-- **Gene-based reports**: Comprehensive gene analysis
+- **Direct API**: Clean JSON responses with genotype data
 
 ## Prerequisites
 
-- Profile must have `selfdecode` credentials configured
-- Environment variables must be set for authentication
 - SelfDecode account with uploaded genetic data
+- JWT token copied from browser (see "Getting Your JWT Token" below)
+- Profile ID from SelfDecode (see "Getting Your Profile ID" below)
 
 ## Configuration
 
@@ -27,91 +26,68 @@ data_sources:
   # Existing genetics source
   genetics_23andme_path: "/path/to/23andme_raw_data.txt"
 
-  # SelfDecode (optional - for imputed SNP coverage)
+  # SelfDecode API credentials
   selfdecode:
     enabled: true
-    username_env: "SELFDECODE_USERNAME"   # Environment variable containing email
-    password_env: "SELFDECODE_PASSWORD"   # Environment variable containing password
+    profile_id: "your-profile-uuid"  # From URL: ?profile_id=xxx
+    jwt_token: "eyJhbGciOiJSUzI1NiIs..."  # From authorization header (without "JWT " prefix)
 ```
 
-### Environment Variables
+### Getting Your Credentials
 
-Set before running health-agent:
+1. Log in to SelfDecode in your browser
+2. Open Developer Tools (F12) → Network tab → filter by "genotype"
+3. Navigate to any SNP page (e.g., https://selfdecode.com/app/snp/rs429358)
+4. Find request to: `/service/health-analysis/genes/genotype/?...`
+5. From the **Request URL**, copy the `profile_id` parameter value
+6. From **Request Headers**, copy the `authorization` value (just the `eyJ...` part, without the `JWT ` prefix)
 
-```bash
-export SELFDECODE_USERNAME="your-email@example.com"
-export SELFDECODE_PASSWORD="your-password"
+**Token lifetime**: JWT tokens expire after ~48 hours. Refresh when you get auth errors.
+
+### Getting Your Profile ID
+
+1. In the same Network request, look at the URL
+2. Copy the `profile_id` parameter value (UUID format like `edbd7967-4c2f-45f3-95cf-4c45879d77a4`)
+3. Add to your profile YAML
+
+## API Reference
+
+### Endpoint
+
+```
+GET https://selfdecode.com/service/health-analysis/genes/genotype/
 ```
 
-## Authentication Flow
+### Required Parameters
 
-### Step 1: Login and Obtain Session
+| Parameter | Description |
+|-----------|-------------|
+| `profile_id` | Your SelfDecode profile UUID |
+| `rsid` | SNP identifier (e.g., `rs429358`) or comma-separated list |
 
-```bash
-# Read credentials from environment
-username="${SELFDECODE_USERNAME}"
-password="${SELFDECODE_PASSWORD}"
+### Required Headers
 
-# Check credentials are set
-if [ -z "$username" ] || [ -z "$password" ]; then
-  echo "Error: SELFDECODE_USERNAME and SELFDECODE_PASSWORD must be set"
-  exit 1
-fi
+| Header | Value |
+|--------|-------|
+| `authorization` | `JWT {token}` |
 
-# Create cookie jar in temp directory
-cookie_jar="/tmp/claude/selfdecode-cookies.txt"
-mkdir -p /tmp/claude
-
-# Login to SelfDecode
-# NOTE: Actual login endpoint and form fields need verification
-# This is a placeholder - update after inspecting actual login flow
-curl -c "$cookie_jar" -s \
-  -d "email=${username}" \
-  -d "password=${password}" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  "https://selfdecode.com/api/auth/login/" \
-  > /tmp/claude/selfdecode-login-response.json
-
-# Verify login success
-if grep -q "error\|invalid\|failed" /tmp/claude/selfdecode-login-response.json 2>/dev/null; then
-  echo "Error: SelfDecode login failed. Check credentials."
-  cat /tmp/claude/selfdecode-login-response.json
-  exit 1
-fi
-
-echo "SelfDecode session established"
-```
-
-### Step 2: Verify Session
-
-```bash
-# Test session is valid by fetching dashboard or profile
-curl -b "$cookie_jar" -s \
-  "https://selfdecode.com/api/user/profile/" \
-  > /tmp/claude/selfdecode-session-check.json
-
-if grep -q "unauthorized\|login" /tmp/claude/selfdecode-session-check.json 2>/dev/null; then
-  echo "Session expired or invalid. Re-authenticate."
-  exit 1
-fi
-
-echo "Session valid"
-```
-
-## SNP Lookup Workflow
+## Lookup Workflow
 
 ### Single SNP Lookup
 
 ```bash
+# Set variables from profile (read from profiles/{name}.yaml)
+profile_name="{profile name from profiles/{name}.yaml}"
+profile_id="{from profile: selfdecode.profile_id}"
+jwt_token="{from profile: selfdecode.jwt_token}"
 rsid="rs429358"
-cookie_jar="/tmp/claude/selfdecode-cookies.txt"
-cache_dir=".claude/skills/health-agent/genetics-selfdecode-lookup/.cache"
+cache_dir=".claude/skills/health-agent/genetics-selfdecode-lookup/.cache/${profile_name}"
 
 # 1. Check cache first
 cache_file="${cache_dir}/${rsid}.json"
 if [ -f "$cache_file" ]; then
-  # Check cache age (30-day TTL)
-  fetched=$(cat "$cache_file" | python3 -c "import sys, json; print(json.load(sys.stdin).get('fetched', ''))" 2>/dev/null)
+  # Check cache age (30-day TTL = 2592000 seconds)
+  fetched=$(python3 -c "import json; print(json.load(open('$cache_file')).get('fetched', ''))" 2>/dev/null)
   if [ -n "$fetched" ]; then
     fetched_ts=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$fetched" "+%s" 2>/dev/null || echo 0)
     current_ts=$(date "+%s")
@@ -125,139 +101,116 @@ if [ -f "$cache_file" ]; then
   fi
 fi
 
-# 2. Ensure authenticated
-if [ ! -f "$cookie_jar" ]; then
-  echo "Error: No SelfDecode session. Run authentication first."
+# 2. Query SelfDecode API
+response=$(curl -s "https://selfdecode.com/service/health-analysis/genes/genotype/?profile_id=${profile_id}&rsid=${rsid}" \
+  -H "authorization: JWT ${jwt_token}")
+
+# 3. Check for authentication errors (requires user intervention)
+if echo "$response" | grep -qE '"detail".*([Aa]uthentication|credentials|signature)'; then
+  echo "AUTH_ERROR: JWT token expired or invalid"
+  echo "Response: $response"
+  echo ""
+  echo "ACTION REQUIRED: Prompt user to update JWT token, wait for confirmation, then retry"
+  exit 2  # Exit code 2 = auth error
+fi
+
+# 4. Check for other errors
+if echo "$response" | grep -q '"detail"'; then
+  echo "Error: $response"
   exit 1
 fi
 
-# 3. Fetch SNP page from SelfDecode
-# NOTE: URL pattern needs verification - update after inspecting actual site
-snp_url="https://selfdecode.com/snp/${rsid}/"
-
-curl -b "$cookie_jar" -s \
-  -H "Accept: text/html,application/xhtml+xml" \
-  "$snp_url" \
-  > "/tmp/claude/${rsid}_selfdecode.html"
-
-# Check if SNP exists
-if grep -q "not found\|404\|doesn't exist" "/tmp/claude/${rsid}_selfdecode.html" 2>/dev/null; then
-  echo "SNP $rsid not found in SelfDecode"
-  exit 1
-fi
-
-# 4. Parse HTML for relevant data
-# NOTE: Selectors need updating based on actual HTML structure
-# These are placeholder patterns - refine after inspecting actual pages
-
-# Extract genotype
-genotype=$(grep -oP 'genotype["\s:]+\K[ACGT]{1,2}' "/tmp/claude/${rsid}_selfdecode.html" | head -1)
-
-# Extract interpretation/effect
-interpretation=$(grep -oP '(?<=interpretation">)[^<]+' "/tmp/claude/${rsid}_selfdecode.html" | head -1)
-
-# Extract risk level if present
-risk_level=$(grep -oP '(?<=risk-level">)[^<]+' "/tmp/claude/${rsid}_selfdecode.html" | head -1)
-
-# 5. Save to cache
+# 5. Parse and cache response
 mkdir -p "$cache_dir"
+genotypes=$(echo "$response" | python3 -c "import sys, json; r=json.load(sys.stdin); print(r[0]['genotypes'][0] + r[0]['genotypes'][1] if r else '')")
+
 cat > "$cache_file" << EOF
 {
   "rsid": "$rsid",
   "fetched": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
   "ttl_seconds": 2592000,
   "source": "selfdecode",
-  "imputed": true,
   "data": {
-    "genotype": "$genotype",
-    "interpretation": "$interpretation",
-    "risk_level": "$risk_level",
-    "url": "$snp_url"
+    "genotype": "$genotypes",
+    "raw_response": $response
   }
 }
 EOF
 
-echo "Cached SelfDecode data for $rsid"
+echo "Cached SelfDecode data for $rsid: $genotypes"
 cat "$cache_file"
 ```
 
 ### Batch SNP Lookup
 
+SelfDecode supports comma-separated rsids for efficient batch queries:
+
 ```bash
-rsids=("rs429358" "rs7412" "rs1801133")
-cookie_jar="/tmp/claude/selfdecode-cookies.txt"
+# Batch query - up to ~50 SNPs per request
+rsids="rs429358,rs7412,rs1801133"
 
-for rsid in "${rsids[@]}"; do
-  # Rate limiting - 2 second delay between requests
-  sleep 2
+response=$(curl -s "https://selfdecode.com/service/health-analysis/genes/genotype/?profile_id=${profile_id}&rsid=${rsids}" \
+  -H "authorization: JWT ${jwt_token}")
 
-  # Use single SNP lookup logic (check cache, fetch, parse, cache)
-  # ... (same as single SNP workflow above)
-
-  echo "Processed $rsid"
-done
+# Returns array of results:
+# [
+#   {"profile_id":"...","rsid":"rs429358","variant_ids":["ref","ref"],"genotypes":["T","T"]},
+#   {"profile_id":"...","rsid":"rs7412","variant_ids":["ref","ref"],"genotypes":["C","C"]},
+#   ...
+# ]
 ```
+
+## Response Format
+
+### Success Response
+
+```json
+[{
+  "profile_id": "edbd7967-4c2f-45f3-95cf-4c45879d77a4",
+  "rsid": "rs429358",
+  "variant_ids": ["ref", "ref"],
+  "genotypes": ["T", "T"]
+}]
+```
+
+| Field | Description |
+|-------|-------------|
+| `profile_id` | Your SelfDecode profile UUID |
+| `rsid` | The queried SNP |
+| `variant_ids` | Allele types (`ref` = reference, or variant ID) |
+| `genotypes` | The two alleles (diploid) |
+
+### Error Responses
+
+| Error | Meaning |
+|-------|---------|
+| `{"detail":"Incorrect authentication credentials."}` | JWT expired or invalid |
+| `{"profile_id":"This field is required."}` | Missing profile_id parameter |
+| `[]` | SNP not found in SelfDecode database |
 
 ## Caching Layer
 
-**Cache directory**: `.claude/skills/health-agent/genetics-selfdecode-lookup/.cache/`
+**Cache directory**: `.claude/skills/health-agent/genetics-selfdecode-lookup/.cache/{profile_name}/`
 
 **Cache TTL**: 30 days (2,592,000 seconds)
 
+**Profile partitioning**: Cache is partitioned by profile name to prevent data leakage between profiles. Each profile's genotype data is stored in its own subdirectory.
+
 ### Cache File Format
 
-Each rsID gets a JSON cache file: `.cache/{rsid}.json`
+Each rsID gets a JSON cache file: `.cache/{profile_name}/{rsid}.json`
 
 ```json
 {
   "rsid": "rs429358",
-  "fetched": "2026-01-22T10:00:00Z",
+  "fetched": "2026-01-22T17:00:00Z",
   "ttl_seconds": 2592000,
   "source": "selfdecode",
-  "imputed": true,
   "data": {
-    "genotype": "CT",
-    "interpretation": "Elevated Alzheimer's risk",
-    "risk_level": "moderate",
-    "health_effects": [
-      "2-3x increased Alzheimer's risk",
-      "Consider cognitive health measures"
-    ],
-    "recommendations": [
-      "Regular cognitive assessment",
-      "Cardiovascular health focus"
-    ],
-    "url": "https://selfdecode.com/snp/rs429358/"
+    "genotype": "TT",
+    "raw_response": [{"profile_id":"...","rsid":"rs429358","variant_ids":["ref","ref"],"genotypes":["T","T"]}]
   }
 }
-```
-
-### Cache Fallback
-
-If SelfDecode is unavailable, use stale cache with warning:
-
-```bash
-if ! curl_output=$(curl -b "$cookie_jar" -s -f "$snp_url"); then
-  if [ -f "$cache_file" ]; then
-    echo "Warning: SelfDecode unavailable, using stale cache (age: $((age/86400)) days)"
-    cat "$cache_file"
-    exit 0
-  else
-    echo "Error: SelfDecode unavailable and no cache for $rsid"
-    exit 1
-  fi
-fi
-```
-
-## Rate Limiting
-
-- **Request delay**: 2 seconds between requests (be respectful)
-- **Batch limit**: Max 10 SNPs per session recommended
-- **Session reuse**: Reuse authenticated session for multiple lookups
-
-```bash
-# Between each SNP lookup
-sleep 2
 ```
 
 ## Output Format
@@ -268,143 +221,136 @@ sleep 2
 ## SelfDecode SNP Lookup: rs429358
 
 **Source**: SelfDecode (imputed)
-**Genotype**: C;T
-**URL**: https://selfdecode.com/snp/rs429358/
+**Genotype**: T/T
+**Variant IDs**: ref/ref (homozygous reference)
 
-### Interpretation
-
-**Risk Level**: Moderate
-
-Elevated Alzheimer's risk associated with APOE e4 allele carrier status.
-
-### Health Effects
-- 2-3x increased Alzheimer's disease risk compared to non-carriers
-- May affect lipid metabolism and cardiovascular health
-
-### Recommendations
-- Regular cognitive health monitoring after age 50
-- Focus on cardiovascular health (exercise, diet)
-- Consider discussing with healthcare provider
-
-**Data Retrieved**: 2026-01-22 (cached)
+**Data Retrieved**: 2026-01-22 (fresh)
 ```
 
-### Comparison with 23andMe/SNPedia
-
-When both sources have data:
+### Batch Result
 
 ```markdown
-## SNP Comparison: rs429358
+## SelfDecode Batch Lookup
 
-| Source | Genotype | Notes |
-|--------|----------|-------|
-| 23andMe (raw) | C;T | Directly genotyped |
-| SelfDecode (imputed) | C;T | Matches raw data |
-| SNPedia | C;T | APOE e3/e4 carrier |
+| rsID | Genotype | Variant IDs |
+|------|----------|-------------|
+| rs429358 | T/T | ref/ref |
+| rs7412 | C/C | ref/ref |
+| rs1801133 | C/T | ref/alt |
 
-**Concordance**: All sources agree on genotype.
+**Data Retrieved**: 2026-01-22
 ```
 
 ## Error Handling
 
 | Scenario | Response |
 |----------|----------|
-| **Credentials not configured** | Error: "SelfDecode credentials not configured. Add selfdecode config to profile." |
-| **Environment variables not set** | Error: "SELFDECODE_USERNAME and SELFDECODE_PASSWORD must be set" |
-| **Login failed** | Error: "SelfDecode login failed. Check credentials." |
-| **Session expired** | Warning: "Session expired. Re-authenticating..." (then retry) |
-| **SNP not found** | Note: "SNP {rsid} not found in SelfDecode database" |
-| **Rate limited** | Warning: "Rate limited. Waiting 60s before retry..." |
-| **Site unavailable (with cache)** | Warning: "SelfDecode unavailable, using stale cache" |
-| **Site unavailable (no cache)** | Error: "SelfDecode unavailable and no cached data for {rsid}" |
+| **JWT not set** | Error: "jwt_token not configured in profile. Copy from browser." |
+| **JWT expired** | Prompt user to update token (see Authentication Error Recovery below) |
+| **Profile ID missing** | Error: "profile_id not configured in profile YAML" |
+| **SNP not found** | Note: "SNP {rsid} not in SelfDecode database (empty response)" |
+| **API unavailable (with cache)** | Warning: "SelfDecode unavailable, using stale cache (age: X days)" |
 
-## Session Management
+### Authentication Error Recovery
 
-### Session Lifetime
+When a request fails due to authentication issues (JWT expired or invalid), follow this workflow:
 
-SelfDecode sessions typically last several hours. The skill should:
+**1. Detect authentication errors** - Check for these response patterns:
+```json
+{"detail":"Incorrect authentication credentials."}
+{"detail":"Authentication credentials were not provided."}
+{"detail":"Error decoding signature."}
+```
 
-1. Check if existing cookie jar is present
-2. Verify session is still valid before making requests
-3. Re-authenticate if session expired
+**2. Prompt the user** with this message:
+
+```
+## SelfDecode Authentication Error
+
+Your JWT token has expired or is invalid. To continue:
+
+1. Log in to SelfDecode in your browser
+2. Open Developer Tools (F12) → Network tab
+3. Navigate to any SNP page (e.g., https://selfdecode.com/app/snp/rs429358)
+4. Find request to `/service/health-analysis/genes/genotype/`
+5. From Request Headers, copy the `authorization` value (just the `eyJ...` part)
+6. Update your profile YAML with the new token:
+   ```yaml
+   data_sources:
+     selfdecode:
+       jwt_token: "eyJ..."  # Paste new token here
+   ```
+
+**Reply "done" or "updated" when you've refreshed the token**, and I'll retry the lookup.
+```
+
+**3. Wait for user confirmation** - Do not proceed until user confirms token update
+
+**4. Re-read the profile** to get the new token:
+```bash
+# Re-read profile YAML to get updated jwt_token
+cat profiles/{profile_name}.yaml | grep -A5 "selfdecode:"
+```
+
+**5. Retry the original request** with the new token
+
+### Implementation Example
 
 ```bash
-# Check and refresh session if needed
-cookie_jar="/tmp/claude/selfdecode-cookies.txt"
-
-if [ -f "$cookie_jar" ]; then
-  # Test session validity
-  response=$(curl -b "$cookie_jar" -s -w "%{http_code}" -o /dev/null \
-    "https://selfdecode.com/api/user/profile/")
-
-  if [ "$response" != "200" ]; then
-    echo "Session expired, re-authenticating..."
-    rm "$cookie_jar"
-    # Run authentication flow
-  fi
-else
-  echo "No session found, authenticating..."
-  # Run authentication flow
+# After curl request, check for auth errors
+if echo "$response" | grep -qE '"detail".*([Aa]uthentication|credentials|signature)'; then
+  echo "AUTH_ERROR: JWT token expired or invalid"
+  echo "Prompt user to update token and wait for confirmation before retrying"
+  exit 2  # Exit code 2 = auth error (distinct from other errors)
 fi
 ```
 
-## When to Use This Skill
-
-**Use SelfDecode lookup when**:
-- SNP not found in 23andMe raw data
-- User specifically asks for SelfDecode data
-- Need imputed genotypes for comprehensive coverage
-- Comparing genotypes across multiple sources
-
-**Use SNPedia lookup (genetics-snp-lookup) when**:
-- SNP is available in 23andMe raw data
-- Need research citations and detailed mechanisms
-- Public interpretation without authentication needed
+**Important**: When you detect an auth error:
+1. **Stop the current operation** - don't continue with stale/invalid credentials
+2. **Inform the user clearly** - explain what happened and how to fix it
+3. **Wait for explicit confirmation** - user must say they've updated the token
+4. **Re-read the profile** - don't use cached credentials, read fresh from YAML
+5. **Retry the exact same operation** - resume from where you left off
 
 ## Integration Notes
 
-### Fallback Chain
+### When to Use SelfDecode vs SNPedia
 
-For comprehensive SNP lookup:
+| Use SelfDecode | Use SNPedia (genetics-snp-lookup) |
+|----------------|-----------------------------------|
+| SNP not in 23andMe raw data | SNP is in 23andMe raw data |
+| User specifically requests SelfDecode | Need research citations/mechanisms |
+| Checking imputed genotypes | Need interpretation context |
+| Batch lookups for efficiency | Public interpretation needed |
 
-1. **First**: Check 23andMe raw data (most reliable, directly genotyped)
-2. **Second**: Check SelfDecode (imputed, more coverage)
-3. **Third**: Check SNPedia for interpretation (public reference)
+### Lookup Strategy
 
-### Investigation Workflow
+For comprehensive SNP investigation:
 
-When investigating conditions:
+1. **First**: Check 23andMe raw data via `genetics-snp-lookup` (directly genotyped, most reliable)
+2. **Second**: If not found and SelfDecode configured, check `genetics-selfdecode-lookup` for imputed data
+3. **Third**: Always query SNPedia for interpretation (research citations, mechanisms)
+
+### Cross-Referencing
+
+When both sources have data for the same SNP:
 
 ```markdown
-1. genetics-snp-lookup (23andMe + SNPedia) for primary data
-2. genetics-selfdecode-lookup for SNPs not in 23andMe
-3. Cross-reference both sources when available
+## SNP Comparison: rs429358
+
+| Source | Genotype | Notes |
+|--------|----------|-------|
+| 23andMe (raw) | T;T | Directly genotyped |
+| SelfDecode (imputed) | T;T | Matches raw data |
+
+**Concordance**: Sources agree. High confidence.
 ```
 
-## HTML Parsing Notes
+**Note**: If sources disagree, prefer 23andMe raw data (directly genotyped) over SelfDecode (imputed).
 
-**IMPORTANT**: The HTML parsing patterns in this skill are placeholders. After authenticating and viewing actual SelfDecode pages, update the grep/sed patterns to match the real HTML structure.
+## Security Notes
 
-To inspect page structure:
-
-```bash
-# After authentication, save a sample page
-curl -b "$cookie_jar" -s "https://selfdecode.com/snp/rs429358/" > sample-page.html
-
-# Inspect for relevant elements
-grep -i "genotype\|interpretation\|risk" sample-page.html | head -20
-```
-
-Common patterns to look for:
-- JSON embedded in script tags (`<script type="application/json">`)
-- Data attributes (`data-genotype="CT"`)
-- Specific CSS classes for genotype/interpretation display
-- API responses if using client-side rendering
-
-## Security Considerations
-
-- Credentials stored in environment variables (not in profile YAML)
-- Cookie files stored in `/tmp/claude/` (ephemeral)
-- Session cookies are not persisted between health-agent sessions
-- Never log or cache passwords
-- Rate limit to avoid account restrictions
+- JWT tokens are sensitive - never commit to git
+- Store JWT in environment variable, not in profile YAML
+- Tokens expire after 24-48 hours - refresh as needed
+- Cache files contain only genotype data, not credentials
