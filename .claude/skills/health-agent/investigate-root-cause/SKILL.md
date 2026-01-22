@@ -143,8 +143,14 @@ Use efficient extraction commands from CLAUDE.md "Common Analysis Patterns":
 - Timeline: `grep -i "{term}" "{health_log_path}/health_log.csv" | head -50`
 - Genetics: `grep -E "^(rs123|rs456)" "{genetics_23andme_path}"`
 
+**Genetics Lookup Strategy** (use 23andMe by default, SelfDecode for gaps):
+1. First: Query 23andMe via `grep -E "^rs..." "{genetics_23andme_path}"` - directly genotyped, most reliable
+2. If SNP not found AND SelfDecode configured in profile: Query `genetics-selfdecode-lookup` for imputed data
+3. Always: Use SNPedia (via `genetics-snp-lookup`) for interpretation context
+
 **Skills Available**:
-- `genetics-snp-lookup` - Read `.claude/skills/health-agent/genetics-snp-lookup/SKILL.md` first
+- `genetics-snp-lookup` - Read `.claude/skills/health-agent/genetics-snp-lookup/SKILL.md` first (primary genetics source)
+- `genetics-selfdecode-lookup` - Read `.claude/skills/health-agent/genetics-selfdecode-lookup/SKILL.md` (for SNPs missing from 23andMe, if SelfDecode configured)
 - `scientific-literature-search` - Read `.claude/skills/health-agent/scientific-literature-search/skill.md` first
 
 **Output Location**:
@@ -493,20 +499,29 @@ Prioritize genetic etiology before other explanations:
 ### Step 1: Identify ALL Genes Associated with {Condition}
 
 1. Read `.claude/skills/health-agent/genetics-snp-lookup/SKILL.md`
-2. Query SNPedia for condition-associated genes:
+2. Check if SelfDecode is configured in profile (optional expanded coverage)
+3. Query SNPedia for condition-associated genes:
    - Search: "{condition}" to find relevant genes
    - Search: specific gene names known to cause {condition}
-3. Create comprehensive list of genes to check
+4. Create comprehensive list of genes to check
 
-### Step 2: Check EVERY Relevant Gene in 23andMe Data
+### Step 2: Check EVERY Relevant Gene (Two-Tier Lookup)
+
+**Use 23andMe as primary source (directly genotyped = most reliable):**
 
 For each identified gene:
-- Query all relevant SNPs
-- Document genotype and interpretation
-- Note any pathogenic or risk variants
-- Note protective variants
+1. First: Query 23andMe raw data via `grep -E "^rs..." "{genetics_23andme_path}"`
+2. Document genotype and interpretation
+3. Note any pathogenic or risk variants
+4. Note protective variants
 
-**Do NOT skip genes or assume SNPs aren't available without checking.**
+**For SNPs NOT found in 23andMe** (and SelfDecode configured):
+1. Read `.claude/skills/health-agent/genetics-selfdecode-lookup/SKILL.md`
+2. Query SelfDecode API for imputed genotypes
+3. Note these are IMPUTED (less reliable than directly genotyped)
+4. Mark imputed SNPs clearly in output: "rs123456 (imputed via SelfDecode)"
+
+**Do NOT skip genes or assume SNPs aren't available without checking BOTH sources.**
 
 ### Step 3: Genetic Etiology Assessment
 
@@ -578,6 +593,14 @@ Comprehensive genetic analysis before other explanations. Genetic etiology prior
 
 [List any relevant genes not covered by 23andMe genotyping]
 
+### Imputed SNPs (from SelfDecode)
+
+| Gene | SNP | Genotype | Confidence Note |
+|------|-----|----------|-----------------|
+| {Gene1} | rs789 | GG | Imputed (SelfDecode) - verify with clinical testing |
+
+**Note**: Imputed genotypes are statistical predictions based on surrounding markers. For clinical decisions, confirm with direct genotyping.
+
 ### Pharmacogenomics Findings
 
 [If medication-related, include CYP enzyme status]
@@ -622,6 +645,7 @@ For each hypothesis, specify genetic and clinical confirmation/refutation:
 **Recommended genetic follow-up**:
 1. {Clinical gene panel for condition}
 2. {Specific functional test}
+3. If based on imputed data: Direct genotyping to confirm imputed variants
 
 ### Hypothesis 2: {Acquired Cause}
 
