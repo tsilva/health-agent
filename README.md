@@ -5,7 +5,7 @@
 
   [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
   [![Claude Code](https://img.shields.io/badge/Claude_Code-Agent-8A2BE2)](https://claude.ai/code)
-  [![Skills](https://img.shields.io/badge/Skills-6-green)](CLAUDE.md)
+  [![Skills](https://img.shields.io/badge/Skills-8-green)](CLAUDE.md)
   [![Data Sources](https://img.shields.io/badge/Data_Sources-4-orange)](#data-sources)
 
   **🩺 Unify lab results, medical exams, and health journals into actionable insights with Claude Code 📊**
@@ -76,13 +76,14 @@ Open Claude Code in this directory. You'll be prompted to select a profile.
 
 ## Core Capabilities
 
-Health Agent provides 6 specialized skills for complex workflows, plus natural language analysis for everyday queries.
+Health Agent provides 8 specialized skills for complex workflows, plus natural language analysis for everyday queries.
 
 ### External Integrations (APIs + Caching)
 
 | Capability | When It's Used | Description |
 |------------|----------------|-------------|
 | **genetics-snp-lookup** | "Look up rs12345", "Check my CYP2D6 status", "What's my APOE genotype?" | Queries SNPedia API for genetic variant interpretations. Handles SNP lookups, pharmacogenomics genes (CYP2D6, CYP2C19, etc.), and health risk variants (APOE, Factor V Leiden, etc.). Results cached for 30 days. |
+| **genetics-selfdecode-lookup** | "Check selfdecode for rs...", SNP not found in 23andMe, user requests imputed data | Queries SelfDecode API for imputed SNP genotypes (~20M+ SNPs vs 631k in raw 23andMe). Requires authentication. Results cached for 30 days. |
 | **genetics-validate-interpretation** | Validating genetic interpretations or cross-referencing allele orientation | Validates genetic findings against SNPedia and verifies allele orientation for accuracy. |
 | **scientific-literature-search** | "Find papers on X mechanism", automatic use in root cause investigations | Queries PubMed and Semantic Scholar for authoritative research citations. Used automatically to validate biological mechanisms in hypothesis investigations. Results cached for 30 days. |
 
@@ -90,6 +91,7 @@ Health Agent provides 6 specialized skills for complex workflows, plus natural l
 
 | Capability | When It's Used | Description |
 |------------|----------------|-------------|
+| **health-dashboard** | Session start, `/health-dashboard`, "show my health dashboard" | Interactive entry point with profile selection, state initialization, visual dashboard (conditions, actions, medications, goals), and action menus. Primary way to start a health session. |
 | **investigate-root-cause** | "Investigate root cause of [condition]", "Why do I have [symptom]?", "What's causing my [abnormal finding]?" | Multi-turn hypothesis investigation with evidence gathering, literature-backed mechanism validation, comprehensive genetic analysis, and ranked competing explanations. Saves detailed reports to `.output/`. |
 | **prepare-provider-visit** | "Prepare for my doctor visit", "Generate a summary for my appointment", "Create medical documentation" | Intelligent orchestration of medications, labs, health events, conditions, and genetics (when relevant) into coherent provider-appropriate narratives. Adapts content based on visit type (annual/specialist/follow-up/urgent). |
 | **generate-questionnaire** | "Create questionnaire", "Systematically augment health log data" | Generates comprehensive questionnaires to identify gaps in health log data and systematically collect missing information. |
@@ -120,8 +122,10 @@ health-agent/
 │   └── skills/
 │       └── health-agent/
 │           ├── generate-questionnaire/SKILL.md
+│           ├── genetics-selfdecode-lookup/SKILL.md
 │           ├── genetics-snp-lookup/SKILL.md
 │           ├── genetics-validate-interpretation/SKILL.md
+│           ├── health-dashboard/SKILL.md
 │           ├── investigate-root-cause/SKILL.md
 │           ├── prepare-provider-visit/SKILL.md
 │           ├── scientific-literature-search/SKILL.md

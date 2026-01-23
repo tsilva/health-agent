@@ -807,6 +807,283 @@ Investigation reports include:
 **Would refute**: Positive direct Coombs (autoimmune), normal osmotic fragility
 ```
 
+### Performance Expectations
+
+The ensemble investigation is resource-intensive. Expect the following:
+
+| Phase | Description | Expected Duration |
+|-------|-------------|-------------------|
+| Phase 1 | Spawn 4 parallel investigation agents | 2-4 parallel tasks |
+| Phase 2 | Each agent completes analysis | Varies by data volume |
+| Phase 2.5 | Cross-agent refinement | 4 sequential reviews |
+| Phase 3 | Evidence verification | 1 consolidation task |
+| Phase 4 | Consensus generation | 1 synthesis task |
+| Phase 5 | Health state update | Immediate |
+
+**Parallelization Strategy**:
+- Phase 1 agents run in parallel (4 concurrent Task agents)
+- Phase 2.5 refinement is sequential (each agent needs others' output)
+- Final phases are sequential consolidation
+
+**Resource Usage**:
+- Each investigation may spawn 6-10 Task agents total
+- Literature searches add additional API calls (PubMed, Semantic Scholar)
+- Genetics lookups add SNPedia API calls
+- All API responses are cached for 30 days
+
+**When to Expect Longer Investigations**:
+- Complex conditions with many differential diagnoses
+- Extensive lab history requiring trend analysis
+- Multiple genetic variants to look up
+- Need for literature citations on obscure mechanisms
+
+## Troubleshooting Guide
+
+### Common Issues and Solutions
+
+#### Profile Issues
+
+| Problem | Symptoms | Solution |
+|---------|----------|----------|
+| Profile not loading | "Profile not found" error | Verify file exists in `profiles/` and ends with `.yaml` |
+| Missing data sources | "Labs file not found" warning | Check paths in profile YAML are absolute and correct |
+| Demographics missing | Age-specific ranges not applied | Add `date_of_birth` and `gender` to profile |
+
+**Debug profile paths**:
+```bash
+# Verify all paths in profile
+cat profiles/your_profile.yaml | grep "_path"
+# Test each path
+test -f "/your/labs/path/all.csv" && echo "Labs OK" || echo "Labs MISSING"
+```
+
+#### State File Issues
+
+| Problem | Symptoms | Solution |
+|---------|----------|----------|
+| State file corrupted | YAML parse errors | See "State File Corruption Handling" in health-dashboard skill |
+| State not persisting | Changes lost between sessions | Check `.state/{profile}/` directory exists and is writable |
+| Stale state | Dashboard shows old data | Delete `.state/{profile}/health-state.yaml` and re-initialize |
+
+**Reset state**:
+```bash
+# Backup and remove state file
+mv .state/{profile}/health-state.yaml .state/{profile}/health-state.backup.yaml
+# Re-run health-dashboard to initialize fresh state
+```
+
+#### API and Network Issues
+
+| Problem | Symptoms | Solution |
+|---------|----------|----------|
+| SNPedia unavailable | Genetics lookups fail | Check network; skill will use cached data if available |
+| SelfDecode auth error | "JWT expired" message | Follow token refresh instructions in error message |
+| PubMed rate limited | Literature search incomplete | Wait 60 seconds and retry; results are cached |
+| Timeout errors | "Request timed out after 30s" | Network may be slow; retry or check connectivity |
+
+**Check cache status**:
+```bash
+# List cached SNPedia data
+ls -la .claude/skills/health-agent/genetics-snp-lookup/.cache/
+
+# List cached SelfDecode data
+ls -la .claude/skills/health-agent/genetics-selfdecode-lookup/.cache/{profile}/
+```
+
+**Clear cache to force refresh**:
+```bash
+# Clear specific SNP cache
+rm .claude/skills/health-agent/genetics-snp-lookup/.cache/rs12345.json
+
+# Clear all SNPedia cache (forces fresh lookups)
+rm -rf .claude/skills/health-agent/genetics-snp-lookup/.cache/
+```
+
+#### Investigation Issues
+
+| Problem | Symptoms | Solution |
+|---------|----------|----------|
+| Investigation stalls | Agent doesn't complete | Check for network issues; restart investigation |
+| Low confidence results | All hypotheses <30% | May indicate insufficient data; check for missing labs |
+| No genetics analysis | Genetics section empty | Verify `genetics_23andme_path` in profile |
+| Missing literature | No PubMed citations | Check network; mechanism validation will be limited |
+
+#### Data Quality Issues
+
+| Problem | Symptoms | Solution |
+|---------|----------|----------|
+| Labs not recognized | Marker trends incomplete | Check `lab_specs.json` has aliases; use canonical names |
+| Low OCR confidence | Values flagged for verification | Re-process source PDFs or manually verify |
+| Missing episodes | Timeline gaps | Check health_log.csv for date coverage |
+
+### Cache Management
+
+All API responses are cached for 30 days. To manage cache:
+
+**View cache age**:
+```bash
+# Check SNPedia cache
+find .claude/skills/health-agent/genetics-snp-lookup/.cache -type f -mtime +30
+```
+
+**Prune old cache**:
+```bash
+# Remove cache files older than 30 days
+find .claude/skills/health-agent/genetics-snp-lookup/.cache -type f -mtime +30 -delete
+```
+
+**Force cache refresh for specific data**:
+```bash
+# Delete specific cache entry
+rm .claude/skills/health-agent/genetics-snp-lookup/.cache/{rsid}.json
+# Next lookup will fetch fresh data
+```
+
+## Known Limitations
+
+### 23andMe Genetics Limitations
+
+| Limitation | Impact | Workaround |
+|------------|--------|------------|
+| **No CNV detection** | Can't detect copy number variations | Clinical genetic testing required |
+| **Limited indels** | Insertions/deletions often missed | Some conditions undetectable |
+| **~631k SNPs only** | Many clinically relevant SNPs not tested | Use SelfDecode for imputed coverage |
+| **Unphased genotypes** | Can't determine maternal/paternal allele | Haplotype inference uncertain |
+| **BRCA limited to 3 mutations** | Only Ashkenazi founder mutations tested | Full BRCA panel requires clinical test |
+| **No UGT1A1*28** | Gilbert syndrome TA repeat not detectable | Proxy SNPs (rs887829) used instead |
+
+### SelfDecode Imputation Limitations
+
+| Limitation | Impact | Mitigation |
+|------------|--------|------------|
+| **Imputed, not genotyped** | Lower accuracy than direct genotyping | Prefer 23andMe when both have SNP |
+| **Population-specific accuracy** | Better for European ancestry | Note ancestry in interpretations |
+| **JWT token expiration** | Requires periodic refresh | Follow auth error recovery workflow |
+| **No direct validation** | Can't verify imputation accuracy | Cross-reference with 23andMe when possible |
+
+### Lab Data Limitations
+
+| Limitation | Impact | Mitigation |
+|------------|--------|------------|
+| **OCR confidence varies** | Values <0.8 confidence may be wrong | Flag for manual verification |
+| **Unit standardization incomplete** | Some units may not convert properly | Use `lab_specs.json` for known conversions |
+| **Reference ranges vary by lab** | Population-based, not personalized | Use `biomarker_baselines` in state for personal ranges |
+| **Missing tests not detected** | Can't know what hasn't been tested | Diagnostic gap analysis in investigations |
+
+### Health Log Limitations
+
+| Limitation | Impact | Mitigation |
+|------------|--------|------------|
+| **Self-reported data** | Subject to recall bias | Note uncertainty in interpretations |
+| **Episode linking manual** | Related events may not be connected | Use `generate-questionnaire` to identify gaps |
+| **Status inference imperfect** | May misclassify active/discontinued | Apply status-keywords.md algorithm |
+
+### Investigation Limitations
+
+| Limitation | Impact | Mitigation |
+|------------|--------|------------|
+| **Not a diagnosis** | Agent findings are hypotheses, not diagnoses | Always consult healthcare provider |
+| **Literature search scope** | May miss very recent or obscure research | Check publication dates in citations |
+| **Confidence calibration** | Still experimental | Report uncertainty ranges |
+| **English-only sources** | Non-English research may be missed | Note in literature sections |
+
+## Frequently Asked Questions
+
+### General Usage
+
+**Q: When should I use which skill?**
+
+| Task | Recommended Approach |
+|------|---------------------|
+| Quick health status | `/health-dashboard` or session start |
+| Understand a symptom/condition | `investigate-root-cause` |
+| Prepare for doctor visit | `prepare-provider-visit` |
+| Check a specific SNP | `genetics-snp-lookup` via natural language |
+| Fill gaps in health data | `generate-questionnaire` |
+| Track a biomarker over time | Natural language query (no skill needed) |
+
+**Q: How do I add custom skills?**
+
+Create a SKILL.md file in `.claude/skills/health-agent/your-skill/`:
+
+```markdown
+---
+name: your-skill
+description: "What it does and when to use it"
+---
+
+# Your Skill Name
+
+Instructions for the skill...
+```
+
+Then document it in CLAUDE.md under "Built-in Skills" if it should be discoverable.
+
+**Q: How is investigation confidence calculated?**
+
+Confidence is calibrated from multiple factors:
+1. **Raw agent agreement** (4 agents → higher base confidence)
+2. **Gap penalty** (missing diagnostic tests reduce confidence)
+3. **Epidemiological priors** (rare conditions need stronger evidence)
+4. **Evidence quality weights** (genetic confirmation > symptom report)
+5. **Red Team survival** (did hypothesis survive adversarial testing?)
+
+See `.claude/skills/health-agent/references/confidence-calibration.md` for formulas.
+
+**Q: What if a SNP isn't found in 23andMe?**
+
+1. Check SelfDecode (if configured) - it has imputed data for ~20M SNPs
+2. Look for proxy SNPs in linkage disequilibrium
+3. Note the gap in your investigation report
+4. Consider clinical genetic testing for important variants
+
+### Data Questions
+
+**Q: How do I add new lab results?**
+
+Update your labs-parser output, then:
+1. Re-run labs-parser on new PDFs
+2. The updated `all.csv` will be read automatically
+3. State will update on next health check
+
+**Q: Can I use health-agent without all data sources?**
+
+Yes. Skills gracefully handle missing sources:
+- No genetics → genetics sections skipped
+- No labs → lab trends unavailable
+- No health log → timeline analysis limited
+- Minimum: At least one data source recommended
+
+**Q: How do I correct a wrong lab value?**
+
+Options:
+1. Fix in source PDF and re-run labs-parser
+2. Add a correction note in health_log.csv
+3. Manually flag in state file's `biomarker_baselines`
+
+### Privacy Questions
+
+**Q: Is my health data uploaded anywhere?**
+
+No. All data stays local:
+- Health data files remain on your machine
+- Profile YAML paths point to local files
+- API calls (SNPedia, PubMed) send only SNP IDs or search terms
+- No PHI is sent to external services
+
+**Q: Are profile files safe to commit to git?**
+
+No - profile files are gitignored by default. Only `_template.yaml` is committed. Verify your `.gitignore` includes `profiles/*.yaml` before committing.
+
+**Q: What about cache files?**
+
+Cache files contain:
+- SNPedia responses (public data, no PHI)
+- SelfDecode genotypes (your data, gitignored)
+- Literature search results (public data)
+
+SNPedia cache can be committed if desired. SelfDecode cache should remain gitignored.
+
 ## Important Notes
 
 - **Privacy**: Profile YAML files contain paths to sensitive health data. They are gitignored except for the template.

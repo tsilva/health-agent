@@ -405,6 +405,277 @@ This SNP may not be tested by 23andMe's genotyping array. 23andMe tests ~631,000
 | **SNPedia unavailable (no cache)** | Error: "SNPedia unavailable and no cached data for {rsid}. Try again later." |
 | **Rate limited by SNPedia** | Wait 60s, retry once, then use cache if available |
 | **Cache file corrupted** | Delete cache file, fetch fresh from SNPedia |
+| **Network timeout** | Retry with exponential backoff, fall back to cache |
+| **API structure change** | Warn user, attempt fallback parsing |
+
+### Network Timeout Handling
+
+Use a 30-second timeout for all SNPedia API requests:
+
+```bash
+rsid="rs429358"
+cache_file=".claude/skills/health-agent/genetics-snp-lookup/.cache/${rsid}.json"
+temp_file="/tmp/claude/${rsid}_snpedia.json"
+timeout_seconds=30
+max_retries=3
+
+# Retry with exponential backoff
+attempt=1
+delay=1
+while [ $attempt -le $max_retries ]; do
+    # Use timeout command (or gtimeout on macOS)
+    timeout_cmd="timeout"
+    command -v timeout >/dev/null 2>&1 || timeout_cmd="gtimeout"
+
+    if $timeout_cmd $timeout_seconds curl -A "health-agent/1.0" -s -f \
+        "https://bots.snpedia.com/api.php?action=parse&page=${rsid}&format=json" \
+        > "$temp_file" 2>/dev/null; then
+        # Success - validate and use response
+        break
+    fi
+
+    exit_code=$?
+    if [ $exit_code -eq 124 ]; then
+        echo "Request timed out after ${timeout_seconds}s (attempt $attempt/$max_retries)" >&2
+    else
+        echo "Request failed with exit code $exit_code (attempt $attempt/$max_retries)" >&2
+    fi
+
+    if [ $attempt -lt $max_retries ]; then
+        echo "Retrying in ${delay}s..." >&2
+        sleep $delay
+        delay=$((delay * 2))
+    else
+        echo "All attempts failed, checking cache..." >&2
+        # Fall back to cache (even if stale)
+        if [ -f "$cache_file" ]; then
+            echo "⚠️ Using stale cache for $rsid"
+            cat "$cache_file"
+            exit 0
+        else
+            echo "❌ No cache available, lookup failed"
+            exit 1
+        fi
+    fi
+    attempt=$((attempt + 1))
+done
+```
+
+### Malformed Cache File Recovery
+
+Before using cached data, validate the JSON structure:
+
+```bash
+cache_file=".claude/skills/health-agent/genetics-snp-lookup/.cache/${rsid}.json"
+
+# Validate cache file before use
+validate_cache() {
+    local file="$1"
+
+    if [ ! -f "$file" ]; then
+        return 1  # File doesn't exist
+    fi
+
+    # Check file size (corrupt files are often 0 bytes or very small)
+    local size=$(wc -c < "$file" 2>/dev/null | tr -d ' ')
+    if [ -z "$size" ] || [ "$size" -lt 10 ]; then
+        echo "Cache file too small ($size bytes), likely corrupted" >&2
+        return 1
+    fi
+
+    # Validate JSON structure
+    if ! python3 -c "import json; json.load(open('$file'))" 2>/dev/null; then
+        echo "Cache file contains invalid JSON" >&2
+        return 1
+    fi
+
+    # Check for expected fields
+    local rsid_check=$(python3 -c "import json; d=json.load(open('$file')); print(d.get('rsid', ''))" 2>/dev/null)
+    if [ -z "$rsid_check" ]; then
+        echo "Cache file missing 'rsid' field" >&2
+        return 1
+    fi
+
+    return 0
+}
+
+# Use in main workflow
+if [ -f "$cache_file" ]; then
+    if validate_cache "$cache_file"; then
+        # Check TTL and use cache...
+        echo "Cache valid for $rsid"
+    else
+        echo "Removing corrupted cache file for $rsid"
+        rm -f "$cache_file"
+        # Proceed to fetch fresh data
+    fi
+fi
+```
+
+### API Structure Change Detection
+
+SNPedia's API structure may change over time. Detect and handle gracefully:
+
+```bash
+# After fetching, validate expected structure
+validate_snpedia_response() {
+    local response_file="$1"
+
+    # Expected structure: {"parse": {"title": "...", "text": {"*": "..."}}}
+
+    # Check for parse.text.* path (where content lives)
+    local content=$(python3 -c "
+import json, sys
+try:
+    d = json.load(open('$response_file'))
+    # Try standard path
+    if 'parse' in d and 'text' in d['parse'] and '*' in d['parse']['text']:
+        print('VALID_STANDARD')
+    # Check for error response
+    elif 'error' in d:
+        print('ERROR:' + d['error'].get('info', 'Unknown error'))
+    # Unknown structure
+    else:
+        print('UNKNOWN_STRUCTURE')
+        print(json.dumps(list(d.keys())))
+except Exception as e:
+    print('PARSE_ERROR:' + str(e))
+" 2>/dev/null)
+
+    case "$content" in
+        VALID_STANDARD)
+            return 0
+            ;;
+        ERROR:*)
+            echo "SNPedia API error: ${content#ERROR:}" >&2
+            return 2
+            ;;
+        UNKNOWN_STRUCTURE*)
+            echo "⚠️ WARNING: SNPedia API structure may have changed" >&2
+            echo "Expected: parse.text.* path" >&2
+            echo "Found keys: ${content#UNKNOWN_STRUCTURE}" >&2
+            echo "Attempting fallback parsing..." >&2
+            return 3
+            ;;
+        PARSE_ERROR:*)
+            echo "Failed to parse response: ${content#PARSE_ERROR:}" >&2
+            return 1
+            ;;
+    esac
+}
+
+# Usage:
+if validate_snpedia_response "$temp_file"; then
+    # Proceed with standard parsing
+    echo "Response structure valid"
+elif [ $? -eq 3 ]; then
+    # Try fallback parsing for unknown structure
+    echo "Attempting to extract data from non-standard response..."
+    # Fallback: look for any text content
+    python3 -c "
+import json
+d = json.load(open('$temp_file'))
+# Recursively find any HTML content
+def find_html(obj, depth=0):
+    if depth > 10: return None
+    if isinstance(obj, str) and '<' in obj:
+        return obj
+    if isinstance(obj, dict):
+        for v in obj.values():
+            result = find_html(v, depth+1)
+            if result: return result
+    if isinstance(obj, list):
+        for item in obj:
+            result = find_html(item, depth+1)
+            if result: return result
+    return None
+
+html = find_html(d)
+if html:
+    print(html[:500] + '...' if len(html) > 500 else html)
+else:
+    print('NO_HTML_FOUND')
+"
+fi
+```
+
+### Complete Error-Resilient Workflow
+
+```bash
+#!/bin/bash
+# SNPedia lookup with comprehensive error handling
+
+rsid="$1"
+cache_dir=".claude/skills/health-agent/genetics-snp-lookup/.cache"
+cache_file="$cache_dir/${rsid}.json"
+temp_file="/tmp/claude/${rsid}_snpedia.json"
+
+# Create directories
+mkdir -p "$cache_dir" "/tmp/claude"
+
+# Source helper functions if available
+[ -f ".claude/skills/health-agent/references/data-access-helpers.sh" ] && \
+    source .claude/skills/health-agent/references/data-access-helpers.sh
+
+# 1. Validate input
+if ! echo "$rsid" | grep -qE '^rs[0-9]+$'; then
+    echo "ERROR: Invalid rsID format: $rsid" >&2
+    exit 1
+fi
+
+# 2. Check cache (with validation)
+if [ -f "$cache_file" ]; then
+    if validate_cache "$cache_file" 2>/dev/null; then
+        fetched=$(python3 -c "import json; print(json.load(open('$cache_file')).get('fetched', ''))" 2>/dev/null)
+        if [ -n "$fetched" ]; then
+            fetched_ts=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$fetched" "+%s" 2>/dev/null || echo 0)
+            current_ts=$(date "+%s")
+            age=$((current_ts - fetched_ts))
+            ttl=2592000  # 30 days
+
+            if [ "$age" -lt "$ttl" ]; then
+                echo "Using cached data (age: $((age/86400)) days)"
+                cat "$cache_file"
+                exit 0
+            fi
+        fi
+    else
+        echo "Removing invalid cache file"
+        rm -f "$cache_file"
+    fi
+fi
+
+# 3. Fetch with timeout and retry
+echo "Fetching $rsid from SNPedia..."
+if fetch_json_with_retry \
+    "https://bots.snpedia.com/api.php?action=parse&page=${rsid}&format=json" \
+    "$temp_file" 30 3 2>/dev/null; then
+
+    # 4. Validate response structure
+    if validate_snpedia_response "$temp_file"; then
+        # 5. Cache the response
+        # [parsing and caching logic here]
+        echo "Successfully fetched and cached $rsid"
+    else
+        echo "Received unexpected response structure"
+        # Attempt to use stale cache if available
+        if [ -f "$cache_file" ]; then
+            echo "Falling back to stale cache"
+            cat "$cache_file"
+            exit 0
+        fi
+    fi
+else
+    echo "Fetch failed after retries"
+    # Stale cache fallback
+    if [ -f "$cache_file" ]; then
+        echo "⚠️ Using stale cache"
+        cat "$cache_file"
+        exit 0
+    fi
+    exit 1
+fi
+```
 
 ## Pharmacogenomics Gene Reference
 

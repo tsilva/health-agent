@@ -168,6 +168,157 @@ Quality = (1.0 + 0.8 + 0.8 + 0.5) / 4 = 3.1 / 4 = 0.775
 
 ---
 
+## 3b. Genetic Evidence Weighting (Extended)
+
+Genetic evidence requires special consideration because a variant's presence alone doesn't guarantee disease expression. This section provides detailed guidance for weighting genetic findings.
+
+### The Spectrum of Genetic Evidence
+
+Not all genetic findings are equally probative. Weight them on this spectrum:
+
+| Evidence Level | Weight | Description | Example |
+|----------------|--------|-------------|---------|
+| **Pathogenic variant + biochemical confirmation** | 1.0 | Gold standard | APOE ε4/ε4 + elevated CSF tau |
+| **Known pathogenic variant (high penetrance)** | 0.90 | Very strong | BRCA1 185delAG |
+| **Known pathogenic variant (moderate penetrance)** | 0.80 | Strong | Factor V Leiden heterozygous |
+| **Likely pathogenic variant (functional data)** | 0.75 | Strong | Variant with in vitro functional studies |
+| **Known pathogenic variant (low penetrance)** | 0.65 | Moderate | MTHFR C677T homozygous |
+| **Variant of uncertain significance (VUS)** | 0.40 | Weak | Novel variant in known gene |
+| **Benign or likely benign variant** | 0.10 | Very weak | Should not support hypothesis |
+| **Variant NOT found** | Variable | Depends on coverage | See "Negative Genetic Evidence" below |
+
+### Worked Example: Variant Found vs Variant + Biochemical Confirmation
+
+**Scenario**: Investigating hereditary hemochromatosis in patient with elevated ferritin.
+
+#### Case A: Variant Found Only
+
+Patient has HFE C282Y homozygous genotype (rs1800562 GG).
+
+| Evidence | Weight | Rationale |
+|----------|--------|-----------|
+| C282Y homozygous | 0.85 | Known pathogenic, but penetrance is 28% for clinical disease |
+
+**Quality Score**: 0.85
+
+**Interpretation**: Genotype is necessary but not sufficient. Many C282Y homozygotes never develop iron overload.
+
+#### Case B: Variant + Biochemical Confirmation
+
+Same patient, but we also have:
+- Transferrin saturation: 62% (elevated, >45% threshold)
+- Ferritin: 850 ng/mL (elevated)
+- Liver iron concentration elevated on MRI
+
+| Evidence | Weight | Rationale |
+|----------|--------|-----------|
+| C282Y homozygous | 0.85 | Known pathogenic |
+| Elevated transferrin sat | 0.90 | Biochemical confirmation |
+| Elevated ferritin | 0.80 | Supporting lab |
+| Elevated liver iron | 0.95 | Imaging confirmation |
+
+**Combined Quality Score**:
+```
+Quality = (0.85 + 0.90 + 0.80 + 0.95) / 4 = 3.50 / 4 = 0.875
+```
+
+**Interpretation**: With biochemical confirmation, confidence rises significantly. This is clinical hemochromatosis, not just genetic susceptibility.
+
+### Penetrance-Adjusted Genetic Weights
+
+When calculating weights, adjust for known penetrance:
+
+```
+Adjusted Weight = Base Weight × Penetrance Factor
+
+Penetrance Factor:
+- Complete penetrance (>90%): 1.0
+- High penetrance (70-90%): 0.95
+- Moderate penetrance (30-70%): 0.85
+- Low penetrance (10-30%): 0.70
+- Very low penetrance (<10%): 0.50
+```
+
+**Examples**:
+
+| Condition | Variant | Base Weight | Penetrance | Adjusted Weight |
+|-----------|---------|-------------|------------|-----------------|
+| Huntington disease | HTT CAG repeat >40 | 0.95 | ~100% | 0.95 × 1.0 = 0.95 |
+| Hereditary spherocytosis | ANK1 pathogenic | 0.90 | ~90% | 0.90 × 0.95 = 0.86 |
+| Hemochromatosis | HFE C282Y/C282Y | 0.85 | ~28% | 0.85 × 0.70 = 0.60 |
+| MTHFR | C677T homozygous | 0.65 | ~10-15% | 0.65 × 0.50 = 0.33 |
+| APOE | ε4 homozygous | 0.85 | ~50-60% | 0.85 × 0.85 = 0.72 |
+
+### Negative Genetic Evidence
+
+When a variant is NOT found, interpretation depends on coverage:
+
+| Scenario | Evidence Value | Weight Adjustment |
+|----------|----------------|-------------------|
+| **SNP tested, variant absent** | Rules out that variant | Reduces hypothesis confidence |
+| **SNP not on genotyping array** | No information | No adjustment either way |
+| **Gene fully sequenced, no pathogenic variants** | Strong negative evidence | Significantly reduces hypothesis |
+
+**Example**: Investigating hereditary spherocytosis
+
+- ANK1 SNP not on 23andMe array → No adjustment (can't rule out)
+- ANK1 SNP on array, variant absent → Reduces HS hypothesis by ~0.15 points
+- Full ANK1 gene sequencing negative → Reduces HS hypothesis by ~0.30 points
+
+### Combining Genetic with Non-Genetic Evidence
+
+When multiple evidence types support the same hypothesis:
+
+```
+Final Quality = Weighted Average × Convergence Bonus
+
+Convergence Bonus:
+- Genetic + Biochemical + Clinical: ×1.15
+- Genetic + Biochemical only: ×1.10
+- Genetic only: ×1.00
+- Biochemical + Clinical only: ×1.05
+- Clinical only: ×1.00
+```
+
+**Worked Example: Full Hemochromatosis Workup**
+
+| Evidence | Type | Base Weight | Convergence |
+|----------|------|-------------|-------------|
+| HFE C282Y homozygous | Genetic | 0.85 | |
+| Transferrin sat 62% | Biochemical | 0.90 | |
+| Ferritin 850 | Biochemical | 0.80 | |
+| Liver iron elevated | Clinical/Imaging | 0.95 | |
+| Joint pain | Clinical symptom | 0.50 | |
+
+**Calculation**:
+```
+Base Quality = (0.85 + 0.90 + 0.80 + 0.95 + 0.50) / 5 = 0.80
+Convergence: Genetic + Biochemical + Clinical = ×1.15
+Final Quality = 0.80 × 1.15 = 0.92
+```
+
+### Pharmacogenomics Evidence
+
+Pharmacogenomics findings have different weight implications:
+
+| Finding | Weight | Clinical Impact |
+|---------|--------|-----------------|
+| Poor metabolizer confirmed (genotype + phenotype) | 0.95 | Dose adjustment required |
+| Poor metabolizer genotype only | 0.80 | Dose adjustment recommended |
+| Intermediate metabolizer | 0.70 | Monitor for response |
+| Normal metabolizer | 0.50 | Standard dosing |
+| Ultrarapid metabolizer | 0.80 | Dose increase may be needed |
+
+**Example**: CYP2D6 for codeine response
+
+| Scenario | Evidence | Weight | Recommendation |
+|----------|----------|--------|----------------|
+| *4/*4 genotype + no analgesia with codeine | Genetic + Clinical | 0.95 | Use alternative analgesic |
+| *4/*4 genotype alone | Genetic only | 0.80 | Expect reduced response |
+| *4/*1 genotype | Genetic | 0.70 | May have reduced response |
+
+---
+
 ## 4. Adversarial Survival Factor
 
 ### Red Team Survival Adjustments

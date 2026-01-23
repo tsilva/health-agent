@@ -250,6 +250,248 @@ Each rsID gets a JSON cache file: `.cache/{profile_name}/{rsid}.json`
 | **Profile ID missing** | Error: "profile_id not configured in profile YAML" |
 | **SNP not found** | Note: "SNP {rsid} not in SelfDecode database (empty response)" |
 | **API unavailable (with cache)** | Warning: "SelfDecode unavailable, using stale cache (age: X days)" |
+| **Network timeout** | Retry with exponential backoff, fall back to cache |
+| **Cache file corrupted** | Delete and re-fetch |
+| **API structure change** | Detect and warn, attempt fallback parsing |
+
+### Network Timeout Handling
+
+Use 30-second timeout with retry for SelfDecode API requests:
+
+```bash
+profile_id="{from profile}"
+jwt_token="{from profile}"
+rsid="rs429358"
+cache_file=".claude/skills/health-agent/genetics-selfdecode-lookup/.cache/${profile_name}/${rsid}.json"
+temp_file="/tmp/claude/selfdecode_${rsid}.json"
+timeout_seconds=30
+max_retries=3
+
+attempt=1
+delay=2  # Start with 2 second delay (SelfDecode is slower)
+while [ $attempt -le $max_retries ]; do
+    # Use timeout command
+    timeout_cmd="timeout"
+    command -v timeout >/dev/null 2>&1 || timeout_cmd="gtimeout"
+
+    if $timeout_cmd $timeout_seconds curl -s -f \
+        "https://selfdecode.com/service/health-analysis/genes/genotype/?profile_id=${profile_id}&rsid=${rsid}" \
+        -H "authorization: JWT ${jwt_token}" \
+        > "$temp_file" 2>/dev/null; then
+
+        # Check for auth error in response (still 200 status)
+        if grep -qE '"detail".*[Aa]uthentication' "$temp_file"; then
+            echo "AUTH_ERROR: JWT token expired" >&2
+            exit 2
+        fi
+
+        # Success
+        break
+    fi
+
+    exit_code=$?
+    if [ $exit_code -eq 124 ]; then
+        echo "Request timed out after ${timeout_seconds}s (attempt $attempt/$max_retries)" >&2
+    else
+        echo "Request failed with exit code $exit_code (attempt $attempt/$max_retries)" >&2
+    fi
+
+    if [ $attempt -lt $max_retries ]; then
+        echo "Retrying in ${delay}s..." >&2
+        sleep $delay
+        delay=$((delay * 2))
+    else
+        echo "All attempts failed" >&2
+        # Fall back to cache
+        if [ -f "$cache_file" ]; then
+            echo "⚠️ Using stale cache for $rsid"
+            cat "$cache_file"
+            exit 0
+        else
+            echo "❌ No cache available"
+            exit 1
+        fi
+    fi
+    attempt=$((attempt + 1))
+done
+```
+
+### Malformed Cache File Recovery
+
+Validate cache before use:
+
+```bash
+validate_selfdecode_cache() {
+    local file="$1"
+
+    if [ ! -f "$file" ]; then
+        return 1
+    fi
+
+    # Check file size
+    local size=$(wc -c < "$file" 2>/dev/null | tr -d ' ')
+    if [ -z "$size" ] || [ "$size" -lt 20 ]; then
+        echo "Cache file too small ($size bytes)" >&2
+        return 1
+    fi
+
+    # Validate JSON
+    if ! python3 -c "import json; json.load(open('$file'))" 2>/dev/null; then
+        echo "Cache file contains invalid JSON" >&2
+        return 1
+    fi
+
+    # Check for expected fields
+    local has_rsid=$(python3 -c "
+import json
+d = json.load(open('$file'))
+print('yes' if d.get('rsid') and d.get('data', {}).get('genotype') else 'no')
+" 2>/dev/null)
+
+    if [ "$has_rsid" != "yes" ]; then
+        echo "Cache file missing required fields" >&2
+        return 1
+    fi
+
+    return 0
+}
+
+# Usage
+if [ -f "$cache_file" ]; then
+    if validate_selfdecode_cache "$cache_file"; then
+        # Check TTL and use
+        echo "Cache valid"
+    else
+        echo "Removing corrupted cache for $rsid"
+        rm -f "$cache_file"
+    fi
+fi
+```
+
+### API Structure Change Detection
+
+SelfDecode API may change. Detect and handle:
+
+```bash
+validate_selfdecode_response() {
+    local response_file="$1"
+
+    # Expected: [{"profile_id":"...","rsid":"...","variant_ids":[...],"genotypes":[...]}]
+
+    local validation=$(python3 -c "
+import json, sys
+try:
+    d = json.load(open('$response_file'))
+
+    # Empty array = SNP not found
+    if isinstance(d, list) and len(d) == 0:
+        print('NOT_FOUND')
+        sys.exit(0)
+
+    # Check for expected structure
+    if isinstance(d, list) and len(d) > 0:
+        item = d[0]
+        if 'rsid' in item and 'genotypes' in item:
+            print('VALID')
+        elif 'detail' in item:
+            print('ERROR:' + str(item.get('detail', 'Unknown')))
+        else:
+            print('UNKNOWN:' + ','.join(item.keys()))
+    elif isinstance(d, dict):
+        if 'detail' in d:
+            print('ERROR:' + str(d.get('detail', 'Unknown')))
+        else:
+            print('UNKNOWN_DICT:' + ','.join(d.keys()))
+    else:
+        print('UNEXPECTED_TYPE:' + type(d).__name__)
+
+except json.JSONDecodeError as e:
+    print('JSON_ERROR:' + str(e))
+except Exception as e:
+    print('ERROR:' + str(e))
+" 2>/dev/null)
+
+    case "$validation" in
+        VALID)
+            return 0
+            ;;
+        NOT_FOUND)
+            echo "SNP not found in SelfDecode database"
+            return 2
+            ;;
+        ERROR:*Authentication*|ERROR:*credentials*)
+            echo "Authentication error: ${validation#ERROR:}" >&2
+            return 3
+            ;;
+        ERROR:*)
+            echo "API error: ${validation#ERROR:}" >&2
+            return 1
+            ;;
+        UNKNOWN:*|UNKNOWN_DICT:*)
+            echo "⚠️ WARNING: SelfDecode API structure may have changed" >&2
+            echo "Expected fields: rsid, genotypes" >&2
+            echo "Found: ${validation#UNKNOWN:}" >&2
+            return 4
+            ;;
+        JSON_ERROR:*)
+            echo "Invalid JSON response: ${validation#JSON_ERROR:}" >&2
+            return 1
+            ;;
+        *)
+            echo "Unexpected validation result: $validation" >&2
+            return 1
+            ;;
+    esac
+}
+
+# Usage
+case $(validate_selfdecode_response "$temp_file"; echo $?) in
+    0)
+        echo "Valid response, proceeding to cache"
+        ;;
+    2)
+        echo "SNP not in database"
+        exit 0
+        ;;
+    3)
+        echo "AUTH_ERROR - prompt user to refresh token"
+        exit 2
+        ;;
+    4)
+        echo "API changed - attempting fallback parsing"
+        # Try to extract genotype from any structure
+        genotype=$(python3 -c "
+import json
+d = json.load(open('$temp_file'))
+# Recursively search for anything that looks like a genotype
+def find_genotype(obj, depth=0):
+    if depth > 5: return None
+    if isinstance(obj, list) and len(obj) == 2 and all(isinstance(x, str) and len(x) == 1 for x in obj):
+        return ''.join(obj)
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k in ('genotype', 'genotypes', 'alleles'):
+                if isinstance(v, str): return v
+                if isinstance(v, list): return find_genotype(v)
+            result = find_genotype(v, depth+1)
+            if result: return result
+    if isinstance(obj, list):
+        for item in obj:
+            result = find_genotype(item, depth+1)
+            if result: return result
+    return None
+print(find_genotype(d) or 'NOT_FOUND')
+" 2>/dev/null)
+        if [ "$genotype" != "NOT_FOUND" ] && [ -n "$genotype" ]; then
+            echo "Fallback parsing found genotype: $genotype"
+        fi
+        ;;
+    *)
+        echo "Request failed"
+        exit 1
+        ;;
+esac
+```
 
 ### Authentication Error Recovery
 
@@ -350,7 +592,7 @@ When both sources have data for the same SNP:
 
 ## Security Notes
 
-- JWT tokens are sensitive - never commit to git
-- Store JWT in environment variable, not in profile YAML
-- Tokens expire after 24-48 hours - refresh as needed
-- Cache files contain only genotype data, not credentials
+- **JWT tokens are sensitive**: Profile YAML files are gitignored by default (see `.gitignore`), so storing credentials in your profile is safe. Verify your `.gitignore` includes `profiles/*.yaml` before adding credentials.
+- **Alternative: environment variables**: For extra security, you can store JWT in environment variables and reference them in scripts, though this requires more setup.
+- **Token expiration**: JWT tokens expire after 24-48 hours. Refresh when you get authentication errors (the skill will prompt you).
+- **Cache safety**: Cache files contain only genotype data, not credentials. They can safely be committed if desired (though they're also gitignored by default).

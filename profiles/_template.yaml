@@ -1,6 +1,9 @@
 # Health Agent Profile Template
 # Copy this file to {name}.yaml and fill in your details
-# Profile files (except this template) are gitignored for privacy
+#
+# SECURITY: Profile files (except this template) are gitignored for privacy.
+# This means JWT tokens and other credentials stored here will NOT be committed to git.
+# Verify your .gitignore includes: profiles/*.yaml, !profiles/_template.yaml
 
 name: "Your Name"
 
