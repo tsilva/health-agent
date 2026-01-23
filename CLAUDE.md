@@ -4,15 +4,17 @@ A Claude Code-based health analysis agent that ingests data from three parsers a
 
 ## Quick Start
 
-At the start of each session, prompt the user to select a profile:
+**At session start, invoke the Health Dashboard** by reading and following `.claude/skills/health-agent/health-dashboard/SKILL.md`.
 
-```
-Which health profile would you like to use? (Check profiles/ directory for available profiles)
-```
+The dashboard provides an interactive experience using `AskUserQuestion`:
+1. Profile selection (interactive menu)
+2. State initialization check (with guided setup if needed)
+3. Visual dashboard display (conditions, actions, medications, goals)
+4. Action menu (investigate, review data, prepare visit, track labs)
 
-Then load the profile YAML to get data source paths.
+**Slash command**: When user types `/health-dashboard`, read and follow `.claude/skills/health-agent/health-dashboard/SKILL.md`.
 
-After profile selection, follow the **Session Start Protocol** below.
+For the full protocol details, see **Session Start Protocol** below.
 
 ## Health State System
 
@@ -21,10 +23,34 @@ The health state system transforms health-agent from a reactive analysis tool in
 ### Architecture
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│                    SESSION START                            │
-│  "Run health check?" → Read state → Check for new data     │
-│  → Surface insights → Show status + recommended actions    │
+┌─────────────────────────────────────────────────────────────┐
+│                 INTERACTIVE DASHBOARD                        │
+│  /health-dashboard or session start                          │
+│                                                              │
+│  ┌─────────────────┐    ┌─────────────────┐                 │
+│  │ AskUserQuestion │───▶│ Profile Select  │                 │
+│  └─────────────────┘    └────────┬────────┘                 │
+│                                  ▼                           │
+│  ┌─────────────────┐    ┌─────────────────┐                 │
+│  │ AskUserQuestion │───▶│ State Init?     │                 │
+│  └─────────────────┘    └────────┬────────┘                 │
+│                                  ▼                           │
+│  ┌────────────────────────────────────────┐                 │
+│  │        VISUAL DASHBOARD                 │                 │
+│  │  • Conditions & confidence             │                 │
+│  │  • Top actions (prioritized)           │                 │
+│  │  • Medications / Supplements           │                 │
+│  │  • Goals & progress                    │                 │
+│  │  • Recent activity                     │                 │
+│  └────────────────────┬───────────────────┘                 │
+│                       ▼                                      │
+│  ┌─────────────────┐    ┌─────────────────┐                 │
+│  │ AskUserQuestion │───▶│ Action Menu     │                 │
+│  └─────────────────┘    │ • Review data   │                 │
+│                         │ • Investigate   │                 │
+│                         │ • Track labs    │                 │
+│                         │ • Provider visit│                 │
+│                         └─────────────────┘                 │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -41,7 +67,7 @@ The health state system transforms health-agent from a reactive analysis tool in
                               │
                               ▼
               ┌───────────────────────────────┐
-              │   Natural Conversation        │
+              │   Continuous Interaction      │
               │                               │
               │   "What should I do next?"    │
               │   "I completed the EMA test"  │
@@ -92,18 +118,58 @@ genetics        ─┘
 
 ## Session Start Protocol
 
-At session start, after profile selection:
+**Recommended**: Use the interactive `health-dashboard` skill which handles all of this with `AskUserQuestion` for a guided experience.
 
-1. **Check if state file exists**:
+If implementing manually, after profile selection:
+
+1. **Profile Selection** (use AskUserQuestion):
+   ```json
+   {
+     "questions": [{
+       "question": "Which health profile would you like to use?",
+       "header": "Profile",
+       "options": [/* dynamically populate from profiles/*.yaml */],
+       "multiSelect": false
+     }]
+   }
+   ```
+
+2. **Check if state file exists**:
    ```bash
    test -f ".state/{profile}/health-state.yaml" && echo "EXISTS" || echo "MISSING"
    ```
 
-2. **If state file missing**: Offer to initialize (see State Initialization below)
+3. **If state file missing**: Use AskUserQuestion to offer initialization:
+   ```json
+   {
+     "questions": [{
+       "question": "Your health state hasn't been initialized. Set it up now?",
+       "header": "Setup",
+       "options": [
+         {"label": "Yes, initialize (Recommended)", "description": "Create state from existing data"},
+         {"label": "Skip for now", "description": "Proceed without persistent tracking"}
+       ],
+       "multiSelect": false
+     }]
+   }
+   ```
 
-3. **If state file exists**: Ask "Run health check?"
-   - If no: Proceed to user's request
-   - If yes: Run Health Check Routine
+4. **If state file exists**: Use AskUserQuestion for health check:
+   ```json
+   {
+     "questions": [{
+       "question": "Run health check to review your status?",
+       "header": "Check",
+       "options": [
+         {"label": "Yes, run check (Recommended)", "description": "Check for new data and review status"},
+         {"label": "Skip", "description": "Go directly to your request"}
+       ],
+       "multiSelect": false
+     }]
+   }
+   ```
+   - If yes: Run Health Check Routine, then display dashboard
+   - If skip: Proceed to user's request
 
 ### Health Check Routine
 
@@ -668,7 +734,7 @@ All large files (`all.csv`, `health_log.csv`, `health_log.md`) typically exceed 
 
 ## Built-in Skills
 
-Seven core skills provide specialized capabilities in `.claude/skills/health-agent/`.
+Eight core skills provide specialized capabilities in `.claude/skills/health-agent/`.
 
 ### How to Use Skills
 
@@ -709,6 +775,7 @@ Seven core skills provide specialized capabilities in `.claude/skills/health-age
 
 | Skill | Path |
 |-------|------|
+| `health-dashboard` | `.claude/skills/health-agent/health-dashboard/SKILL.md` |
 | `genetics-snp-lookup` | `.claude/skills/health-agent/genetics-snp-lookup/SKILL.md` |
 | `genetics-selfdecode-lookup` | `.claude/skills/health-agent/genetics-selfdecode-lookup/SKILL.md` |
 | `genetics-validate-interpretation` | `.claude/skills/health-agent/genetics-validate-interpretation/SKILL.md` |
@@ -730,6 +797,7 @@ Seven core skills provide specialized capabilities in `.claude/skills/health-age
 
 | Skill | Use When |
 |-------|----------|
+| `health-dashboard` | Session start, `/health-dashboard` command, or user asks "show my health dashboard" or "health status". Interactive entry point using `AskUserQuestion` for profile selection, state initialization, dashboard display, and action menus. Primary session entry point. |
 | `investigate-root-cause` | User asks "investigate root cause of [condition]", "why do I have [condition]", "find the cause of [symptom]", or "what's causing my [condition]". Runs 4 parallel agents (bottom-up, top-down, genetics-first, red team) with cross-agent refinement, interpretation validation, diagnostic gap penalties, epidemiological priors, and calibrated confidence with falsification criteria. |
 | `prepare-provider-visit` | User asks to "prepare for doctor visit", "generate provider summary", or "create medical documentation". Intelligently orchestrates data gathering based on visit type (annual/specialist/follow-up/urgent) and generates coherent provider-appropriate narratives. |
 | `generate-questionnaire` | User asks to create questionnaire or systematically augment health log data with structured gap analysis. |
