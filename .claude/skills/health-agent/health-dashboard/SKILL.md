@@ -20,6 +20,145 @@ Interactive entry point for Health OS that guides users through profile selectio
 /health-dashboard
 ```
 
+## Health State System Overview
+
+The health state system transforms health-agent from a reactive analysis tool into a proactive Health OS with persistent understanding across sessions.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 INTERACTIVE DASHBOARD                        │
+│  /health-dashboard or session start                          │
+│                                                              │
+│  ┌─────────────────┐    ┌─────────────────┐                 │
+│  │ AskUserQuestion │───▶│ Profile Select  │                 │
+│  └─────────────────┘    └────────┬────────┘                 │
+│                                  ▼                           │
+│  ┌─────────────────┐    ┌─────────────────┐                 │
+│  │ AskUserQuestion │───▶│ State Init?     │                 │
+│  └─────────────────┘    └────────┬────────┘                 │
+│                                  ▼                           │
+│  ┌────────────────────────────────────────┐                 │
+│  │        VISUAL DASHBOARD                 │                 │
+│  │  • Conditions & confidence             │                 │
+│  │  • Top actions (prioritized)           │                 │
+│  │  • Medications / Supplements           │                 │
+│  │  • Goals & progress                    │                 │
+│  │  • Recent activity                     │                 │
+│  └────────────────────┬───────────────────┘                 │
+│                       ▼                                      │
+│  ┌─────────────────┐    ┌─────────────────┐                 │
+│  │ AskUserQuestion │───▶│ Action Menu     │                 │
+│  └─────────────────┘    │ • Review data   │                 │
+│                         │ • Investigate   │                 │
+│                         │ • Track labs    │                 │
+│                         │ • Provider visit│                 │
+│                         └─────────────────┘                 │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │   .state/{profile}/           │
+              │   health-state.yaml           │
+              │                               │
+              │   • Conditions & hypotheses   │
+              │   • Biomarker baselines       │
+              │   • Active actions            │
+              │   • Intervention outcomes     │
+              │   • Last sync timestamps      │
+              └───────────────────────────────┘
+```
+
+### State File Location
+
+State files are stored at `.state/{profile}/health-state.yaml`. The template at `.state/_template/health-state.yaml` documents the structure.
+
+- **Schema Validation**: JSON Schema at `.state/_template/health-state.schema.json`
+- **Atomic Updates**: Always use atomic write pattern (backup → temp → validate → rename)
+- **Profile Caching**: Last selected profile cached at `.state/.last-profile`
+
+### Key State Components
+
+| Component | Purpose |
+|-----------|---------|
+| `conditions` | Active health conditions with hypotheses and confidence |
+| `biomarker_baselines` | Personal "normal" values vs population reference |
+| `genetics` | Key genetic findings cached from investigations |
+| `medications` / `supplements` | Current medications with monitoring markers |
+| `actions` | Prioritized next steps (recommended/accepted/in_progress) |
+| `completed_actions` | What was tried and outcomes (keeps last 20) |
+| `declined_actions` | Actions user declined (don't re-recommend) |
+| `goals` | Health goals with progress tracking |
+| `last_sync` | Timestamps of last processed data from each source |
+
+### Relationship to health_log.csv
+
+**These are complementary, not redundant:**
+
+| Aspect | health_log.csv | health-state.yaml |
+|--------|----------------|-------------------|
+| **Purpose** | Record events | Synthesize understanding |
+| **Content** | "What happened" | "What it means + what to do" |
+| **Maintained by** | User | Agent |
+| **Update pattern** | Append events | Revise current state |
+| **Time scope** | Full history | Current snapshot |
+
+Data flows one direction:
+```
+health_log.csv  ─┐
+labs/all.csv    ─┼──→ Agent reasoning ──→ health-state.yaml
+exams/*.md      ─┤
+genetics        ─┘
+```
+
+### State Maintenance Behavior
+
+The agent should **proactively offer** to update state, not wait for explicit requests:
+
+- After discussion implies state change → "Should I update your health state to reflect [X]?"
+- User says "I did X" → Offer to record it
+- Investigation completes → "I'll add these actions to your health state"
+
+**When to Update State**:
+
+| Trigger | State Update |
+|---------|--------------|
+| Investigation completes | Add/update condition, generate actions |
+| User reports completing action | Move to completed_actions with outcome |
+| New lab results discussed | Update biomarker_baselines if significant |
+| User starts/stops medication | Update medications/supplements |
+| Goal progress changes | Update goals.progress |
+| User declines an action | Add to declined_actions |
+
+### Action Lifecycle
+
+```
+recommended → accepted → in_progress → completed
+      │                                    │
+      ▼                                    ▼
+  declined                          outcome recorded
+      │                                    │
+      ▼                                    ▼
+(don't re-recommend               confidence updated
+ unless reconsider_if met)        new actions generated
+```
+
+### Biomarker Baselines
+
+Personal baselines differ from population references when:
+- Chronic condition causes stable deviation (e.g., elevated bilirubin in hemolysis)
+- User has consistently different "normal" (e.g., naturally low BP)
+
+Update baselines when pattern established over 3+ measurements or investigation confirms cause.
+
+### State File Maintenance
+
+Keep state file manageable:
+- **completed_actions**: Keep last 20 entries
+- **Archive annually**: Move completed_actions older than 1 year to `.state/{profile}/archive/`
+- **Prune declined_actions**: Remove if `reconsider_if` conditions met, or after 2 years
+
 ## Workflow
 
 ### Phase 1: Profile Selection
