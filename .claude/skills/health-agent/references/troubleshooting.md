@@ -75,7 +75,7 @@ rm -rf .claude/skills/health-agent/genetics-snp-lookup/.cache/
 |---------|----------|----------|
 | Labs not recognized | Marker trends incomplete | Check `lab_specs.json` has aliases; use canonical names |
 | Low OCR confidence | Values flagged for verification | Re-process source PDFs or manually verify |
-| Missing episodes | Timeline gaps | Check health_log.csv for date coverage |
+| Missing episodes | Timeline gaps | Check history.csv for date coverage |
 
 ## Cache Management
 

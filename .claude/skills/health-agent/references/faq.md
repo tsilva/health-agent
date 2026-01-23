@@ -69,7 +69,7 @@ Yes. Skills gracefully handle missing sources:
 
 Options:
 1. Fix in source PDF and re-run labs-parser
-2. Add a correction note in health_log.csv
+2. Add a correction note in history.csv or update current.yaml
 3. Manually flag in state file's `biomarker_baselines`
 
 ## Privacy Questions

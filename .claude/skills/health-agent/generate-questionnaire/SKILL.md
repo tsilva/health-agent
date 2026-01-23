@@ -26,10 +26,16 @@ This skill provides:
 
 ## Efficient Data Access
 
-### Sample Recent Health Log Entries
+### Current State (Source of Truth)
 ```bash
-# Last 100 CSV entries to identify recent patterns
-tail -100 "{health_log_path}/health_log.csv"
+# Read current.yaml for active medications, conditions, supplements
+cat "{health_log_path}/current.yaml"
+```
+
+### Sample Recent Health Timeline Entries
+```bash
+# Last 100 CSV entries from history.csv to identify recent patterns
+tail -100 "{health_log_path}/history.csv"
 
 # Recent narrative entries for context
 tail -200 "{health_log_path}/health_log.md" | head -150
@@ -37,12 +43,21 @@ tail -200 "{health_log_path}/health_log.md" | head -150
 
 ### Identify Active Conditions
 ```bash
-grep -E ",(condition|symptom)," "{health_log_path}/health_log.csv" | tail -50
+# From current.yaml (preferred - source of truth)
+grep -A 100 "^conditions:" "{health_log_path}/current.yaml"
+
+# From history.csv (for timeline analysis)
+grep -E ",(condition|symptom)," "{health_log_path}/history.csv" | tail -50
 ```
 
 ### Identify Current Medications/Supplements
 ```bash
-grep -E ",(medication|supplement)," "{health_log_path}/health_log.csv" | tail -50
+# From current.yaml (preferred - source of truth)
+grep -A 100 "^medications:" "{health_log_path}/current.yaml"
+grep -A 100 "^supplements:" "{health_log_path}/current.yaml"
+
+# From history.csv (for timeline analysis)
+grep -E ",(medication|supplement)," "{health_log_path}/history.csv" | tail -50
 ```
 
 ## Questionnaire Structure
@@ -201,16 +216,22 @@ The gap analysis algorithm systematically identifies missing information that wo
 First, inventory what data IS present:
 
 ```bash
-# Count entries by category
+# Count entries by type
 echo "=== Data Inventory ==="
 
-echo "Medications: $(grep -c ',medication,' "$health_log_csv")"
-echo "Supplements: $(grep -c ',supplement,' "$health_log_csv")"
-echo "Symptoms: $(grep -c ',symptom,' "$health_log_csv")"
-echo "Conditions: $(grep -c ',condition,' "$health_log_csv")"
+# From current.yaml (current state)
+echo "Current Medications: $(grep -c '^\s*-\s*name:' <(grep -A 100 '^medications:' "$current_yaml" 2>/dev/null) 2>/dev/null || echo 0)"
+echo "Current Supplements: $(grep -c '^\s*-\s*name:' <(grep -A 100 '^supplements:' "$current_yaml" 2>/dev/null) 2>/dev/null || echo 0)"
+echo "Current Conditions: $(grep -c '^\s*-\s*name:' <(grep -A 100 '^conditions:' "$current_yaml" 2>/dev/null) 2>/dev/null || echo 0)"
+
+# From history.csv (timeline)
+echo "Historical Medications: $(grep -c ',medication,' "$history_csv")"
+echo "Historical Supplements: $(grep -c ',supplement,' "$history_csv")"
+echo "Historical Symptoms: $(grep -c ',symptom,' "$history_csv")"
+echo "Historical Conditions: $(grep -c ',condition,' "$history_csv")"
 echo "Labs: $(wc -l < "$labs_csv" | tr -d ' ')"
 echo "Exams: $(find "$exams_path" -name "*.summary.md" | wc -l | tr -d ' ')"
-echo "Episodes: $(grep -oE 'episode_[0-9]+' "$health_log_csv" | sort -u | wc -l | tr -d ' ')"
+echo "Entities: $(grep -oE 'entity_[0-9]+' "$history_csv" | sort -u | wc -l | tr -d ' ')"
 ```
 
 ### Step 2: Gap Detection Rules
@@ -228,11 +249,11 @@ For each domain, apply these detection rules:
 | Missing side effect documentation | Medication present but no side effect entries | LOW |
 
 ```bash
-# Find medications without discontinuation reason
-grep ',medication,' "$health_log_csv" | \
+# Find medications without discontinuation reason (from history.csv)
+grep ',medication,' "$history_csv" | \
   grep -iE 'stopped|discontinued|ended' | \
   grep -viE 'reason|because|due to|side effect' | \
-  awk -F',' '{print $1, $3, $5}'
+  awk -F',' '{print $1, $2, $3, $5}'
 ```
 
 #### Symptoms Gap Detection
@@ -246,8 +267,8 @@ grep ',medication,' "$health_log_csv" | \
 | Missing temporal pattern | >5 symptom entries without pattern analysis | MEDIUM |
 
 ```bash
-# Find recurring symptoms without pattern info
-grep ',symptom,' "$health_log_csv" | \
+# Find recurring symptoms without pattern info (from history.csv)
+grep ',symptom,' "$history_csv" | \
   awk -F',' '{print $3}' | \
   sort | uniq -c | sort -rn | \
   awk '$1 > 3 {print $0}'
@@ -273,7 +294,7 @@ grep ',symptom,' "$health_log_csv" | \
 | Incomplete workup | Condition suggests tests not yet done | HIGH |
 
 ```bash
-# Find abnormal labs not repeated
+# Find abnormal labs not repeated (from all.csv)
 awk -F',' 'NR>1 && ($5<$7 || $5>$8) {print $1, $4}' "$labs_csv" | \
   sort -t' ' -k2 | \
   uniq -f1 -c | \

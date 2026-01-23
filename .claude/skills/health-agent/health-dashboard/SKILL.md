@@ -92,21 +92,26 @@ State files are stored at `.state/{profile}/health-state.yaml`. The template at 
 | `goals` | Health goals with progress tracking |
 | `last_sync` | Timestamps of last processed data from each source |
 
-### Relationship to health_log.csv
+### Relationship to current.yaml (health-log-parser output)
 
 **These are complementary, not redundant:**
 
-| Aspect | health_log.csv | health-state.yaml |
-|--------|----------------|-------------------|
-| **Purpose** | Record events | Synthesize understanding |
-| **Content** | "What happened" | "What it means + what to do" |
-| **Maintained by** | User | Agent |
-| **Update pattern** | Append events | Revise current state |
-| **Time scope** | Full history | Current snapshot |
+| Aspect | current.yaml (health-log) | health-state.yaml (agent state) |
+|--------|---------------------------|--------------------------------|
+| **Purpose** | User-maintained current state | Agent-synthesized understanding |
+| **Content** | "What I'm taking/have" | "What it means + what to do" |
+| **Maintained by** | User (via health-log-parser) | Agent |
+| **Update pattern** | Direct edits | Revise based on analysis |
+| **Time scope** | Current snapshot | Current snapshot + actions |
+
+**Key distinction**:
+- `{health_log_path}/current.yaml` = User's source of truth (conditions, medications, supplements)
+- `.state/{profile}/health-state.yaml` = Agent's analysis layer (hypotheses, actions, confidence scores)
 
 Data flows one direction:
 ```
-health_log.csv  ─┐
+current.yaml    ─┐
+history.csv     ─┤
 labs/all.csv    ─┼──→ Agent reasoning ──→ health-state.yaml
 exams/*.md      ─┤
 genetics        ─┘
@@ -223,7 +228,8 @@ If state exists, check for new data:
 ```bash
 # Get last modified times
 LABS_MOD=$(stat -f "%Sm" -t "%Y-%m-%d" "{labs_path}/all.csv" 2>/dev/null || echo "N/A")
-LOG_MOD=$(stat -f "%Sm" -t "%Y-%m-%d" "{health_log_path}/health_log.csv" 2>/dev/null || echo "N/A")
+CURRENT_MOD=$(stat -f "%Sm" -t "%Y-%m-%d" "{health_log_path}/current.yaml" 2>/dev/null || echo "N/A")
+HISTORY_MOD=$(stat -f "%Sm" -t "%Y-%m-%d" "{health_log_path}/history.csv" 2>/dev/null || echo "N/A")
 
 # Read last_sync from state
 grep -A3 "last_sync:" ".state/${PROFILE}/health-state.yaml"
@@ -387,12 +393,12 @@ grep -A20 "^supplements:" ".state/${PROFILE}/health-state.yaml"
 grep -A15 "^goals:" ".state/${PROFILE}/health-state.yaml"
 ```
 
-### Recent Activity (from health_log)
+### Recent Activity (from history.csv)
 
 ```bash
-# Last 7 days
+# Last 7 days from history.csv
 awk -F',' -v start="$(date -v-7d +%Y-%m-%d)" \
-  'NR==1 || $1 >= start' "{health_log_path}/health_log.csv" | \
+  'NR==1 || $1 >= start' "{health_log_path}/history.csv" | \
   tail -10
 ```
 

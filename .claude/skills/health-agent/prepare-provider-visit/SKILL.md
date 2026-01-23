@@ -62,24 +62,26 @@ For each content area, gather data naturally (NOT by invoking deleted skills):
 
 **Current Medications & Supplements**:
 ```bash
-# Extract active medications and supplements
-grep -E ",medication,|,supplement," "{health_log_path}/health_log.csv" | \
-  awk -F',' '{print $1","$3","$5","$6}' | \
+# Preferred: Get from current.yaml (source of truth)
+grep -A 100 "^medications:" "{health_log_path}/current.yaml" | grep -B 100 -m 1 "^[a-z]" | head -n -1
+grep -A 100 "^supplements:" "{health_log_path}/current.yaml" | grep -B 100 -m 1 "^[a-z]" | head -n -1
+
+# Alternative: Extract from history.csv for timeline
+grep -E ",medication,|,supplement," "{health_log_path}/history.csv" | \
+  awk -F',' '{print $1","$2","$3","$4","$5","$6}' | \
   tail -50  # Recent 50 entries
 ```
 
-Then apply status determination logic from `.claude/skills/health-agent/references/status-keywords.md` to identify:
-- Active (currently taking)
-- Discontinued (explicitly stopped)
-- Suspected (temporary/as-needed)
+When using current.yaml, the status is already determined (items listed are active).
+For history.csv analysis, apply status determination logic from `.claude/skills/health-agent/references/status-keywords.md`.
 
 **Recent Health Events**:
 ```bash
-# Events in timeframe
-awk -F',' -v start="YYYY-MM-DD" 'NR==1 || $1 >= start' "{health_log_path}/health_log.csv"
+# Events in timeframe from history.csv
+awk -F',' -v start="YYYY-MM-DD" 'NR==1 || $1 >= start' "{health_log_path}/history.csv"
 ```
 
-Group by category and episode_id for coherent presentation.
+Group by Type column and EntityID for coherent presentation.
 
 **Abnormal Labs**:
 ```bash
@@ -91,12 +93,15 @@ Use lab_specs.json (via helpers in `.claude/skills/health-agent/references/lab-s
 
 **Active Conditions**:
 ```bash
-# Extract conditions
-grep ",condition," "{health_log_path}/health_log.csv" | \
-  awk -F',' '{print $1","$3","$5","$6}'
+# Preferred: Get from current.yaml (source of truth)
+grep -A 100 "^conditions:" "{health_log_path}/current.yaml" | grep -B 100 -m 1 "^[a-z]" | head -n -1
+
+# Alternative: Extract from history.csv for timeline
+grep ",condition," "{health_log_path}/history.csv" | \
+  awk -F',' '{print $1","$2","$3","$4","$5","$6}'
 ```
 
-Apply status keywords to determine active vs resolved.
+When using current.yaml, items are definitively active. For history.csv, apply status keywords to determine active vs resolved.
 
 **Genetics** (ONLY if `genetics_23andme_path` is configured):
 

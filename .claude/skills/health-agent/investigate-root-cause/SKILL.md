@@ -255,9 +255,11 @@ mkdir -p .output/{profile}/investigation-{condition}-{date}
   echo "# All agents should verify these hashes match during analysis"
   echo ""
   echo "labs_hash=$(sha256sum '${labs_path}/all.csv' | awk '{print $1}')"
-  echo "health_log_hash=$(sha256sum '${health_log_path}/health_log.csv' | awk '{print $1}')"
+  echo "current_yaml_hash=$(sha256sum '${health_log_path}/current.yaml' | awk '{print $1}')"
+  echo "history_hash=$(sha256sum '${health_log_path}/history.csv' | awk '{print $1}')"
   echo "labs_modified=$(stat -f '%Sm' -t '%Y-%m-%d %H:%M' '${labs_path}/all.csv')"
-  echo "health_log_modified=$(stat -f '%Sm' -t '%Y-%m-%d %H:%M' '${health_log_path}/health_log.csv')"
+  echo "current_yaml_modified=$(stat -f '%Sm' -t '%Y-%m-%d %H:%M' '${health_log_path}/current.yaml')"
+  echo "history_modified=$(stat -f '%Sm' -t '%Y-%m-%d %H:%M' '${health_log_path}/history.csv')"
 } > .output/{profile}/investigation-{condition}-{date}/.data-snapshot
 ```
 
@@ -315,7 +317,9 @@ Task tool call 4:
 ```markdown
 **Profile Data Sources**:
 - Labs: {labs_path}/all.csv
-- Health Timeline: {health_log_path}/health_log.csv
+- Current State: {health_log_path}/current.yaml (source of truth for active medications/conditions)
+- Health Timeline: {health_log_path}/history.csv
+- Entity Registry: {health_log_path}/entities.json
 - Health Log Narrative: {health_log_path}/health_log.md
 - Medical Exams: {exams_path}/*/*.summary.md
 - Genetics (optional): {genetics_23andme_path}
@@ -335,8 +339,10 @@ This format enables the verification agent to check each claim.
 
 **Data Access Patterns**:
 Use efficient extraction commands from CLAUDE.md "Common Analysis Patterns":
+- Current state: Read `{health_log_path}/current.yaml` directly for medications, conditions
 - Labs: `grep -iE "(marker1|marker2)" "{labs_path}/all.csv" | sort -t',' -k1`
-- Timeline: `grep -i "{term}" "{health_log_path}/health_log.csv" | head -50`
+- Timeline: `grep -i "{term}" "{health_log_path}/history.csv" | head -50`
+- Entity: `grep ",{entity_id}," "{health_log_path}/history.csv"`
 - Genetics: `grep -E "^(rs123|rs456)" "{genetics_23andme_path}"`
 
 **Genetics Lookup Strategy** (use 23andMe by default, SelfDecode for gaps):
@@ -382,17 +388,26 @@ Search ALL data sources without preconceptions:
 
 2. **All health timeline events related to {condition}**:
    ```bash
-   grep -i "{condition}" "{health_log_path}/health_log.csv" | head -50
+   grep -i "{condition}" "{health_log_path}/history.csv" | head -50
    ```
 
 3. **All symptoms and conditions**:
    ```bash
-   grep -E ",symptom,|,condition," "{health_log_path}/health_log.csv" | tail -100
+   # Current conditions from current.yaml (source of truth)
+   grep -A 100 "^conditions:" "{health_log_path}/current.yaml"
+
+   # Historical symptom/condition events from history.csv
+   grep -E ",symptom,|,condition," "{health_log_path}/history.csv" | tail -100
    ```
 
 4. **All medications and supplements**:
    ```bash
-   grep -E ",medication,|,supplement," "{health_log_path}/health_log.csv" | tail -100
+   # Current from current.yaml (source of truth)
+   grep -A 100 "^medications:" "{health_log_path}/current.yaml"
+   grep -A 100 "^supplements:" "{health_log_path}/current.yaml"
+
+   # Historical events from history.csv
+   grep -E ",medication,|,supplement," "{health_log_path}/history.csv" | tail -100
    ```
 
 5. **Medical exam findings**:
@@ -1341,7 +1356,8 @@ Verify evidence citations AND interpretations from the ensemble investigation of
 
 **Profile Data Sources**:
 - Labs: {labs_path}/all.csv
-- Health Timeline: {health_log_path}/health_log.csv
+- Current State: {health_log_path}/current.yaml
+- Health Timeline: {health_log_path}/history.csv
 - Genetics: {genetics_23andme_path}
 
 **Reference Documentation**:
@@ -1370,7 +1386,10 @@ For each citation:
    grep -i "{claimed_marker}" "{labs_path}/all.csv" | grep "{claimed_date}"
 
    # For timeline
-   grep -i "{claimed_event}" "{health_log_path}/health_log.csv" | grep "{claimed_date}"
+   grep -i "{claimed_event}" "{health_log_path}/history.csv" | grep "{claimed_date}"
+
+   # For current state (medications, conditions)
+   grep -i "{claimed_item}" "{health_log_path}/current.yaml"
 
    # For genetics
    grep "^{rsid}" "{genetics_23andme_path}"

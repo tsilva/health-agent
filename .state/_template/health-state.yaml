@@ -55,7 +55,7 @@ genetics:
     #   significance: "Pharmacogenomic implications"
 
 # Current medications and supplements
-# Derived from health_log.csv with status determination
+# Derived from current.yaml (source of truth) and history.csv
 medications: []
   # Example:
   # - name: "Medication Name"

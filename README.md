@@ -71,7 +71,7 @@ Open Claude Code in this directory. You'll be prompted to select a profile.
 |--------|--------|-------------|
 | [labs-parser](https://github.com/tsilva/labs-parser) | `all.csv` | Lab test results with values, units, reference ranges |
 | [medical-exams-parser](https://github.com/tsilva/medical-exams-parser) | `*.summary.md` | Imaging and exam transcriptions with YAML metadata |
-| [health-log-parser](https://github.com/tsilva/health-log-parser) | `health_log.md` + `health_log.csv` | Health journal entries and structured timeline |
+| [health-log-parser](https://github.com/tsilva/health-log-parser) | `current.yaml` + `history.csv` + `health_log.md` | Current health state (source of truth) and timeline |
 | 23andMe | Raw data download | Genetic variants for pharmacogenomics and health risks |
 
 ## Core Capabilities
