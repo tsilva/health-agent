@@ -12,6 +12,221 @@ Which health profile would you like to use? (Check profiles/ directory for avail
 
 Then load the profile YAML to get data source paths.
 
+After profile selection, follow the **Session Start Protocol** below.
+
+## Health State System
+
+The health state system transforms health-agent from a reactive analysis tool into a proactive Health OS with persistent understanding across sessions.
+
+### Architecture
+
+```
+┌────────────────────────────────────────────────────────────┐
+│                    SESSION START                            │
+│  "Run health check?" → Read state → Check for new data     │
+│  → Surface insights → Show status + recommended actions    │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │   .state/{profile}/           │
+              │   health-state.yaml           │
+              │                               │
+              │   • Conditions & hypotheses   │
+              │   • Biomarker baselines       │
+              │   • Active actions            │
+              │   • Intervention outcomes     │
+              │   • Last sync timestamps      │
+              └───────────────────────────────┘
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │   Natural Conversation        │
+              │                               │
+              │   "What should I do next?"    │
+              │   "I completed the EMA test"  │
+              │   "Update my ferritin result" │
+              └───────────────────────────────┘
+```
+
+### State File Location
+
+State files are stored at `.state/{profile}/health-state.yaml`. The template at `.state/_template/health-state.yaml` documents the schema.
+
+### Key State Components
+
+| Component | Purpose |
+|-----------|---------|
+| `conditions` | Active health conditions with hypotheses and confidence |
+| `biomarker_baselines` | Personal "normal" values vs population reference |
+| `genetics` | Key genetic findings cached from investigations |
+| `medications` / `supplements` | Current medications with monitoring markers |
+| `actions` | Prioritized next steps (recommended/accepted/in_progress) |
+| `completed_actions` | What was tried and outcomes (keeps last 20) |
+| `declined_actions` | Actions user declined (don't re-recommend) |
+| `goals` | Health goals with progress tracking |
+| `last_sync` | Timestamps of last processed data from each source |
+
+### Relationship to health_log.csv
+
+**These are complementary, not redundant:**
+
+| Aspect | health_log.csv | health-state.yaml |
+|--------|----------------|-------------------|
+| **Purpose** | Record events | Synthesize understanding |
+| **Content** | "What happened" | "What it means + what to do" |
+| **Maintained by** | User | Agent |
+| **Update pattern** | Append events | Revise current state |
+| **Time scope** | Full history | Current snapshot |
+
+**health_log.csv** = raw input (events as they happen)
+**health-state.yaml** = derived output (synthesized understanding)
+
+Data flows one direction:
+```
+health_log.csv  ─┐
+labs/all.csv    ─┼──→ Agent reasoning ──→ health-state.yaml
+exams/*.md      ─┤
+genetics        ─┘
+```
+
+## Session Start Protocol
+
+At session start, after profile selection:
+
+1. **Check if state file exists**:
+   ```bash
+   test -f ".state/{profile}/health-state.yaml" && echo "EXISTS" || echo "MISSING"
+   ```
+
+2. **If state file missing**: Offer to initialize (see State Initialization below)
+
+3. **If state file exists**: Ask "Run health check?"
+   - If no: Proceed to user's request
+   - If yes: Run Health Check Routine
+
+### Health Check Routine
+
+1. **Load state file**: Read `.state/{profile}/health-state.yaml`
+
+2. **Check data freshness**:
+   ```bash
+   # Get last modified times of data sources
+   stat -f "%Sm" "{labs_path}/all.csv"
+   stat -f "%Sm" "{health_log_path}/health_log.csv"
+   ```
+   Compare to `last_sync` timestamps in state file.
+
+3. **If new data detected**:
+   - Extract new entries since last sync
+   - Check for anomalies (out of reference range, trend changes)
+   - Report findings
+
+4. **Present status summary**:
+   - Active conditions with confidence levels
+   - Top 3 pending actions (prioritized)
+   - Goal progress
+   - Any actions past due date
+
+5. **Update last_sync timestamps** after processing
+
+### State Initialization (Bootstrap)
+
+When `.state/{profile}/health-state.yaml` doesn't exist:
+
+1. **Ask user**: "Would you like to initialize your health state? This will create a persistent record of your health understanding."
+
+2. **If yes, gather from existing data**:
+
+   **Conditions**: Read recent investigations in `.output/{profile}/` → extract conditions and hypotheses
+   ```bash
+   find .output/{profile} -name "consensus-final.md" | head -5
+   ```
+
+   **Biomarker baselines**: Query labs for markers with 3+ values → calculate personal baseline (median of recent values)
+
+   **Medications/supplements**: Query health_log.csv for active medications (use `.claude/skills/health-agent/references/status-keywords.md`)
+
+   **Genetics**: Read any previous SNP lookups from investigation reports
+
+   **Actions**: Extract "Recommended follow-up" from most recent investigation consensus
+
+3. **Create state file** at `.state/{profile}/health-state.yaml` using Write tool
+
+4. **Create directory first**:
+   ```bash
+   mkdir -p .state/{profile}
+   ```
+
+5. **Confirm**: "Health state initialized with X conditions, Y active actions. Run health check?"
+
+## State Maintenance
+
+### Update Behavior: Proactive with Confirmation
+
+The agent should **proactively offer** to update state, not wait for explicit requests:
+
+- After discussion implies state change → "Should I update your health state to reflect [X]?"
+- User says "I did X" → Offer to record it
+- Investigation completes → "I'll add these actions to your health state"
+
+This keeps state current without requiring user to remember to ask.
+
+### When to Update State
+
+Update `.state/{profile}/health-state.yaml` when:
+
+| Trigger | State Update |
+|---------|--------------|
+| Investigation completes | Add/update condition, generate actions |
+| User reports completing action | Move to completed_actions with outcome |
+| New lab results discussed | Update biomarker_baselines if significant |
+| User starts/stops medication | Update medications/supplements |
+| Goal progress changes | Update goals.progress |
+| User declines an action | Add to declined_actions |
+
+### Action Lifecycle
+
+```
+recommended → accepted → in_progress → completed
+      │                                    │
+      ▼                                    ▼
+  declined                          outcome recorded
+      │                                    │
+      ▼                                    ▼
+(don't re-recommend               confidence updated
+ unless reconsider_if met)        new actions generated
+```
+
+**When completing an action**:
+1. Record outcome (positive/negative/inconclusive)
+2. Note impact on hypotheses
+3. Generate follow-up actions if needed
+4. Update condition confidence if outcome changes understanding
+
+**When declining an action**:
+1. Record reason
+2. Note "reconsider_if" conditions
+3. Don't re-recommend unless conditions change
+
+### Biomarker Baselines
+
+Personal baselines differ from population references when:
+- Chronic condition causes stable deviation (e.g., elevated bilirubin in hemolysis)
+- User has consistently different "normal" (e.g., naturally low BP)
+
+Update baselines when:
+- Pattern established over 3+ measurements
+- Investigation confirms cause of deviation
+
+### State File Maintenance
+
+Keep state file manageable:
+
+- **completed_actions**: Keep last 20 entries
+- **Archive annually**: Move completed_actions older than 1 year to `.state/{profile}/archive/completed-{year}.yaml`
+- **Prune declined_actions**: Remove if `reconsider_if` conditions met, or after 2 years
+
 ## Profile System
 
 ### Loading a Profile
@@ -478,8 +693,9 @@ Seven core skills provide specialized capabilities in `.claude/skills/health-age
 **Example - Using investigate-root-cause:**
 ```
 1. Read .claude/skills/health-agent/investigate-root-cause/SKILL.md
-2. Follow instructions to spawn 4 parallel Task agents (Phase 1), then refinement agents (Phase 2.5), verification (Phase 3), and consensus (Phase 4)
+2. Follow instructions to spawn 4 parallel Task agents (Phase 1), refinement agents (Phase 2.5), verification (Phase 3), consensus (Phase 4), and state update (Phase 5)
 3. The skill provides complete prompt templates for each agent type
+4. Investigation findings persist to .state/{profile}/health-state.yaml with prioritized actions
 ```
 
 **Example - Using genetics-snp-lookup:**
@@ -688,11 +904,11 @@ The `investigate-root-cause` skill automates comprehensive hypothesis generation
 
 **How to invoke**:
 1. Read `.claude/skills/health-agent/investigate-root-cause/SKILL.md`
-2. Follow the skill instructions to spawn agents across 6 phases
+2. Follow the skill instructions to spawn agents across 7 phases
 
 ### How It Works
 
-The investigation uses 4 parallel agents with different reasoning strategies, followed by refinement and verification:
+The investigation uses 4 parallel agents with different reasoning strategies, followed by refinement, verification, and state persistence:
 
 **Phase 1**: Spawn 4 investigation agents in parallel:
 - **Bottom-Up**: Data-driven pattern discovery (no preconceptions)
@@ -709,7 +925,13 @@ The investigation uses 4 parallel agents with different reasoning strategies, fo
 - Epidemiological priors (Bayesian adjustment for condition prevalence)
 - Falsification criteria (what would confirm/refute each hypothesis)
 
+**Phase 5**: Update Health State - persist findings to `.state/{profile}/health-state.yaml`:
+- Add/update condition with hypotheses and confidence
+- Generate prioritized actions from recommended follow-up
+- Create/update goal for identifying root cause
+
 **Output**: Saved to `.output/{profile}/investigation-{condition}-{date}/consensus-final.md`
+**State**: Updated in `.state/{profile}/health-state.yaml`
 
 ### Output Format
 
@@ -732,6 +954,8 @@ Investigation reports include:
 - **Cross-agent refinement**: Agents learn from each other's insights
 - **Adversarial validation**: Red Team proposes alternatives, not just contradictions
 - **Interpretation validation**: Catches unit errors, temporal violations, statistical overclaiming
+- **Health state persistence**: Findings persist across sessions via health-state.yaml
+- **Action generation**: Creates prioritized next steps from investigation recommendations
 - **Diagnostic gap penalty**: Honest confidence when key tests unavailable
 - **Epidemiological priors**: Rare conditions need stronger evidence
 - **Falsification criteria**: Actionable next steps to confirm/refute

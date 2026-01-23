@@ -45,7 +45,7 @@ Phase 1: Spawn 4 investigators in parallel (single message)
 
 Phase 2: Wait for all agents to complete
 
-Phase 2.5: Cross-Agent Refinement (NEW)
+Phase 2.5: Cross-Agent Refinement
     ├─ Each agent reviews summaries of other 3 agents
     ├─ Agents can revise hypotheses, adopt insights, note disagreements
     └─ Red Team reviews if critiques were addressed
@@ -62,7 +62,14 @@ Phase 4: Consensus & Blind Spot Agent
     ├─ Incorporate epidemiological priors
     └─ Produce calibrated final ranking with falsification criteria
 
-Phase 5: Return final consensus report path
+Phase 5: Update Health State
+    ├─ Add/update condition with hypotheses and confidence
+    ├─ Generate prioritized actions from recommended follow-up
+    ├─ Update genetics if relevant variants found
+    ├─ Create/update goal for condition
+    └─ Write updated state file
+
+Phase 6: Return final consensus report path + state update summary
 ```
 
 ## When to Use This Skill
@@ -1744,8 +1751,9 @@ condition: {condition}
 generated: {YYYY-MM-DD}
 profile: {profile}
 agents: 4
-phases: 6
+phases: 7
 refinement: true
+state_updated: true
 ---
 
 # Ensemble Root Cause Investigation: {Condition}
@@ -1994,18 +2002,186 @@ This ensemble investigation is a data-driven analysis using multiple reasoning s
 
 ---
 
-*Ensemble investigation completed using 4 parallel agents + refinement + verification + consensus*
-*Phases: 6 (spawn → refine → verify → consensus → blind spots → report)*
+*Ensemble investigation completed using 4 parallel agents + refinement + verification + consensus + state update*
+*Phases: 7 (spawn → refine → verify → consensus → blind spots → state update → report)*
 *Generated: {YYYY-MM-DD}*
 *Profile: {profile}*
+*Health state updated: .state/{profile}/health-state.yaml*
 ```
 ```
 
 ---
 
-## Phase 5: Return Final Report Path
+## Phase 5: Update Health State
 
-After consensus report is generated:
+After consensus is complete, update `.state/{profile}/health-state.yaml` to persist the investigation findings.
+
+### Step 5.1: Check if State File Exists
+
+```bash
+test -f ".state/{profile}/health-state.yaml" && echo "EXISTS" || echo "MISSING"
+```
+
+If missing, create directory and initialize:
+```bash
+mkdir -p .state/{profile}
+```
+
+Then create from template `.state/_template/health-state.yaml` or existing data.
+
+### Step 5.2: Add/Update Condition
+
+From the consensus report, extract and add/update the condition entry:
+
+```yaml
+conditions:
+  - name: "{condition}"  # From investigation target
+    status: active  # active (symptomatic) or monitoring (stable/mild)
+    confidence: {calibrated_confidence}  # From consensus
+    primary_hypothesis: "{top_hypothesis_name}"
+    hypotheses:  # Ranked list from consensus
+      - name: "{hypothesis_1}"
+        confidence: {confidence_1}
+      - name: "{hypothesis_2}"
+        confidence: {confidence_2}
+    diagnostic_gaps:  # From gap assessment
+      - "{missing_test_1}"
+      - "{missing_test_2}"
+    investigation_ref: "investigation-{condition}-{date}"
+```
+
+### Step 5.3: Generate Actions from Recommended Follow-up
+
+Convert the "Recommended Follow-up" section into prioritized actions:
+
+**Priority Assignment**:
+| Criteria | Priority |
+|----------|----------|
+| Would resolve diagnosis (high confidence impact) | high |
+| Addresses diagnostic gap | high |
+| Additional confirmation | medium |
+| Blind spot investigation | medium |
+| Optional/supplementary | low |
+
+**Dependency Detection**:
+- If test requires provider appointment → create appointment action first, set dependency
+- If test requires prior test results → set dependency on prior test
+
+**Due Date Assignment**:
+- Urgent/time-sensitive: 2 weeks
+- High priority: 1 month
+- Medium priority: 2-3 months
+- Low priority: No specific due date
+
+```yaml
+actions:
+  - id: {next_available_id}
+    action: "{test_or_action_from_followup}"
+    priority: high  # Based on criteria above
+    why: "{from_consensus_explanation}"
+    status: recommended
+    due: "YYYY-MM-DD"
+    depends_on: []  # Or list of action ids
+```
+
+### Step 5.4: Update Genetics if Relevant Variants Found
+
+If the investigation found relevant genetic variants:
+
+```yaml
+genetics:
+  data_source: "23andme"  # or "selfdecode" or "both"
+  key_findings:
+    - gene: "{gene_name}"
+      rsid: "{rs_number}"  # If specific SNP
+      genotype: "{genotype}"
+      significance: "{clinical_significance}"
+```
+
+### Step 5.5: Create/Update Goal
+
+If no existing goal for this condition:
+
+```yaml
+goals:
+  - goal: "Identify root cause of {condition}"
+    target_date: "YYYY-MM-DD"  # 6 months from now
+    progress: {estimated_progress}%
+    success_criteria: "Diagnosis confidence > 70%"
+```
+
+Progress estimation:
+- Initial investigation: 30%
+- One confirmatory test completed: 50%
+- Multiple tests completed: 70%
+- Diagnosis established: 100%
+
+### Step 5.6: Update last_updated Timestamp
+
+```yaml
+last_updated: "{today's date YYYY-MM-DD}"
+```
+
+### Step 5.7: Write Updated State File
+
+Use the Write tool to update `.state/{profile}/health-state.yaml` with all changes.
+
+**Example state update after hemolysis investigation**:
+
+```yaml
+conditions:
+  - name: "Chronic Compensated Hemolysis"
+    status: active
+    confidence: 0.54
+    primary_hypothesis: "Hereditary Spherocytosis"
+    hypotheses:
+      - name: "Hereditary Spherocytosis"
+        confidence: 0.54
+      - name: "Idiopathic"
+        confidence: 0.25
+      - name: "Congenital Dyserythropoietic Anemia"
+        confidence: 0.15
+    diagnostic_gaps:
+      - "EMA binding test"
+      - "Direct Coombs test"
+      - "Genetic panel (ANK1/SPTB)"
+    investigation_ref: "investigation-chronic-hemolysis-2026-01-22"
+
+actions:
+  - id: 1
+    action: "Schedule hematology follow-up"
+    priority: high
+    why: "Required to order EMA test and discuss investigation findings"
+    status: recommended
+    due: "2026-02-15"
+    depends_on: []
+  - id: 2
+    action: "Request EMA binding test"
+    priority: high
+    why: "Would confirm/exclude hereditary spherocytosis (primary hypothesis)"
+    status: recommended
+    due: "2026-03-01"
+    depends_on: [1]
+  - id: 3
+    action: "Request Direct Coombs test"
+    priority: high
+    why: "Would rule out autoimmune hemolysis"
+    status: recommended
+    due: "2026-03-01"
+    depends_on: [1]
+
+goals:
+  - goal: "Identify root cause of hemolysis"
+    target_date: "2026-07-22"
+    progress: 30%
+    success_criteria: "Diagnosis confidence > 70%"
+```
+
+---
+
+## Phase 6: Return Final Report Path
+
+After consensus report is generated and state updated:
 
 1. Verify all output files exist:
 ```bash
@@ -2024,7 +2200,12 @@ Expected files:
 - `evidence-verification.md` (Phase 3)
 - `consensus-final.md` (Phase 4)
 
-2. Return summary to user:
+2. Verify state file was updated:
+```bash
+head -20 .state/{profile}/health-state.yaml
+```
+
+3. Return summary to user:
 
 ```markdown
 ## Ensemble Investigation Complete
@@ -2046,7 +2227,13 @@ Expected files:
 **Would confirm**: {top 2 confirmation criteria}
 **Would refute**: {top 2 refutation criteria}
 
+### Health State Updated
+- Condition added/updated with {N} hypotheses
+- {N} actions generated (prioritized)
+- Goal created: "Identify root cause of {condition}"
+
 **Read full consensus**: `.output/{profile}/investigation-{condition}-{date}/consensus-final.md`
+**View pending actions**: `.state/{profile}/health-state.yaml`
 ```
 
 ---
@@ -2066,6 +2253,8 @@ Expected files:
 | **Red Team proposes no alternatives** | Flag incomplete Red Team analysis; reduce adversarial confidence weight |
 | **Gap penalty exceeds 30%** | Cap at 30%; note severe diagnostic limitations |
 | **Epidemiological priors unavailable** | Skip prior adjustment; note limitation in report |
+| **State file doesn't exist** | Create from template; initialize with investigation findings |
+| **State file write fails** | Report error; investigation results still in consensus-final.md |
 
 ---
 
@@ -2106,7 +2295,13 @@ Expected files:
    - **Add falsification criteria** for each hypothesis
    - Generate final ranking
 
-7. **Phase 5**: Return:
+7. **Phase 5**: Update Health State:
+   - Add condition "Chronic Compensated Hemolysis" with hypotheses
+   - Generate 3 prioritized actions from follow-up recommendations
+   - Create goal "Identify root cause of hemolysis" (30% progress)
+   - Write updated state file
+
+8. **Phase 6**: Return:
    ```
    ## Ensemble Investigation Complete
 
@@ -2118,6 +2313,11 @@ Expected files:
    **Would confirm**: Positive EMA binding test, clinical gene panel confirms ANK1/SPTB
    **Would refute**: Positive direct Coombs (autoimmune), normal osmotic fragility
 
+   ### Health State Updated
+   - Condition added with 3 hypotheses
+   - 3 actions generated (2 high priority, 1 medium)
+   - Goal created: "Identify root cause of hemolysis"
+
    - 4/4 agents proposed (refined)
    - Survived Red Team (critiques addressed in refinement)
    - Genetics support found (23andMe variant)
@@ -2125,6 +2325,7 @@ Expected files:
    - Red Team counter-hypothesis: Congenital Dyserythropoietic Anemia (15% confidence)
 
    **Output**: .output/{profile}/investigation-chronic-hemolysis-2026-01-22/consensus-final.md
+   **Actions**: .state/{profile}/health-state.yaml
    ```
 
 ---
@@ -2145,6 +2346,8 @@ Expected files:
 | **Falsification criteria** | No | Yes (per hypothesis) |
 | **Confidence calibration** | Subjective | Fully calculated from metrics |
 | **Counter-hypotheses** | No | Yes (from Red Team) |
+| **Health state update** | No | Yes (Phase 5 - persists findings) |
+| **Action generation** | No | Yes (prioritized next steps) |
 | **Execution time** | ~5-10 min | ~20-30 min |
 | **Use case** | Routine investigation | High-stakes, complex cases |
 

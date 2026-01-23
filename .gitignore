@@ -212,5 +212,9 @@ profiles/*.yaml
 
 .output/*
 
+# Health state files (contain sensitive health understanding)
+.state/*
+!.state/_template/
+
 # Skill cache directories
 **/.cache/

@@ -1,0 +1,112 @@
+# Health State Template
+# Copy to .state/{profile}/health-state.yaml and populate with profile-specific data
+
+version: "1.0"
+last_updated: "YYYY-MM-DD"
+
+# Data sync tracking - timestamps of last processed data from each source
+last_sync:
+  labs: "YYYY-MM-DD"
+  health_log: "YYYY-MM-DD"
+  exams: "YYYY-MM-DD"
+
+# What the system understands about your health
+# Populated from investigations and ongoing analysis
+conditions: []
+  # Example:
+  # - name: "Example Condition"
+  #   status: active  # active | monitoring | resolved
+  #   confidence: 0.65
+  #   primary_hypothesis: "Primary cause"
+  #   hypotheses:
+  #     - name: "Primary cause"
+  #       confidence: 0.65
+  #     - name: "Alternative cause"
+  #       confidence: 0.20
+  #   diagnostic_gaps:
+  #     - "Confirmatory test A"
+  #     - "Genetic panel"
+  #   investigation_ref: "investigation-example-condition-2026-01-22"
+
+# Your personal "normal" values (vs population reference)
+# Established when pattern exists over 3+ measurements or investigation confirms cause
+biomarker_baselines: {}
+  # Example:
+  # marker_name:
+  #   personal_baseline: 50  # Your stable value
+  #   population_reference: [30, 80]
+  #   interpretation: "Within normal range"
+  # tracked_marker:
+  #   personal_baseline: 25  # Starting point
+  #   current: 45
+  #   target: 50
+  #   trend: improving  # improving | stable | worsening
+
+# Key genetic findings (cached from investigations)
+genetics:
+  data_source: ""  # 23andme | selfdecode | both
+  key_findings: []
+    # Example:
+    # - gene: "GENE_NAME"
+    #   genotype: "A/B"
+    #   significance: "Clinical significance description"
+    # - gene: "CYP_GENE"
+    #   status: "Metabolizer status"
+    #   significance: "Pharmacogenomic implications"
+
+# Current medications and supplements
+# Derived from health_log.csv with status determination
+medications: []
+  # Example:
+  # - name: "Medication Name"
+  #   dose: "X mg daily"
+  #   started: "2024-01-01"
+  #   reason: "Indication"
+  #   monitoring: ["Lab marker to track"]
+
+supplements: []
+  # Example:
+  # - name: "Supplement Name"
+  #   dose: "X mg daily"
+  #   started: "2024-01-01"
+  #   reason: "Reason for supplementation"
+  #   monitoring: ["Marker 1", "Marker 2"]
+  #   baseline_value: 25
+  #   current_value: 45
+
+# What to do next (prioritized)
+# Generated from investigations and ongoing analysis
+actions: []
+  # Example:
+  # - id: 1
+  #   action: "Schedule follow-up test"
+  #   priority: high  # high | medium | low
+  #   why: "Would clarify diagnosis"
+  #   status: recommended  # recommended | accepted | in_progress | completed
+  #   due: "2026-03-01"
+  #   depends_on: [2]  # Depends on action with this id
+
+# What was tried and what happened (keep last 20, archive older yearly)
+completed_actions: []
+  # Example:
+  # - action: "Diagnostic test"
+  #   completed: "2026-01-18"
+  #   outcome: negative  # positive | negative | inconclusive
+  #   result: "Test results description"
+  #   impact: "How this changed understanding"
+
+# Actions user explicitly declined (don't re-recommend)
+declined_actions: []
+  # Example:
+  # - action: "Invasive procedure"
+  #   declined: "2026-01-22"
+  #   reason: "User's reason for declining"
+  #   reconsider_if: "Conditions for reconsidering"
+
+# Health goals
+goals: []
+  # Example:
+  # - goal: "Health goal description"
+  #   target_date: "2026-06-01"
+  #   progress: 50%
+  #   success_criteria: "How to measure success"
