@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "health-state.schema.json",
+  "title": "Health State",
+  "description": "Schema for health-state.yaml validation",
+  "type": "object",
+  "required": ["version", "last_updated"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "last_updated": {
+      "type": "string",
+      "description": "Last update date (YYYY-MM-DD)",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "last_sync": {
+      "type": "object",
+      "description": "Timestamps of last processed data from each source",
+      "properties": {
+        "labs": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "health_log": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "exams": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        }
+      }
+    },
+    "conditions": {
+      "type": "array",
+      "description": "Active health conditions with hypotheses",
+      "items": {
+        "type": "object",
+        "required": ["name", "status"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Condition name"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "monitoring", "resolved"],
+            "description": "Current condition status"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confidence level (0-1)"
+          },
+          "primary_hypothesis": {
+            "type": "string",
+            "description": "Primary hypothesis for the condition"
+          },
+          "hypotheses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name"],
+              "properties": {
+                "name": { "type": "string" },
+                "confidence": { "type": "number" }
+              }
+            }
+          },
+          "diagnostic_gaps": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "investigation_ref": {
+            "type": "string",
+            "description": "Reference to investigation directory"
+          }
+        }
+      }
+    },
+    "biomarker_baselines": {
+      "type": "object",
+      "description": "Personal baseline values for biomarkers",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "personal_baseline": { "type": "number" },
+          "population_reference": {
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "interpretation": { "type": "string" },
+          "current": { "type": "number" },
+          "target": { "type": "number" },
+          "trend": {
+            "type": "string",
+            "enum": ["improving", "stable", "worsening"]
+          }
+        }
+      }
+    },
+    "genetics": {
+      "type": "object",
+      "properties": {
+        "data_source": {
+          "type": "string",
+          "enum": ["23andme", "selfdecode", "both", ""]
+        },
+        "key_findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "gene": { "type": "string" },
+              "rsid": { "type": "string" },
+              "genotype": { "type": "string" },
+              "status": { "type": "string" },
+              "significance": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "medications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "dose": { "type": "string" },
+          "started": { "type": "string" },
+          "reason": { "type": "string" },
+          "monitoring": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "supplements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "dose": { "type": "string" },
+          "started": { "type": "string" },
+          "reason": { "type": "string" },
+          "monitoring": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "baseline_value": { "type": "number" },
+          "current_value": { "type": "number" }
+        }
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "action", "priority", "status"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "action": { "type": "string" },
+          "priority": {
+            "type": "string",
+            "enum": ["high", "medium", "low"]
+          },
+          "why": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["recommended", "accepted", "in_progress", "completed"]
+          },
+          "due": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "completed_actions": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": ["action", "completed"],
+        "properties": {
+          "action": { "type": "string" },
+          "completed": { "type": "string" },
+          "outcome": {
+            "type": "string",
+            "enum": ["positive", "negative", "inconclusive"]
+          },
+          "result": { "type": "string" },
+          "impact": { "type": "string" }
+        }
+      }
+    },
+    "declined_actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["action", "declined"],
+        "properties": {
+          "action": { "type": "string" },
+          "declined": { "type": "string" },
+          "reason": { "type": "string" },
+          "reconsider_if": { "type": "string" }
+        }
+      }
+    },
+    "goals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["goal"],
+        "properties": {
+          "goal": { "type": "string" },
+          "target_date": { "type": "string" },
+          "progress": { "type": "string" },
+          "success_criteria": { "type": "string" }
+        }
+      }
+    }
+  }
+}

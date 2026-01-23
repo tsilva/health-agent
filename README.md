@@ -123,9 +123,10 @@ health-agent/
 │           ├── genetics-snp-lookup/SKILL.md
 │           ├── genetics-validate-interpretation/SKILL.md
 │           ├── investigate-root-cause/SKILL.md
-│           ├── prepare-provider-visit/skill.md
-│           ├── scientific-literature-search/skill.md
+│           ├── prepare-provider-visit/SKILL.md
+│           ├── scientific-literature-search/SKILL.md
 │           └── references/
+│               ├── data-access-helpers.sh         # Standardized data extraction functions
 │               ├── lab-specs-helpers.sh           # Helper functions for lab_specs.json
 │               └── status-keywords.md             # Status determination keywords
 └── README.md

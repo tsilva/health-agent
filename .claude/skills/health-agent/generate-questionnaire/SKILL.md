@@ -132,11 +132,11 @@ After completing relevant sections:
 
 1. **Update health log entries** with new details
 2. **Generate targeted analyses** using health-agent skills:
-   - `/skill lab-trend` for markers with clarified patterns
-   - `/skill episode-investigation` for episodes with added detail
-   - `/skill cross-temporal-correlation` for newly identified patterns
-   - `/skill investigate-root-cause` for conditions with new context
-3. **Create provider reports** with augmented data
+   - Use lab queries (see `analysis-patterns.md`) for markers with clarified patterns
+   - Investigate episodes with enriched context
+   - Identify cross-temporal correlations using data patterns
+   - Run `investigate-root-cause` for conditions with new context
+3. **Create provider reports** with augmented data (use `prepare-provider-visit`)
 4. **Consider additional testing** based on gaps identified
 5. **Set up prospective tracking** for patterns to monitor going forward
 
@@ -164,12 +164,12 @@ After completing relevant sections:
 
 ## Integration with Other Skills
 
-After questionnaire completion, recommend these follow-up skills:
+After questionnaire completion, recommend these follow-up analyses:
 
-- **Analysis Skills**: Use enriched data with `lab-trend`, `cross-temporal-correlation`, `episode-investigation`
-- **Hypothesis Skills**: Better-informed `investigate-root-cause` with detailed patterns
-- **Report Skills**: More comprehensive provider reports with augmented context
-- **Genetics Skills**: Targeted genetic variant lookups based on conditions
+- **Data Analysis**: Use enriched data with lab queries and timeline correlation (see `analysis-patterns.md`)
+- **Root Cause Investigation**: Better-informed `investigate-root-cause` with detailed patterns
+- **Provider Reports**: More comprehensive `prepare-provider-visit` summaries with augmented context
+- **Genetics Lookups**: Targeted SNP lookups via `genetics-snp-lookup` based on conditions
 
 ## Special Considerations
 

@@ -77,7 +77,17 @@ The health state system transforms health-agent from a reactive analysis tool in
 
 ### State File Location
 
-State files are stored at `.state/{profile}/health-state.yaml`. The template at `.state/_template/health-state.yaml` documents the schema.
+State files are stored at `.state/{profile}/health-state.yaml`. The template at `.state/_template/health-state.yaml` documents the structure.
+
+**Schema Validation**: A JSON Schema is available at `.state/_template/health-state.schema.json` for validation.
+
+**Atomic Updates**: Always use atomic write pattern when updating state files:
+1. Backup existing file to `.state/{profile}/health-state.yaml.bak`
+2. Write new content to temp file `.state/{profile}/health-state.yaml.tmp`
+3. Validate YAML structure
+4. Atomic rename temp to final (prevents corruption on partial writes)
+
+**Profile Caching**: Last selected profile is cached at `.state/.last-profile` for faster session start.
 
 ### Key State Components
 
@@ -524,9 +534,9 @@ Eight core skills provide specialized capabilities in `.claude/skills/health-age
 | `genetics-snp-lookup` | `.claude/skills/health-agent/genetics-snp-lookup/SKILL.md` |
 | `genetics-selfdecode-lookup` | `.claude/skills/health-agent/genetics-selfdecode-lookup/SKILL.md` |
 | `genetics-validate-interpretation` | `.claude/skills/health-agent/genetics-validate-interpretation/SKILL.md` |
-| `scientific-literature-search` | `.claude/skills/health-agent/scientific-literature-search/skill.md` |
+| `scientific-literature-search` | `.claude/skills/health-agent/scientific-literature-search/SKILL.md` |
 | `investigate-root-cause` | `.claude/skills/health-agent/investigate-root-cause/SKILL.md` |
-| `prepare-provider-visit` | `.claude/skills/health-agent/prepare-provider-visit/skill.md` |
+| `prepare-provider-visit` | `.claude/skills/health-agent/prepare-provider-visit/SKILL.md` |
 | `generate-questionnaire` | `.claude/skills/health-agent/generate-questionnaire/SKILL.md` |
 
 ### External Integrations (APIs + Caching)
@@ -554,6 +564,15 @@ All health data analysis (lab trends, abnormal values, episodes, correlations, m
 ### Shared References
 
 `.claude/skills/health-agent/references/` contains shared resources:
+
+**`data-access-helpers.sh`**:
+- Standardized extraction functions for large health data files
+- `get_recent_labs()` - Extract recent values for a specific marker
+- `get_abnormal_labs()` - Get out-of-range labs within date range
+- `get_health_log_by_category()` - Filter health log by category
+- `get_medications()` / `get_supplements()` / `get_conditions()` - Extract specific entry types
+- `validate_data_sources()` - Verify all profile paths exist
+- `get_file_mod_date()` - Cross-platform file modification date
 
 **`lab-specs-helpers.sh`**:
 - Helper functions for querying `{labs_path}/lab_specs.json`
@@ -622,7 +641,7 @@ Provider documentation is generated via the **`prepare-provider-visit` skill**, 
 ### Using prepare-provider-visit
 
 When user asks to prepare documentation for a healthcare visit:
-1. Read `.claude/skills/health-agent/prepare-provider-visit/skill.md`
+1. Read `.claude/skills/health-agent/prepare-provider-visit/SKILL.md`
 2. Follow the skill instructions (typically spawns a Task agent with the provided prompt template)
 
 The skill:

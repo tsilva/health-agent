@@ -186,7 +186,7 @@ grep -i "blood pressure" "{labs_path}/all.csv"
    - Propose mechanisms linking observations
    - Check for intermediate biomarkers
    - Assess strength of evidence (high/moderate/low)
-   - Use `scientific-literature-search` skill for authoritative citations (read `.claude/skills/health-agent/scientific-literature-search/skill.md` first)
+   - Use `scientific-literature-search` skill for authoritative citations (read `.claude/skills/health-agent/scientific-literature-search/SKILL.md` first)
 
 ## Understanding Biological Mechanisms
 
@@ -200,7 +200,7 @@ When user asks "what's the connection between X and Y?" or "why does X cause Y?"
 4. **Verify temporal sequence**: Does X consistently precede Y?
 5. **Assess plausibility**: High (well-established) / Moderate (plausible) / Low (speculative)
 
-**IMPORTANT**: Always use the `scientific-literature-search` skill to find authoritative citations for proposed mechanisms. Read `.claude/skills/health-agent/scientific-literature-search/skill.md` and follow its instructions to query PubMed/Semantic Scholar.
+**IMPORTANT**: Always use the `scientific-literature-search` skill to find authoritative citations for proposed mechanisms. Read `.claude/skills/health-agent/scientific-literature-search/SKILL.md` and follow its instructions to query PubMed/Semantic Scholar.
 
 Example query: "Find papers on the mechanism linking chronic stress to elevated cortisol"
 
@@ -233,7 +233,7 @@ When analyzing any health concern, systematically check all data sources:
 
 ## Generating Provider Documentation
 
-When user needs documentation for healthcare visits, use the **`prepare-provider-visit` skill** instead of manual assembly. Read `.claude/skills/health-agent/prepare-provider-visit/skill.md` and follow its instructions.
+When user needs documentation for healthcare visits, use the **`prepare-provider-visit` skill** instead of manual assembly. Read `.claude/skills/health-agent/prepare-provider-visit/SKILL.md` and follow its instructions.
 
 The skill intelligently selects relevant sections based on visit type (annual/specialist/follow-up/urgent) and generates coherent narratives rather than concatenated fragments.
 

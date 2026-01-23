@@ -241,6 +241,28 @@ Pass this status to all investigation agents in Phase 1 via the Common Preamble:
 
 ---
 
+## Data Snapshot for Consistency
+
+Before spawning agents, capture a snapshot of data file hashes to ensure all agents see the same data state:
+
+```bash
+# Create investigation directory
+mkdir -p .output/{profile}/investigation-{condition}-{date}
+
+# Capture data file hashes for consistency verification
+{
+  echo "# Data Snapshot - Investigation started $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "# All agents should verify these hashes match during analysis"
+  echo ""
+  echo "labs_hash=$(sha256sum '${labs_path}/all.csv' | awk '{print $1}')"
+  echo "health_log_hash=$(sha256sum '${health_log_path}/health_log.csv' | awk '{print $1}')"
+  echo "labs_modified=$(stat -f '%Sm' -t '%Y-%m-%d %H:%M' '${labs_path}/all.csv')"
+  echo "health_log_modified=$(stat -f '%Sm' -t '%Y-%m-%d %H:%M' '${health_log_path}/health_log.csv')"
+} > .output/{profile}/investigation-{condition}-{date}/.data-snapshot
+```
+
+This snapshot allows detection if data changed during the investigation. Include the snapshot path in the Common Preamble so agents can verify data consistency.
+
 ## Phase 1: Spawn 4 Investigation Agents
 
 **CRITICAL**: Spawn ALL agents in a SINGLE MESSAGE for parallel execution. Do NOT spawn sequentially.
@@ -325,7 +347,7 @@ Use efficient extraction commands from CLAUDE.md "Common Analysis Patterns":
 **Skills Available**:
 - `genetics-snp-lookup` - Read `.claude/skills/health-agent/genetics-snp-lookup/SKILL.md` first (primary genetics source)
 - `genetics-selfdecode-lookup` - Read `.claude/skills/health-agent/genetics-selfdecode-lookup/SKILL.md` (for SNPs missing from 23andMe, if SelfDecode configured)
-- `scientific-literature-search` - Read `.claude/skills/health-agent/scientific-literature-search/skill.md` first
+- `scientific-literature-search` - Read `.claude/skills/health-agent/scientific-literature-search/SKILL.md` first
 
 **Output Location**:
 Save report to: `.output/{profile}/investigation-{condition}-{date}/agent-{strategy}.md`
@@ -413,7 +435,7 @@ If genetics data is available:
 ### Step 6: Literature Validation
 
 For each proposed mechanism:
-- Read `.claude/skills/health-agent/scientific-literature-search/skill.md`
+- Read `.claude/skills/health-agent/scientific-literature-search/SKILL.md`
 - Query PubMed/Semantic Scholar for biological pathways
 - Include PMIDs in your mechanism descriptions
 
@@ -516,7 +538,7 @@ Start with systematic differential diagnosis, then seek evidence:
 ### Step 1: Generate Differential Diagnosis List
 
 Query scientific literature for known causes:
-- Read `.claude/skills/health-agent/scientific-literature-search/skill.md`
+- Read `.claude/skills/health-agent/scientific-literature-search/SKILL.md`
 - Search: "differential diagnosis of {condition}"
 - Search: "causes of {condition}"
 - List the top 10 known causes of this condition
@@ -1583,7 +1605,7 @@ Generate calibrated consensus from ensemble investigation of {condition}.
 
 **Reference Documentation**:
 - Read `.claude/skills/health-agent/references/confidence-calibration.md` for calibration formulas
-- Read `.claude/skills/health-agent/scientific-literature-search/skill.md` for blind spot detection
+- Read `.claude/skills/health-agent/scientific-literature-search/SKILL.md` for blind spot detection
 
 ---
 
@@ -1689,7 +1711,7 @@ Where:
 
 Query literature for known causes of {condition} NOT proposed by any agent:
 
-1. Read `.claude/skills/health-agent/scientific-literature-search/skill.md`
+1. Read `.claude/skills/health-agent/scientific-literature-search/SKILL.md`
 2. Search: "causes of {condition}" or "differential diagnosis {condition}"
 3. Compare literature causes against proposed hypotheses
 4. For EACH known cause NOT investigated:
@@ -2122,9 +2144,35 @@ Progress estimation:
 last_updated: "{today's date YYYY-MM-DD}"
 ```
 
-### Step 5.7: Write Updated State File
+### Step 5.7: Write Updated State File (Atomic)
 
-Use the Write tool to update `.state/{profile}/health-state.yaml` with all changes.
+Use atomic write pattern to prevent corruption:
+
+```bash
+STATE_FILE=".state/{profile}/health-state.yaml"
+BACKUP_FILE=".state/{profile}/health-state.yaml.bak"
+TEMP_FILE=".state/{profile}/health-state.yaml.tmp"
+
+# 1. Backup existing state
+if [ -f "$STATE_FILE" ]; then
+    cp "$STATE_FILE" "$BACKUP_FILE"
+fi
+```
+
+Then use the Write tool to write to the temp file path, validate YAML, and move:
+
+```bash
+# 2. Validate new state (basic YAML check)
+if python3 -c "import yaml; yaml.safe_load(open('$TEMP_FILE'))" 2>/dev/null; then
+    mv "$TEMP_FILE" "$STATE_FILE"
+else
+    echo "ERROR: Invalid YAML - state not updated"
+    rm -f "$TEMP_FILE"
+    # Original state preserved
+fi
+```
+
+**IMPORTANT**: If the state write fails, the investigation results are still available in `consensus-final.md`. The user can manually apply findings or re-run Phase 5.
 
 **Example state update after hemolysis investigation**:
 

@@ -284,6 +284,103 @@ Use pattern:
 }
 ```
 
+## Profile Caching
+
+To improve UX, the dashboard caches the last selected profile:
+
+### Check for cached profile
+
+```bash
+LAST_PROFILE=""
+if [ -f ".state/.last-profile" ]; then
+    LAST_PROFILE=$(cat .state/.last-profile)
+fi
+```
+
+### Phase 1 with caching
+
+If a cached profile exists, offer it as the first option:
+
+```json
+{
+  "questions": [{
+    "question": "Which health profile would you like to use?",
+    "header": "Profile",
+    "options": [
+      {"label": "{last_profile} (Recommended)", "description": "Continue with your last session's profile"},
+      // Other profiles...
+    ],
+    "multiSelect": false
+  }]
+}
+```
+
+### Save selected profile
+
+After profile selection:
+
+```bash
+mkdir -p .state
+echo "{selected_profile}" > .state/.last-profile
+```
+
+## Atomic State Updates
+
+When writing to health-state.yaml, use atomic operations to prevent corruption:
+
+### Safe State Write Pattern
+
+```bash
+PROFILE="{selected_profile}"
+STATE_FILE=".state/${PROFILE}/health-state.yaml"
+BACKUP_FILE=".state/${PROFILE}/health-state.yaml.bak"
+TEMP_FILE=".state/${PROFILE}/health-state.yaml.tmp"
+
+# 1. Create backup of existing state
+if [ -f "$STATE_FILE" ]; then
+    cp "$STATE_FILE" "$BACKUP_FILE"
+fi
+
+# 2. Write to temp file first (use Write tool)
+# Write tool writes to $TEMP_FILE
+
+# 3. Validate the new file (basic YAML check)
+if python3 -c "import yaml; yaml.safe_load(open('$TEMP_FILE'))" 2>/dev/null; then
+    # 4. Atomic move (rename is atomic on most filesystems)
+    mv "$TEMP_FILE" "$STATE_FILE"
+    echo "State updated successfully"
+else
+    echo "ERROR: Invalid YAML in new state file"
+    rm -f "$TEMP_FILE"
+    # State file unchanged, backup still available
+fi
+```
+
+### Rollback on Error
+
+If state update fails mid-session:
+
+```bash
+if [ -f "$BACKUP_FILE" ]; then
+    cp "$BACKUP_FILE" "$STATE_FILE"
+    echo "Rolled back to previous state"
+fi
+```
+
+## Data Source Validation
+
+Before loading data, validate all paths exist:
+
+```bash
+# Source the helper functions
+source .claude/skills/health-agent/references/data-access-helpers.sh
+
+# Validate paths (will print warnings for missing sources)
+if ! validate_data_sources "$labs_path" "$health_log_path" "$exams_path"; then
+    echo "WARNING: Some data sources are missing"
+fi
+```
+
 ## Error Handling
 
 **Profile not found**:
@@ -292,7 +389,8 @@ Use pattern:
 
 **State file corrupted**:
 - Offer to re-initialize from scratch
-- Backup corrupted file first
+- Backup corrupted file first (to `.state/{profile}/health-state.corrupted.{timestamp}`)
+- Validate new state with schema before saving
 
 **Data sources missing**:
 - Show which sources are unavailable
