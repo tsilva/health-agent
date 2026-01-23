@@ -36,7 +36,27 @@ Used by: medication-supplements, report-medication-list, report-health-events, r
 
 ## Algorithm
 
-1. **Group events** by Item (medication/supplement/condition name)
+### Primary Source: current.yaml
+
+For **current state**, always use `{health_log_path}/current.yaml` as the source of truth:
+
+1. **Read current.yaml** - This file explicitly lists active medications, supplements, conditions, experiments
+2. **Trust the status** - Items in current.yaml are definitively active unless marked otherwise
+3. **No keyword analysis needed** - The parser has already determined status
+
+```bash
+# Get current medications (always accurate)
+grep -A 100 "^medications:" "{health_log_path}/current.yaml"
+
+# Get current conditions
+grep -A 100 "^conditions:" "{health_log_path}/current.yaml"
+```
+
+### Secondary Source: history.csv
+
+For **historical analysis** (e.g., "when was this discontinued?", "what did I take last year?"), use `{health_log_path}/history.csv`:
+
+1. **Group events** by EntityID (tracks same medication/supplement/condition)
 2. **Sort events** by Date descending (most recent first)
 3. **Check most recent event** for status keywords
 4. **Classify**:
@@ -47,6 +67,16 @@ Used by: medication-supplements, report-medication-list, report-health-events, r
    - If ambiguous, check for more recent "started" event
    - For conditions: if no keywords and recent (<90 days) → Active
    - For conditions: if no keywords and old (>90 days) → Resolved
+
+### When to Use Which Source
+
+| Use Case | Source | Why |
+|----------|--------|-----|
+| "What medications am I taking?" | current.yaml | Source of truth for current state |
+| "List my active conditions" | current.yaml | Source of truth for current state |
+| "When did I stop taking X?" | history.csv | Need historical timeline |
+| "What happened in episode Y?" | history.csv | Need timeline events |
+| "Show changes since last visit" | history.csv | Need date-filtered events |
 
 ## Skill-Specific Usage
 
@@ -67,7 +97,7 @@ Used by: medication-supplements, report-medication-list, report-health-events, r
 ### report-health-events
 - Use Active/Resolved for episode classification
 - Apply to health events and episodes
-- Consider episode linkage via EpisodeID
+- Consider entity linkage via EntityID and RelatedEntity columns in history.csv
 
 ## Notes
 

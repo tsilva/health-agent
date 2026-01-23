@@ -55,23 +55,28 @@ awk -F',' 'NR==1 || ($1 >= "2025-01-01" && ($5 > $7 || $5 < $6))' \
 When user asks about a specific episode (e.g., "Tell me about my headache episode"):
 
 ```bash
-# 1. Find episode by searching health_log.csv
-grep -i "headache" "{health_log_path}/health_log.csv" | head -20
+# 1. Find episode by searching history.csv
+grep -i "headache" "{health_log_path}/history.csv" | head -20
 
-# 2. Extract all events from identified episode_id
-grep ",episode_042," "{health_log_path}/health_log.csv"
+# 2. Extract all events from identified EntityID
+grep ",entity_042," "{health_log_path}/history.csv"
 
-# 3. Get narrative context from health_log.md
-grep -A10 -B10 "episode_042\|headache" "{health_log_path}/health_log.md"
+# 3. Get entity details from entities.json
+grep -A 20 "entity_042" "{health_log_path}/entities.json"
 
-# 4. Find temporally related labs (within episode date range)
+# 4. Get narrative context from health_log.md
+grep -A10 -B10 "entity_042\|headache" "{health_log_path}/health_log.md"
+
+# 5. Find temporally related labs (within episode date range)
 awk -F',' -v start="2025-10-15" -v end="2025-10-20" \
   'NR==1 || ($1 >= start && $1 <= end)' \
   "{labs_path}/all.csv"
 ```
 
 **Synthesis approach**:
-- Group events by category (symptoms, treatments, outcomes)
+- Group events by Type column (symptoms, treatments, outcomes)
+- Use EntityID to track related events
+- Check RelatedEntity column for linked entities
 - Identify temporal sequence
 - Note what worked/didn't work
 - Look for patterns across similar episodes
@@ -80,22 +85,33 @@ awk -F',' -v start="2025-10-15" -v end="2025-10-20" \
 
 When user asks about medications (e.g., "What am I currently taking?"):
 
+**Preferred: Use current.yaml (source of truth for current state)**:
 ```bash
-# Extract all medication and supplement events
-grep -E ",medication,|,supplement," "{health_log_path}/health_log.csv" | \
-  awk -F',' '{print $1","$3","$5","$6}' | \
+# Get current medications directly from current.yaml
+grep -A 100 "^medications:" "{health_log_path}/current.yaml" | grep -B 100 -m 1 "^[a-z]" | head -n -1
+
+# Get current supplements
+grep -A 100 "^supplements:" "{health_log_path}/current.yaml" | grep -B 100 -m 1 "^[a-z]" | head -n -1
+```
+
+**Alternative: Use history.csv (for timeline analysis)**:
+```bash
+# Extract medication and supplement events from history
+grep -E ",medication,|,supplement," "{health_log_path}/history.csv" | \
+  awk -F',' '{print $1","$2","$3","$4","$5","$6}' | \
   tail -100  # Recent entries
 ```
 
 **Status determination** (use `.claude/skills/health-agent/references/status-keywords.md`):
 
-1. **Active**: Latest mention has active keywords ("taking", "continuing", "started", "prescribed")
-2. **Discontinued**: Latest mention has stop keywords ("discontinued", "stopped", "ended")
+1. **Active**: Listed in current.yaml, or latest mention in history.csv has active keywords ("taking", "continuing", "started", "prescribed")
+2. **Discontinued**: Not in current.yaml, and latest mention has stop keywords ("discontinued", "stopped", "ended")
 3. **As-needed**: Mentioned with PRN keywords ("as needed", "when", "if")
 
 **Analysis approach**:
-- Group by medication/supplement name
-- Find latest status for each
+- First check current.yaml for definitive current state
+- Use history.csv for timeline and change tracking
+- Group by EntityID in history.csv
 - Note start dates and dosages
 - Flag potential interactions or duplicates
 
@@ -129,11 +145,15 @@ When user asks for overall health summary:
 
 1. **Demographics**: Extract from profile YAML (age, gender)
 
-2. **Active Conditions**:
+2. **Active Conditions** (prefer current.yaml):
 ```bash
-grep ",condition," "{health_log_path}/health_log.csv" | tail -50
+# From current.yaml (source of truth)
+grep -A 100 "^conditions:" "{health_log_path}/current.yaml" | grep -B 100 -m 1 "^[a-z]" | head -n -1
+
+# Or from history.csv for timeline analysis
+grep ",condition," "{health_log_path}/history.csv" | tail -50
 ```
-Apply status determination to identify active vs resolved.
+Use current.yaml for definitive current state; history.csv for timeline analysis.
 
 3. **Current Medications**: Use pattern above
 
@@ -146,7 +166,7 @@ awk -F',' -v start="$(date -v-12m +%Y-%m-%d)" 'NR==1 || $1 >= start' \
 5. **Recent Health Events**:
 ```bash
 awk -F',' -v start="$(date -v-6m +%Y-%m-%d)" 'NR==1 || $1 >= start' \
-  "{health_log_path}/health_log.csv"
+  "{health_log_path}/history.csv"
 ```
 
 6. **Recent Exams**: Use catalog pattern above
@@ -164,7 +184,7 @@ When user asks about patterns (e.g., "Does X correlate with Y?"):
 1. **Extract both variables across same timeframe**:
 ```bash
 # Variable 1 (e.g., stress events)
-grep -i "stress" "{health_log_path}/health_log.csv"
+grep -i "stress" "{health_log_path}/history.csv"
 
 # Variable 2 (e.g., blood pressure)
 grep -i "blood pressure" "{labs_path}/all.csv"
@@ -210,23 +230,32 @@ When analyzing any health concern, systematically check all data sources:
 
 **Standard workflow**:
 ```
-1. Health Timeline (health_log.csv)
-   - Search by category for relevant events
-   - Identify episode_id for related events
+1. Current State (current.yaml) - Start here for current state
+   - Check conditions, medications, supplements, experiments
+   - This is the source of truth for "what's active now"
 
-2. Health Narrative (health_log.md)
+2. Health Timeline (history.csv) - For historical context
+   - Search by Type column for relevant events
+   - Use EntityID to track related events
+   - Check RelatedEntity for linked items
+
+3. Entity Registry (entities.json)
+   - Look up EntityID for metadata
+   - Find relationships between entities
+
+4. Health Narrative (health_log.md)
    - Get detailed context around dates
    - Find subjective descriptions
 
-3. Labs (all.csv)
+5. Labs (all.csv)
    - Find relevant markers near event dates
    - Check for abnormalities
 
-4. Exams (*/summary.md)
+6. Exams (*/summary.md)
    - Search for related findings
    - Note imaging results
 
-5. Genetics (if configured)
+7. Genetics (if configured)
    - Check relevant SNPs via genetics-snp-lookup skill (read `.claude/skills/health-agent/genetics-snp-lookup/SKILL.md` first)
    - Consider pharmacogenomic implications
 ```
@@ -251,11 +280,13 @@ The skill intelligently selects relevant sections based on visit type (annual/sp
 
 ## Efficient Data Access Notes
 
-All large files (`all.csv`, `health_log.csv`, `health_log.md`) typically exceed Claude's read limits. Always use:
+All large files (`all.csv`, `history.csv`, `health_log.md`) typically exceed Claude's read limits. Always use:
 
-- **Filtered extraction**: grep, awk, head/tail commands
+- **Current state**: Read `current.yaml` directly for medications, conditions, supplements (small file)
+- **Filtered extraction**: grep, awk, head/tail commands for history.csv and all.csv
 - **Date ranges**: Filter by relevant timeframe first
 - **Targeted queries**: Search for specific terms before broad reads
+- **Entity lookups**: Use EntityID to get related events from history.csv
 - **Incremental reading**: Start narrow, expand if needed
 
-**Never** attempt to read these files entirely - use the extraction patterns above.
+**Never** attempt to read large files entirely - use the extraction patterns above.

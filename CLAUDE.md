@@ -84,20 +84,74 @@ Machine-readable lab marker specifications for accurate matching and unit standa
 
 Helper functions: `.claude/skills/health-agent/references/lab-specs-helpers.sh`
 
-### Health Timeline (health-log-parser)
+### Health Log (health-log-parser)
 
-**File**: `{health_log_path}/health_log.csv`
+The health-log-parser outputs a structured multi-file system:
+
+#### Current State (Source of Truth)
+
+**File**: `{health_log_path}/current.yaml`
+
+The authoritative source for current health state:
+
+```yaml
+conditions:
+  - name: "Condition Name"
+    status: active|monitoring|resolved
+    onset: "YYYY-MM-DD"
+
+medications:
+  - name: "Medication Name"
+    dose: "10mg"
+    frequency: "daily"
+    started: "YYYY-MM-DD"
+
+supplements:
+  - name: "Supplement Name"
+    dose: "1000IU"
+    frequency: "daily"
+
+experiments:
+  - name: "Experiment Name"
+    status: active|completed|paused
+    started: "YYYY-MM-DD"
+
+todos:
+  - item: "Todo item"
+    priority: high|medium|low
+```
+
+**Use `current.yaml` for**: Active medications, current conditions, ongoing experiments.
+
+#### History Timeline
+
+**File**: `{health_log_path}/history.csv`
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `Date` | date | Event date (YYYY-MM-DD) |
-| `EpisodeID` | string | Links related events (e.g., "episode_001") |
-| `Item` | string | Brief item name |
-| `Category` | string | Event category (symptom, medication, condition, etc.) |
+| `EntityID` | string | Links related events (e.g., "entity_001") |
+| `Name` | string | Entity name (medication, condition, etc.) |
+| `Type` | string | Event type (medication, supplement, condition, symptom, etc.) |
 | `Event` | string | Event description |
 | `Details` | string | Additional context |
+| `RelatedEntity` | string | Optional reference to related entity |
 
-**Episode IDs**: Events with the same `EpisodeID` are related.
+**Entity IDs**: Events with the same `EntityID` are related to the same entity.
+
+**Use `history.csv` for**: Timeline analysis, historical events, tracking changes over time.
+
+#### Entity Registry
+
+**File**: `{health_log_path}/entities.json`
+
+Registry mapping entity IDs to their metadata for quick lookups.
+
+#### Daily Entries
+
+**Directory**: `{health_log_path}/entries/`
+
+Per-date entry files for granular access to specific dates.
 
 ### Health Log Narrative (health-log-parser)
 
