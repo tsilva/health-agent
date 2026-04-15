@@ -11,6 +11,7 @@ When the user invokes this skill, the expected output is simple:
 
 - read the selected live profile
 - validate the configured sources
+- rescan the current parsed source folders
 - synthesize the best next actions from the record
 - write one dated report under `.output/`
 
@@ -38,16 +39,21 @@ Default to the shortest path that still produces a defensible current report.
    - latest relevant labs from `all.csv`
    - latest relevant standalone exam summaries
    - latest relevant `health_log.md` and `entries/*.processed.md` updates
-2. Use existing `.state/issues/` and `.state/action-queue.json` as memory if they already exist for the selected profile.
+2. Use existing `.state/profiles/{profile_slug}/issues.json` and `.state/profiles/{profile_slug}/actions.json` as internal memory if they already exist for the selected profile.
 3. Pull older landmark findings only when they still change the current plan.
 4. Do not detour into a broad historical reread unless the current evidence is too thin to rank next actions.
-5. If a repo CLI or helper renders a different report shape, do not hand it back as the final answer just because it exists. Either adapt its outputs to the required what-next format or bypass it and synthesize the report directly.
+5. Prefer the built-in repo helper when it matches the current workflow:
+
+```bash
+health-agent plan --profile <profile-name>
+python3 -m health_agent plan --profile <profile-name>
+```
 
 ## Output
 
 Write a report named:
 
-`{profile_slug}-what-next-{YYYY-MM-DD}.md`
+`{profile_slug}/{YYYY-MM-DD}-{profile_slug}-action-plan.md`
 
 The report should usually contain:
 
@@ -117,23 +123,23 @@ Rank actions in this order:
 
 ## Using Repo State
 
-If durable issue records already exist under `.state/issues/`, use them as memory and refresh them when helpful.
+If durable issue records already exist under `.state/profiles/{profile_slug}/issues.json`, use them as memory and refresh them when helpful.
 
 If the report clearly centers on unresolved issues, you may also update:
 
-- `.state/issues/`
-- `.state/action-queue.json`
-- `.state/profile-cache/{profile_slug}.json`
+- `.state/profiles/{profile_slug}/issues.json`
+- `.state/profiles/{profile_slug}/actions.json`
+- `.state/profiles/{profile_slug}/sources.json`
 
 But the primary deliverable is always the report in `.output/`.
 
 ## Update Mode
 
-When the user brings a new lab, exam, visit, or symptom update:
+When the user brings a new lab, exam, or health-log update:
 
 - revise the conclusions that actually changed
 - keep the prior evidence that still matters
 - rerank the next actions
 - regenerate the dated what-next report
 
-If internal state updates help, use them. If not, keep the task simple and just regenerate the report.
+Treat the parsed source folders as the canonical input. Do not ask the user to create a separate repo-local outcome JSON file.

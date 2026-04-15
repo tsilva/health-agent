@@ -33,8 +33,8 @@ Do not pad the report with broad intake questions, generic wellness prompts, or 
 
 1. Read the selected live profile and classify each configured source as `available`, `missing`, `unreadable`, or `not configured`.
 2. Check repo-local memory first when available:
-   - `.state/issues/*.json` for unresolved issue gaps
-   - `.state/action-queue.json` only as supporting context
+   - `.state/profiles/{profile_slug}/issues.json` for unresolved issue gaps
+   - `.state/profiles/{profile_slug}/actions.json` only as supporting context
 3. Use the latest health-log context next:
    - `{health_log_path}/health_log.md`
    - recent `entries/*.processed.md`

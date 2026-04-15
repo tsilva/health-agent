@@ -7,24 +7,34 @@
   [![Documentation](https://img.shields.io/badge/Docs-AGENTS.md-2d6cdf)](AGENTS.md)
   [![Data Sources](https://img.shields.io/badge/Data_Sources-4-orange)](#data-sources)
 
-  **A central health-autopilot hub for diagnosis support, root-cause analysis, prescription-path suggestions, and longitudinal health reasoning.**
+  **A read-only health-autopilot layer that rescans parsed health data and writes the current next-step plan.**
 
   [Documentation](AGENTS.md) · [Profile Template](profiles/template.yaml.example)
 
 </div>
 
+## Core Loop
+
+`health-agent` assumes the real-world record is maintained outside this repo:
+
+1. update the health log, labs, or exams in the upstream systems
+2. run the parser repos so their output folders are current
+3. run `health-agent plan --profile <profile>`
+4. read the refreshed plan in `.output/<profile_slug>/`
+
+This repo never asks the user to separately encode the same event again in repo-local JSON.
+
 ## Features
 
-- **Health-autopilot workflow**: support longitudinal analysis, diagnostic reasoning, root-cause investigation, and quality-of-life optimization.
-- **Concrete next-step planning**: suggest the right specialist path, likely prescription discussions, and evidence-backed follow-up actions.
-- **Closed-loop unresolved-issue tracking**: persist active issues under `.state/issues/`, rank the next best actions in `.state/action-queue.json`, and regenerate the plan as new evidence arrives.
-- **Profile-based runtime config**: point the agent at external health-data exports without storing the raw data in this repo.
-- **Cross-source analysis**: correlate lab trends, exam findings, journal entries, symptoms, medications, experiments, and genetics over time.
-- **Privacy-first layout**: live runtime config stays under `~/.config/health-agent/`, external data sources are read-only, and generated `.output/` artifacts stay repo-local.
+- **Rescan-driven autopilot**: validate configured sources, build a compact evidence snapshot, and refresh the current plan from the latest parser outputs.
+- **Concrete next-step planning**: rank the highest-value specialist, test, and treatment-path discussions.
+- **Minimal repo-local memory**: keep per-profile derived state under `.state/profiles/<profile_slug>/` and rebuild aggressively from current sources.
+- **Profile-based runtime config**: point the agent at external parser outputs without storing raw health data in this repo.
+- **Cross-source analysis**: correlate labs, exams, journal entries, symptoms, medications, experiments, and genetics over time.
 
 ## Quick Start
 
-### 1. Create Your Config Directory
+### 1. Create Your Runtime Profile
 
 ```bash
 mkdir -p ~/.config/health-agent/profiles
@@ -52,45 +62,31 @@ data_sources:
 cp .env.example ~/.config/health-agent/.env
 ```
 
-Edit `~/.config/health-agent/.env` if you want features like the higher PubMed rate limit.
-
-### 3. Start a Session
-
-Open your local AI coding assistant in this directory and have it follow [AGENTS.md](AGENTS.md) or `CLAUDE.md`.
-
-The runtime workflow is:
-
-1. Read a profile from `~/.config/health-agent/profiles/*.yaml`.
-2. If no live profile exists, stop and ask for one. Do not fall back to repo-local `profiles/*.yaml`.
-3. Extract the data-source paths from that profile.
-4. Validate each source as `available`, `missing`, `unreadable`, or `not configured`.
-5. Optionally load environment variables from `~/.config/health-agent/.env`.
-6. Query those external parser outputs directly.
-
-### 4. Install the Local Workflow Helpers
+### 3. Install the Local Helper
 
 ```bash
 python3 -m pip install -e .[dev]
 ```
 
-This adds the `health-agent` CLI used to refresh profile state, rebuild the ranked action queue, and render the current action plan.
+### 4. Keep Parser Outputs Current
 
-### 5. Ask Natural Questions
+When you add a health-log entry or new labs/exams, rerun the relevant parser repos so the configured output folders contain the latest parsed data.
 
-```text
-"Show me my cholesterol trends over the past year"
-"What abnormal labs do I have in the last 6 months?"
-"Find all symptoms related to episode_003"
-"What did my last ultrasound show?"
-"Does my fatigue correlate with my iron levels?"
-"What's my CYP2D6 metabolizer status?"
-"Look up my APOE genotype"
-"Investigate the root cause of my elevated bilirubin"
-"Prepare a summary for my doctor's appointment next week"
-"What do I do next on my unresolved issues?"
-"Generate the questions I should answer in my health log so future runs do a better job"
-"I saw hematology today; update the plan with this result"
+### 5. Refresh the Current Plan
+
+```bash
+health-agent plan --profile myname
 ```
+
+The command:
+
+- loads the live profile from `~/.config/health-agent/profiles/`
+- validates each configured source as `available`, `missing`, `unreadable`, or `not configured`
+- builds a compact evidence snapshot from the parsed outputs
+- refreshes per-profile derived state
+- writes the current action plan to `.output/<profile_slug>/`
+
+Deprecated aliases `health-agent intake`, `health-agent review`, and `health-agent outcome-update` still route to `plan` temporarily, but they are no longer the primary workflow.
 
 ## Data Sources
 
@@ -101,29 +97,27 @@ This adds the `health-agent` CLI used to refresh profile state, rebuild the rank
 | [health-log-parser](https://github.com/tsilva/health-log-parser) | `health_log.md`, `.state.json`, `entries/*.raw.md`, `entries/*.processed.md`, `entries/*.labs.md`, `entries/*.exams.md` | Chronological overview, parser state, and day-level journal/lab/exam context |
 | 23andMe | Raw data download | Genetic variants for pharmacogenomics and health-risk interpretation |
 
-## How It Works
+## Repo-Local State
 
-This repository is a lightweight instruction layer around external health-data exports. The agent reads a live profile from `~/.config/health-agent/profiles/`, validates each configured source, optionally loads `~/.config/health-agent/.env`, and performs analysis directly against the exported files.
+`.output/` is the product. `.state/` is internal engine memory.
 
-For closed-loop issue management, the repo now keeps a local control plane:
+The main per-profile derived artifacts are:
 
-- `.state/issues/{issue_slug}.json`: durable unresolved issue records
-- `.state/action-queue.json`: ranked next actions across active issues
-- `.state/profile-cache/{profile_slug}.json`: latest profile and source-status snapshot
-- `.state/outcome-updates/{YYYY-MM-DD}-{issue_slug}.json`: structured follow-up events
-- `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-action-plan.md`: user-facing “tell me what to do” report
+- `.state/profiles/<profile_slug>/sources.json`
+- `.state/profiles/<profile_slug>/issues.json`
+- `.state/profiles/<profile_slug>/actions.json`
+- `.output/<profile_slug>/<YYYY-MM-DD>-<profile_slug>-action-plan.md`
 
-The local CLI supports three flows:
+The current plan report is the primary deliverable. The state files exist to support reranking, continuity, and deterministic rescans.
 
-```bash
-health-agent intake --profile myname --issues-from /path/to/issue-drafts
-health-agent review --profile myname
-health-agent outcome-update --profile myname --update-file /path/to/outcome.json --revised-issue /path/to/issue.json
-```
+## Project Skills
 
-The clinical reasoning still comes from the assistant following [AGENTS.md](AGENTS.md) and the project-local skills. The CLI handles state validation, ranking, merging, and report generation.
+This repo includes project-local Codex skills under `.codex/skills/`:
 
-Other report workflows can stay skill-only when they depend on broader cross-source reasoning and do not need durable local state. For example, the profile question report writes a standalone markdown artifact at `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-future-questions.md`.
+- `what-next-report`: default workflow for rescanning the current parsed record and producing the updated plan
+- `profile-question-report`: generate a short ranked list of unanswered questions for the next health-log entry
+- `medication-history-report`: generate a dated medication and supplement history report
+- `unresolved-issue-review`: internal support workflow for refreshing per-profile issue memory when needed
 
 ## Directory Structure
 
@@ -133,70 +127,21 @@ health-agent/
 ├── CLAUDE.md -> AGENTS.md
 ├── .codex/
 │   └── skills/
-│       ├── medication-history-report/
-│       │   ├── SKILL.md
-│       │   └── references/
-│       │       └── report-template.md
-│       ├── profile-question-report/
-│       │   ├── SKILL.md
-│       │   └── references/
-│       │       └── report-template.md
-│       ├── what-next-report/
-│       │   └── SKILL.md
-│       └── unresolved-issue-review/
-│           └── SKILL.md
-├── LICENSE
-├── README.md
-├── pyproject.toml
-├── schemas/
-│   ├── action-queue.schema.json
-│   ├── issue-record.schema.json
-│   └── outcome-update.schema.json
+├── .output/
+├── .state/
+│   └── profiles/
+│       └── <profile_slug>/
+│           ├── actions.json
+│           ├── issues.json
+│           └── sources.json
+├── profiles/
+│   └── template.yaml.example
 ├── src/
 │   └── health_agent/
-│       ├── actions.py
-│       ├── cli.py
-│       ├── issues.py
-│       └── profile.py
-├── health-agent.code-workspace
-├── logo.png
-├── .state/
-│   └── template/
-│       ├── action-queue.template.json
-│       ├── issue-record.template.json
-│       └── outcome-update.template.json
-├── .output/
 ├── tests/
 │   └── test_cli.py
-└── profiles/
-    └── template.yaml.example
+└── README.md
 ```
-
-```text
-~/.config/health-agent/
-├── .env
-└── profiles/
-    └── {name}.yaml
-```
-
-## Output Files
-
-Generated notes or reports should be written under `.output/` so they stay local and ignored by git.
-
-Repo-local operational state belongs under `.state/`. External source directories remain read-only.
-
-Standalone profile reports may use profile-scoped paths such as:
-
-- `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-future-questions.md`
-
-## Project Skills
-
-This repo can include project-local Codex skills under `.codex/skills/`. The bundled skills are:
-
-- `medication-history-report`: generate a dated Markdown report of active and past medications and supplements under `.output/`.
-- `profile-question-report`: generate a dated markdown report with a short ranked list of unanswered profile questions for the user to answer in the health log before the next run.
-- `what-next-report`: generate a dated prescriptive report under `.output/` with both unresolved-issue actions and health-optimization actions.
-- `unresolved-issue-review`: lower-level stateful workflow for maintaining `.state/issues/`, `.state/action-queue.json`, and unresolved-issue memory.
 
 ## Read-Only Sources
 
@@ -206,10 +151,8 @@ All profile-linked external sources are read-only. The agent should never modify
 
 - Runtime profiles live in `~/.config/health-agent/profiles/`, outside this repository.
 - Optional API keys live in `~/.config/health-agent/.env`.
-- `profiles/template.yaml.example` is the committed example file.
-- No health data is stored in this repository by design, only paths to external sources.
+- No health data is stored in this repository by design, only paths to external sources plus derived repo-local state.
 - 23andMe raw data should be processed locally.
-- Demographics such as date of birth and gender enable age- and sex-aware interpretation.
 
 ## Requirements
 

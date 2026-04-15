@@ -1,0 +1,15 @@
+name: "Your Name"
+demographics:
+  date_of_birth: "1990-01-15"
+  gender: "male"
+
+data_sources:
+  labs_path: "/path/to/labs-parser/output/"
+  exams_path: "/path/to/medical-exams-parser/output/"
+  health_log_path: "/path/to/health-log-parser/output/"
+  genetics_23andme_path: "/path/to/23andme_raw_data.txt"
+
+  selfdecode:
+    enabled: false
+    profile_id: ""
+    jwt_token: ""

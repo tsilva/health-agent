@@ -1,9 +1,8 @@
-"""Action queue ranking and review report rendering."""
+"""Action ranking, state serialization, and plan report rendering."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 from health_agent.constants import PRIORITY_BUCKETS
@@ -144,15 +143,58 @@ def build_action_queue_payload(
     }
 
 
-def render_review_report(
+def _describe_source_details(source_name: str, metadata: dict[str, Any]) -> list[str]:
+    details = metadata.get("details", {}) or {}
+    lines: list[str] = []
+
+    if source_name == "labs_path":
+        recent_results = details.get("recent_results", [])
+        if recent_results:
+            rendered = ", ".join(
+                f"{item['date']} {item['label']} {item['value']}{item['unit']}"
+                for item in recent_results[-3:]
+            )
+            lines.append(f"Recent results: {rendered}")
+        abnormal_results = details.get("recent_abnormal_results", [])
+        if abnormal_results:
+            rendered = ", ".join(
+                f"{item['date']} {item['label']} {item['value']}{item['unit']}"
+                for item in abnormal_results[-3:]
+            )
+            lines.append(f"Recent flagged results: {rendered}")
+    elif source_name == "health_log_path":
+        headline = details.get("headline")
+        if headline:
+            lines.append(f"Health log headline: {headline}")
+        processed_entries = details.get("recent_processed_entries", [])
+        if processed_entries:
+            lines.append(f"Recent processed entries: {', '.join(processed_entries)}")
+    elif source_name == "exams_path":
+        recent_files = details.get("recent_files", [])
+        if recent_files:
+            lines.append(f"Recent exam files: {', '.join(recent_files)}")
+    elif source_name == "genetics_23andme_path":
+        rsids = details.get("sample_rsids", [])
+        if rsids:
+            lines.append(f"Sample rsids: {', '.join(rsids)}")
+
+    latest_modified_at = metadata.get("latest_modified_at")
+    if latest_modified_at:
+        lines.append(f"Latest source update seen: {latest_modified_at}")
+
+    return lines
+
+
+def render_plan_report(
     *,
     profile_slug: str,
     profile_name: str,
     generated_at: str,
-    source_status: dict[str, Any],
+    evidence_snapshot: dict[str, Any],
     issues: dict[str, dict[str, Any]],
     action_queue: dict[str, Any],
 ) -> str:
+    source_status = evidence_snapshot["sources"]
     lines = [
         f"# {profile_name}: Action Plan",
         "",
@@ -170,6 +212,16 @@ def render_review_report(
         lines.append(
             f"- `{source_name}`: {metadata.get('status', 'unknown')}{path_suffix}{sample_suffix}"
         )
+
+    lines.extend(["", "## Current Evidence Snapshot", ""])
+    for source_name, metadata in source_status.items():
+        lines.append(f"### `{source_name}`")
+        detail_lines = _describe_source_details(source_name, metadata)
+        if detail_lines:
+            lines.extend(f"- {item}" for item in detail_lines)
+        else:
+            lines.append("- No additional snapshot details captured.")
+        lines.append("")
 
     lines.extend(
         [

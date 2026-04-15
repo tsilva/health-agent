@@ -1,20 +1,20 @@
 ---
 name: unresolved-issue-review
-description: Maintain repo-local unresolved issue records, action queue state, and action-plan reports for health-agent profiles. This is the lower-level stateful workflow behind the broader `what-next-report` skill. Use it when the task specifically centers on unresolved-issue tracking or when durable issue state needs to be refreshed.
+description: Maintain repo-local per-profile issue memory and action-plan state for health-agent profiles. This is an internal support workflow behind `what-next-report`, not the default user-facing entrypoint.
 ---
 
 # Unresolved Issue Review
 
-Use this workflow when the task specifically needs durable unresolved-issue state, not as the default user-facing entrypoint.
+Use this workflow only when the task specifically needs durable per-profile issue memory refreshed, not as the default user-facing entrypoint.
 
 For normal "what should I do next?" requests, prefer the `what-next-report` skill and treat this workflow as internal support.
 
 ## Goals
 
-- persist unresolved issues under `.state/issues/`
-- keep `.state/action-queue.json` ranked by decision impact
+- persist unresolved issues under `.state/profiles/{profile_slug}/issues.json`
+- keep `.state/profiles/{profile_slug}/actions.json` ranked by decision impact
 - write a single review report under `.output/`
-- update the recommendation when the user returns with new evidence
+- update the recommendation when parsed source folders change
 
 ## Required Session Rules
 
@@ -25,59 +25,27 @@ For normal "what should I do next?" requests, prefer the `what-next-report` skil
 
 ## Stable Artifacts
 
-- `IssueRecord`: `.state/issues/{issue_slug}.json`
-- `ActionQueue`: `.state/action-queue.json`
-- `OutcomeUpdate`: `.state/outcome-updates/{YYYY-MM-DD}-{issue_slug}.json`
-- `ActionPlanReport`: `.output/{profile_slug}-action-plan-{YYYY-MM-DD}.md`
-
-Templates live under `.state/template/`. Schemas live under `schemas/`.
+- `IssueStore`: `.state/profiles/{profile_slug}/issues.json`
+- `ActionStore`: `.state/profiles/{profile_slug}/actions.json`
+- `SourceSnapshot`: `.state/profiles/{profile_slug}/sources.json`
+- `ActionPlanReport`: `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-action-plan.md`
 
 ## Flow
 
-### 1. Intake
+### 1. Rescan
 
-Use intake when there is no durable issue state yet, or when a fresh pass over the record should create or rewrite issue files.
+Use a rescan whenever the parsed source folders changed or when a fresh pass over the record should rewrite the issue memory.
 
 - identify the important unresolved issues from the record
-- create one `IssueRecord` JSON file per issue under `.state/issues/`
+- update `.state/profiles/{profile_slug}/issues.json`
 - set `priority_context` booleans so ranking is explicit instead of implied
 - run:
 
 ```bash
-python3 -m health_agent intake --profile <profile-name>
+python3 -m health_agent plan --profile <profile-name>
 ```
 
-If you generated issue drafts outside `.state/issues/`, sync them with:
-
-```bash
-python3 -m health_agent intake --profile <profile-name> --issues-from <file-or-dir>
-```
-
-### 2. Review
-
-Use review when issue files already exist and the user wants the latest “what do I do next?” output.
-
-- refresh the issue conclusions if the evidence changed
-- keep one prescriptive next step per active or monitoring issue
-- run:
-
-```bash
-python3 -m health_agent review --profile <profile-name>
-```
-
-### 3. Outcome Update
-
-Use outcome-update when the user returns with a new lab, exam, visit, symptom change, or treatment result.
-
-- write an `OutcomeUpdate` JSON file
-- revise the corresponding `IssueRecord` if the new evidence changes the conclusion or next step
-- run:
-
-```bash
-python3 -m health_agent outcome-update --profile <profile-name> --update-file <outcome.json> --revised-issue <issue.json>
-```
-
-If the new evidence should be logged immediately but the issue interpretation is still pending, omit `--revised-issue` for the first pass, then come back and update the issue record after review.
+Treat the parsed source folders as the canonical input. Do not ask the user to create a separate repo-local outcome JSON file.
 
 ## Issue Authoring Rules
 
@@ -103,6 +71,6 @@ Also include `profile_slug` in every issue record so multiple live profiles do n
 ## Output Quality
 
 - Keep issue titles short and stable so they survive across sessions.
-- Preserve prior evidence when revising an issue; do not drop older evidence just because a new visit happened.
+- Preserve prior evidence when revising an issue; do not drop older evidence just because new parsed data arrived.
 - Mark resolved issues as `resolved` instead of deleting them.
-- Use absolute file paths in `linked_sources` and outcome attachments whenever possible.
+- Use absolute file paths in `linked_sources` whenever possible.

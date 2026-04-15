@@ -1,4 +1,4 @@
-"""Issue and outcome-update validation plus merge helpers."""
+"""Issue validation plus per-profile issue store helpers."""
 
 from __future__ import annotations
 
@@ -9,11 +9,9 @@ from typing import Any
 
 from health_agent.constants import (
     CONFIDENCE_FRAMES,
-    EVENT_TYPES,
     ISSUE_STATUSES,
     PRIORITY_CONTEXT_FIELDS,
     REQUIRED_ISSUE_FIELDS,
-    REQUIRED_OUTCOME_UPDATE_FIELDS,
 )
 from health_agent.jsonio import load_json, write_json
 
@@ -115,66 +113,6 @@ def validate_issue_payload(payload: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
-def validate_outcome_update(payload: dict[str, Any]) -> dict[str, Any]:
-    if not isinstance(payload, dict):
-        raise ValidationError("Outcome update payload must be a JSON object.")
-    missing = [field for field in REQUIRED_OUTCOME_UPDATE_FIELDS if field not in payload]
-    if missing:
-        raise ValidationError(f"Outcome update missing required fields: {missing}")
-
-    normalized = deepcopy(payload)
-    normalized["issue_slug"] = _expect_string(payload, "issue_slug")
-    normalized["event_type"] = _expect_enum(payload, "event_type", EVENT_TYPES)
-    normalized["summary"] = _expect_string(payload, "summary")
-    normalized["date"] = _expect_string(payload, "date")
-    normalized["attachments_or_source_refs"] = _expect_string_list(
-        payload,
-        "attachments_or_source_refs",
-    )
-    return normalized
-
-
-def _merge_unique_strings(original: list[str], revised: list[str]) -> list[str]:
-    merged: list[str] = []
-    for value in original + revised:
-        if value not in merged:
-            merged.append(value)
-    return merged
-
-
-def merge_issue_payloads(
-    existing: dict[str, Any],
-    revised: dict[str, Any],
-    *,
-    update_reference: str | None = None,
-) -> dict[str, Any]:
-    merged = deepcopy(existing)
-    merged.update(revised)
-
-    list_fields = (
-        "supporting_evidence",
-        "contradicting_evidence",
-        "tests_or_discussions_to_request",
-        "linked_sources",
-        "recent_updates",
-    )
-    for field in list_fields:
-        merged[field] = _merge_unique_strings(
-            existing.get(field, []),
-            revised.get(field, []),
-        )
-
-    priority_context = deepcopy(existing.get("priority_context", {}))
-    priority_context.update(revised.get("priority_context", {}))
-    merged["priority_context"] = priority_context
-    if update_reference:
-        merged["recent_updates"] = _merge_unique_strings(
-            merged.get("recent_updates", []),
-            [update_reference],
-        )
-    return validate_issue_payload(merged)
-
-
 def load_issue_file(path: Path) -> IssueFile:
     payload = validate_issue_payload(load_json(path))
     return IssueFile(slug=path.stem, path=path, payload=payload)
@@ -190,3 +128,42 @@ def load_issue_collection(path: Path) -> list[IssueFile]:
 
 def save_issue(path: Path, payload: dict[str, Any]) -> None:
     write_json(path, validate_issue_payload(payload))
+
+
+def load_issue_store(path: Path) -> dict[str, dict[str, Any]]:
+    if not path.exists():
+        return {}
+    payload = load_json(path)
+    issues = payload.get("issues", [])
+    if not isinstance(issues, list):
+        raise ValidationError("Issue store 'issues' field must be a list.")
+
+    issue_map: dict[str, dict[str, Any]] = {}
+    for item in issues:
+        if not isinstance(item, dict):
+            raise ValidationError("Issue store items must be objects.")
+        slug = _expect_string(item, "slug")
+        issue_payload = dict(item)
+        issue_payload.pop("slug", None)
+        issue_map[slug] = validate_issue_payload(issue_payload)
+    return issue_map
+
+
+def save_issue_store(
+    path: Path,
+    *,
+    profile_slug: str,
+    profile_name: str,
+    generated_at: str,
+    issues: dict[str, dict[str, Any]],
+) -> None:
+    payload = {
+        "profile_slug": profile_slug,
+        "profile_name": profile_name,
+        "generated_at": generated_at,
+        "issues": [
+            {"slug": slug, **validate_issue_payload(issue)}
+            for slug, issue in sorted(issues.items())
+        ],
+    }
+    write_json(path, payload)

@@ -1,3 +1,0 @@
-parselabs
-parsemedicalexams
-parsehealthlog

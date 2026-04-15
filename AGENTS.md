@@ -92,21 +92,25 @@ Generated notes or reports belong under `.output/`.
 
 ## Closed-Loop Issue Control Plane
 
-When the user wants an unresolved issue review, a prescriptive “what do I do next?” answer, or an update after new labs/exams/visit feedback, maintain repo-local state instead of stopping at a one-off memo.
+When the user wants an unresolved issue review, a prescriptive “what do I do next?” answer, or a refresh after new labs/exams/health-log updates, maintain repo-local state instead of stopping at a one-off memo.
 
 For the normal user-facing experience, prefer generating a single dated what-next report under `.output/` that can include both:
 
 - unresolved issue actions
 - broader health optimization actions supported by the record
 
-Treat `.state/` as internal support for memory and ranking, not as the primary user-facing workflow.
+Treat `.state/` as internal support for memory and ranking, not as the primary user-facing workflow. The canonical user-facing loop is:
+
+1. the user updates the real-world record outside this repo
+2. parser repos refresh the configured output folders
+3. run `health-agent plan --profile <profile-name>`
+4. read the refreshed plan under `.output/`
 
 Use these artifacts:
 
-- `IssueRecord`: `.state/issues/{issue_slug}.json`
-- `ActionQueue`: `.state/action-queue.json`
-- `Profile cache`: `.state/profile-cache/{profile_slug}.json`
-- `OutcomeUpdate`: `.state/outcome-updates/{YYYY-MM-DD}-{issue_slug}.json`
+- `SourceSnapshot`: `.state/profiles/{profile_slug}/sources.json`
+- `IssueStore`: `.state/profiles/{profile_slug}/issues.json`
+- `ActionStore`: `.state/profiles/{profile_slug}/actions.json`
 - `ActionPlanReport`: `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-action-plan.md`
 
 Issue records should contain:
@@ -131,31 +135,13 @@ Optional but encouraged fields:
 - `priority_context`
 - `recent_updates`
 
-Use `.state/template/` and `schemas/` as the canonical local references when creating or revising these files.
-
-### Operator Flows
-
-1. `intake`
-   - create or refresh unresolved issue files under `.state/issues/`
-   - refresh the selected profile cache
-   - rebuild `.state/action-queue.json`
-   - write the current action-plan report under `.output/`
-2. `review`
-   - re-read the sources and existing issue files
-   - update issue conclusions and next steps
-   - rebuild the action queue and action-plan report
-3. `outcome-update`
-   - archive the new follow-up event as an `OutcomeUpdate`
-   - revise the relevant issue file without losing prior evidence
-   - rerank the queue and regenerate the report
-
-Use the local CLI for the deterministic file work:
+Use the local CLI for deterministic rescans and report generation:
 
 ```bash
-python3 -m health_agent intake --profile <profile-name>
-python3 -m health_agent review --profile <profile-name>
-python3 -m health_agent outcome-update --profile <profile-name> --update-file <outcome.json> --revised-issue <issue.json>
+python3 -m health_agent plan --profile <profile-name>
 ```
+
+Deprecated aliases such as `intake`, `review`, and `outcome-update` may still exist temporarily, but they should be treated as compatibility wrappers around `plan`, not as distinct workflows.
 
 ### Prioritization Rules
 
@@ -379,10 +365,11 @@ When giving a recommendation, include:
 - the likely prescription, intervention, lab, or exam to discuss
 - the missing information that would most change the recommendation
 
-When the task is an unresolved issue review or a follow-up after new evidence:
+When the task is an unresolved issue review or a follow-up after new parsed evidence:
 
-- persist or revise the relevant issue files under `.state/issues/`
-- rebuild `.state/action-queue.json`
+- refresh `.state/profiles/{profile_slug}/issues.json`
+- refresh `.state/profiles/{profile_slug}/actions.json`
+- refresh `.state/profiles/{profile_slug}/sources.json`
 - regenerate `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-action-plan.md`
 - make each active issue end with:
   - `Do next`
@@ -401,6 +388,7 @@ When the user wants a profile-specific question list that would improve future r
 - Local-only outputs go under `.output/`.
 - Prefer filtered extraction with `rg`, `grep`, `awk`, `head`, and targeted reads over loading large files wholesale.
 - If a configured source is unavailable, say so explicitly in the analysis.
+- Do not ask the user to create separate repo-local outcome JSON when the relevant change should already exist in the parsed source folders.
 
 ## Maintenance
 

@@ -1,4 +1,4 @@
-"""CLI for the local unresolved-issue workflow."""
+"""CLI for the rescan-driven health-agent planning workflow."""
 
 from __future__ import annotations
 
@@ -7,17 +7,21 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from health_agent.actions import build_action_queue_payload, render_review_report
+from health_agent.actions import build_action_queue_payload, render_plan_report
+from health_agent.evidence import build_evidence_snapshot
 from health_agent.issues import (
     ValidationError,
     load_issue_collection,
-    load_issue_file,
-    merge_issue_payloads,
-    save_issue,
-    validate_outcome_update,
+    load_issue_store,
+    save_issue_store,
 )
-from health_agent.jsonio import load_json, write_json
-from health_agent.paths import ensure_repo_dirs, profile_output_path, state_path
+from health_agent.jsonio import write_json
+from health_agent.paths import (
+    ensure_repo_dirs,
+    profile_output_path,
+    profiles_state_path,
+    state_path,
+)
 from health_agent.profile import load_profile_context
 
 
@@ -25,151 +29,176 @@ def _utc_now() -> str:
     return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
 
 
-def _read_issue_dir(repo_root: Path, *, profile_slug: str) -> dict[str, dict[str, Any]]:
-    issues_dir = state_path(repo_root, "issues")
+def _read_legacy_issue_dir(repo_root: Path, *, profile_slug: str) -> dict[str, dict[str, Any]]:
+    legacy_dir = state_path(repo_root, "issues")
+    if not legacy_dir.exists():
+        return {}
+
     issues: dict[str, dict[str, Any]] = {}
-    if not issues_dir.exists():
-        return issues
-    for issue_file in sorted(issues_dir.glob("*.json")):
-        issue = load_issue_file(issue_file)
-        if issue.payload["profile_slug"] != profile_slug:
+    for issue_file in load_issue_collection(legacy_dir):
+        if issue_file.payload["profile_slug"] != profile_slug:
             continue
-        issues[issue.slug] = issue.payload
+        issues[issue_file.slug] = issue_file.payload
     return issues
 
 
-def _write_profile_cache(repo_root: Path, profile_context: Any, generated_at: str) -> Path:
-    cache_payload = dict(profile_context.cache_payload)
-    cache_payload["refreshed_at"] = generated_at
-    cache_path = state_path(repo_root, "profile-cache", f"{profile_context.slug}.json")
-    write_json(cache_path, cache_payload)
-    return cache_path
+def _load_profile_issues(repo_root: Path, *, profile_slug: str) -> dict[str, dict[str, Any]]:
+    issues_path = profiles_state_path(repo_root, profile_slug, "issues.json")
+    issues = load_issue_store(issues_path)
+    if issues:
+        return issues
+    return _read_legacy_issue_dir(repo_root, profile_slug=profile_slug)
 
 
-def _write_action_queue_and_report(
+def _write_profile_state(
     *,
     repo_root: Path,
     profile_context: Any,
     generated_at: str,
+    evidence_snapshot: dict[str, Any],
     issues: dict[str, dict[str, Any]],
 ) -> tuple[Path, Path]:
-    action_queue = build_action_queue_payload(
+    actions_payload = build_action_queue_payload(
         profile_slug=profile_context.slug,
         profile_name=profile_context.cache_payload["profile_name"],
         generated_at=generated_at,
         issues=issues,
     )
-    action_queue_path = state_path(repo_root, "action-queue.json")
-    write_json(action_queue_path, action_queue)
+    profile_state_dir = profiles_state_path(repo_root, profile_context.slug)
+    sources_path = profile_state_dir / "sources.json"
+    issues_path = profile_state_dir / "issues.json"
+    actions_path = profile_state_dir / "actions.json"
 
-    report_body = render_review_report(
+    write_json(sources_path, evidence_snapshot)
+    save_issue_store(
+        issues_path,
         profile_slug=profile_context.slug,
         profile_name=profile_context.cache_payload["profile_name"],
         generated_at=generated_at,
-        source_status=profile_context.cache_payload["sources"],
         issues=issues,
-        action_queue=action_queue,
+    )
+    write_json(actions_path, actions_payload)
+
+    report_body = render_plan_report(
+        profile_slug=profile_context.slug,
+        profile_name=profile_context.cache_payload["profile_name"],
+        generated_at=generated_at,
+        evidence_snapshot=evidence_snapshot,
+        issues=issues,
+        action_queue=actions_payload,
     )
     report_name = f"{generated_at[:10]}-{profile_context.slug}-action-plan.md"
     report_path = profile_output_path(repo_root, profile_context.slug, report_name)
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(report_body, encoding="utf-8")
-    return action_queue_path, report_path
+    return actions_path, report_path
 
 
-def _sync_issue_inputs(repo_root: Path, source_path: Path, *, profile_slug: str) -> None:
-    issues_dir = state_path(repo_root, "issues")
+def _sync_issue_inputs(
+    repo_root: Path,
+    source_path: Path,
+    *,
+    profile_slug: str,
+    profile_name: str,
+    generated_at: str,
+) -> dict[str, dict[str, Any]]:
+    issues = _load_profile_issues(repo_root, profile_slug=profile_slug)
     for issue_file in load_issue_collection(source_path):
         payload = dict(issue_file.payload)
-        payload["profile_slug"] = payload.get("profile_slug", profile_slug)
-        save_issue(issues_dir.joinpath(f"{issue_file.slug}.json"), payload)
+        payload["profile_slug"] = profile_slug
+        issues[issue_file.slug] = payload
+
+    save_issue_store(
+        profiles_state_path(repo_root, profile_slug, "issues.json"),
+        profile_slug=profile_slug,
+        profile_name=profile_name,
+        generated_at=generated_at,
+        issues=issues,
+    )
+    return issues
 
 
-def run_intake(args: argparse.Namespace) -> int:
+def run_plan(args: argparse.Namespace) -> int:
     repo_root = args.repo_root.resolve()
-    ensure_repo_dirs(repo_root)
     profile_context = load_profile_context(args.profile, home_dir=args.home_dir)
+    ensure_repo_dirs(repo_root, profile_context.slug)
     generated_at = _utc_now()
-    _write_profile_cache(repo_root, profile_context, generated_at)
+    evidence_snapshot = build_evidence_snapshot(profile_context, generated_at=generated_at)
+
+    issues = _load_profile_issues(repo_root, profile_slug=profile_context.slug)
     if args.issues_from:
-        _sync_issue_inputs(
+        issues = _sync_issue_inputs(
             repo_root,
             args.issues_from.resolve(),
             profile_slug=profile_context.slug,
+            profile_name=profile_context.cache_payload["profile_name"],
+            generated_at=generated_at,
         )
-    issues = _read_issue_dir(repo_root, profile_slug=profile_context.slug)
-    _write_action_queue_and_report(
+    _write_profile_state(
         repo_root=repo_root,
         profile_context=profile_context,
         generated_at=generated_at,
+        evidence_snapshot=evidence_snapshot,
         issues=issues,
     )
     return 0
+
+
+def _run_deprecated_alias(args: argparse.Namespace, alias: str) -> int:
+    message = (
+        f"warning: `health-agent {alias}` is deprecated; use "
+        f"`health-agent plan --profile {args.profile}`.\n"
+    )
+    print(message, end="")
+    return run_plan(args)
+
+
+def run_intake(args: argparse.Namespace) -> int:
+    return _run_deprecated_alias(args, "intake")
 
 
 def run_review(args: argparse.Namespace) -> int:
-    repo_root = args.repo_root.resolve()
-    ensure_repo_dirs(repo_root)
-    profile_context = load_profile_context(args.profile, home_dir=args.home_dir)
-    generated_at = _utc_now()
-    _write_profile_cache(repo_root, profile_context, generated_at)
-    issues = _read_issue_dir(repo_root, profile_slug=profile_context.slug)
-    _write_action_queue_and_report(
-        repo_root=repo_root,
-        profile_context=profile_context,
-        generated_at=generated_at,
-        issues=issues,
-    )
-    return 0
+    return _run_deprecated_alias(args, "review")
 
 
 def run_outcome_update(args: argparse.Namespace) -> int:
-    repo_root = args.repo_root.resolve()
-    ensure_repo_dirs(repo_root)
-    profile_context = load_profile_context(args.profile, home_dir=args.home_dir)
-    generated_at = _utc_now()
-    _write_profile_cache(repo_root, profile_context, generated_at)
-
-    update_payload = validate_outcome_update(load_json(args.update_file.resolve()))
-    update_filename = f"{update_payload['date']}-{update_payload['issue_slug']}.json"
-    update_path = state_path(repo_root, "outcome-updates", update_filename)
-    write_json(update_path, update_payload)
-
-    issue_path = state_path(repo_root, "issues", f"{update_payload['issue_slug']}.json")
-    if issue_path.exists():
-        existing_issue = load_issue_file(issue_path).payload
-        revised_issue = existing_issue
-        if args.revised_issue:
-            revised_issue = load_issue_file(args.revised_issue.resolve()).payload
-        merged_issue = merge_issue_payloads(
-            existing_issue,
-            revised_issue,
-            update_reference=str(update_path),
+    if args.update_file or args.revised_issue:
+        print(
+            "warning: manual outcome update files are deprecated; rescan the parsed sources and rerun `health-agent plan`.\n",
+            end="",
         )
-        merged_issue["last_reviewed_at"] = generated_at
-        merged_issue["linked_sources"] = list(
-            dict.fromkeys(
-                merged_issue["linked_sources"]
-                + update_payload["attachments_or_source_refs"]
-            )
-        )
-        merged_issue["profile_slug"] = profile_context.slug
-        save_issue(issue_path, merged_issue)
+    return _run_deprecated_alias(args, "outcome-update")
 
-    issues = _read_issue_dir(repo_root, profile_slug=profile_context.slug)
-    _write_action_queue_and_report(
-        repo_root=repo_root,
-        profile_context=profile_context,
-        generated_at=generated_at,
-        issues=issues,
+
+def _add_profile_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--profile", required=True, help="Profile name or absolute YAML path.")
+
+
+def _add_optional_issues_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--issues-from",
+        type=Path,
+        help="Deprecated compatibility input for issue JSON drafts; imported into the per-profile issue store before planning.",
     )
-    return 0
+
+
+def _add_deprecated_outcome_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--update-file",
+        type=Path,
+        help="Deprecated compatibility argument. Parsed source folders are now the canonical input.",
+    )
+    parser.add_argument(
+        "--revised-issue",
+        type=Path,
+        help="Deprecated compatibility argument. Parsed source folders are now the canonical input.",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="health-agent",
-        description="Local state and action-plan workflow for unresolved health issues.",
+        description="Rescan parsed health data sources and render the current action plan.",
     )
     parser.add_argument(
         "--repo-root",
@@ -186,36 +215,37 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    plan = subparsers.add_parser(
+        "plan",
+        help="Rescan parsed source folders, refresh per-profile state, and render the current action plan.",
+    )
+    _add_profile_argument(plan)
+    _add_optional_issues_argument(plan)
+    plan.set_defaults(func=run_plan)
+
     intake = subparsers.add_parser(
         "intake",
-        help="Refresh the selected profile cache, sync issue drafts into .state/issues, and render the action plan.",
+        help="Deprecated alias for `plan`.",
     )
-    intake.add_argument("--profile", required=True, help="Profile name or absolute YAML path.")
-    intake.add_argument(
-        "--issues-from",
-        type=Path,
-        help="Optional file or directory of issue JSON drafts to sync into .state/issues.",
-    )
+    _add_profile_argument(intake)
+    _add_optional_issues_argument(intake)
     intake.set_defaults(func=run_intake)
 
     review = subparsers.add_parser(
         "review",
-        help="Refresh the profile cache, rebuild the action queue, and render the action plan from existing issue files.",
+        help="Deprecated alias for `plan`.",
     )
-    review.add_argument("--profile", required=True, help="Profile name or absolute YAML path.")
+    _add_profile_argument(review)
+    _add_optional_issues_argument(review)
     review.set_defaults(func=run_review)
 
     outcome = subparsers.add_parser(
         "outcome-update",
-        help="Archive a structured outcome update, optionally merge a revised issue record, then rerender the action plan.",
+        help="Deprecated alias for `plan`. Parsed source folders are now the canonical input.",
     )
-    outcome.add_argument("--profile", required=True, help="Profile name or absolute YAML path.")
-    outcome.add_argument("--update-file", type=Path, required=True, help="OutcomeUpdate JSON file.")
-    outcome.add_argument(
-        "--revised-issue",
-        type=Path,
-        help="Optional revised IssueRecord JSON file for the same issue slug.",
-    )
+    _add_profile_argument(outcome)
+    _add_optional_issues_argument(outcome)
+    _add_deprecated_outcome_arguments(outcome)
     outcome.set_defaults(func=run_outcome_update)
 
     return parser

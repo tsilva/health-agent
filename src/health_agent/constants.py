@@ -7,7 +7,6 @@ CONFIDENCE_FRAMES = {
     "differential",
     "open question",
 }
-EVENT_TYPES = {"lab", "exam", "visit", "symptom_change", "treatment_trial", "admin"}
 
 PRIORITY_BUCKETS = (
     "materially_narrows_differential",
@@ -40,12 +39,4 @@ REQUIRED_ISSUE_FIELDS = (
     "result_that_would_change_plan",
     "last_reviewed_at",
     "linked_sources",
-)
-
-REQUIRED_OUTCOME_UPDATE_FIELDS = (
-    "issue_slug",
-    "event_type",
-    "summary",
-    "date",
-    "attachments_or_source_refs",
 )
