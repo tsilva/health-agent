@@ -90,6 +90,85 @@ If a source is `missing` or `unreadable`, report that in the answer and adjust t
 
 Generated notes or reports belong under `.output/`.
 
+## Closed-Loop Issue Control Plane
+
+When the user wants an unresolved issue review, a prescriptive “what do I do next?” answer, or an update after new labs/exams/visit feedback, maintain repo-local state instead of stopping at a one-off memo.
+
+For the normal user-facing experience, prefer generating a single dated what-next report under `.output/` that can include both:
+
+- unresolved issue actions
+- broader health optimization actions supported by the record
+
+Treat `.state/` as internal support for memory and ranking, not as the primary user-facing workflow.
+
+Use these artifacts:
+
+- `IssueRecord`: `.state/issues/{issue_slug}.json`
+- `ActionQueue`: `.state/action-queue.json`
+- `Profile cache`: `.state/profile-cache/{profile_slug}.json`
+- `OutcomeUpdate`: `.state/outcome-updates/{YYYY-MM-DD}-{issue_slug}.json`
+- `ActionPlanReport`: `.output/{profile_slug}-action-plan-{YYYY-MM-DD}.md`
+
+Issue records should contain:
+
+- `profile_slug`
+- `title`
+- `status`: `active | monitoring | resolved | parked`
+- `working_conclusion`
+- `confidence_frame`
+- `supporting_evidence`
+- `contradicting_evidence`
+- `next_best_action`
+- `why_this_action_now`
+- `specialist_type`
+- `tests_or_discussions_to_request`
+- `result_that_would_change_plan`
+- `last_reviewed_at`
+- `linked_sources`
+
+Optional but encouraged fields:
+
+- `priority_context`
+- `recent_updates`
+
+Use `.state/template/` and `schemas/` as the canonical local references when creating or revising these files.
+
+### Operator Flows
+
+1. `intake`
+   - create or refresh unresolved issue files under `.state/issues/`
+   - refresh the selected profile cache
+   - rebuild `.state/action-queue.json`
+   - write the current action-plan report under `.output/`
+2. `review`
+   - re-read the sources and existing issue files
+   - update issue conclusions and next steps
+   - rebuild the action queue and action-plan report
+3. `outcome-update`
+   - archive the new follow-up event as an `OutcomeUpdate`
+   - revise the relevant issue file without losing prior evidence
+   - rerank the queue and regenerate the report
+
+Use the local CLI for the deterministic file work:
+
+```bash
+python3 -m health_agent intake --profile <profile-name>
+python3 -m health_agent review --profile <profile-name>
+python3 -m health_agent outcome-update --profile <profile-name> --update-file <outcome.json> --revised-issue <issue.json>
+```
+
+### Prioritization Rules
+
+Rank actions in this order:
+
+1. actions that materially narrow a differential
+2. actions that could change treatment class or specialist path
+3. actions that resolve missing objective evidence
+4. actions that reduce risk if delayed
+5. lower-value optimization or curiosity actions
+
+Encode this explicitly in `priority_context` whenever you write or revise an issue.
+
 ## Data Sources
 
 ### Labs Data
@@ -299,6 +378,19 @@ When giving a recommendation, include:
 - the relevant specialist type
 - the likely prescription, intervention, lab, or exam to discuss
 - the missing information that would most change the recommendation
+
+When the task is an unresolved issue review or a follow-up after new evidence:
+
+- persist or revise the relevant issue files under `.state/issues/`
+- rebuild `.state/action-queue.json`
+- regenerate `.output/{profile_slug}-action-plan-{YYYY-MM-DD}.md`
+- make each active issue end with:
+  - `Do next`
+  - `Why`
+  - `What to ask for`
+  - `What result to return with`
+
+When the user asks more generally what to do next, generate a dated report under `.output/` that ranks the strongest next actions across both unresolved issues and optimization opportunities. Do not limit the report to unresolved diagnoses if the broader record supports concrete optimization steps.
 
 ## Important Notes
 

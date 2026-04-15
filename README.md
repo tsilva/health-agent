@@ -17,6 +17,7 @@
 
 - **Health-autopilot workflow**: support longitudinal analysis, diagnostic reasoning, root-cause investigation, and quality-of-life optimization.
 - **Concrete next-step planning**: suggest the right specialist path, likely prescription discussions, and evidence-backed follow-up actions.
+- **Closed-loop unresolved-issue tracking**: persist active issues under `.state/issues/`, rank the next best actions in `.state/action-queue.json`, and regenerate the plan as new evidence arrives.
 - **Profile-based runtime config**: point the agent at external health-data exports without storing the raw data in this repo.
 - **Cross-source analysis**: correlate lab trends, exam findings, journal entries, symptoms, medications, experiments, and genetics over time.
 - **Privacy-first layout**: live runtime config stays under `~/.config/health-agent/`, external data sources are read-only, and generated `.output/` artifacts stay repo-local.
@@ -66,7 +67,15 @@ The runtime workflow is:
 5. Optionally load environment variables from `~/.config/health-agent/.env`.
 6. Query those external parser outputs directly.
 
-### 4. Ask Natural Questions
+### 4. Install the Local Workflow Helpers
+
+```bash
+python3 -m pip install -e .[dev]
+```
+
+This adds the `health-agent` CLI used to refresh profile state, rebuild the ranked action queue, and render the current action plan.
+
+### 5. Ask Natural Questions
 
 ```text
 "Show me my cholesterol trends over the past year"
@@ -78,6 +87,8 @@ The runtime workflow is:
 "Look up my APOE genotype"
 "Investigate the root cause of my elevated bilirubin"
 "Prepare a summary for my doctor's appointment next week"
+"What do I do next on my unresolved issues?"
+"I saw hematology today; update the plan with this result"
 ```
 
 ## Data Sources
@@ -93,16 +104,63 @@ The runtime workflow is:
 
 This repository is a lightweight instruction layer around external health-data exports. The agent reads a live profile from `~/.config/health-agent/profiles/`, validates each configured source, optionally loads `~/.config/health-agent/.env`, and performs analysis directly against the exported files.
 
+For closed-loop issue management, the repo now keeps a local control plane:
+
+- `.state/issues/{issue_slug}.json`: durable unresolved issue records
+- `.state/action-queue.json`: ranked next actions across active issues
+- `.state/profile-cache/{profile_slug}.json`: latest profile and source-status snapshot
+- `.state/outcome-updates/{YYYY-MM-DD}-{issue_slug}.json`: structured follow-up events
+- `.output/{profile_slug}-action-plan-{YYYY-MM-DD}.md`: user-facing “tell me what to do” report
+
+The local CLI supports three flows:
+
+```bash
+health-agent intake --profile myname --issues-from /path/to/issue-drafts
+health-agent review --profile myname
+health-agent outcome-update --profile myname --update-file /path/to/outcome.json --revised-issue /path/to/issue.json
+```
+
+The clinical reasoning still comes from the assistant following [AGENTS.md](AGENTS.md) and the project-local skills. The CLI handles state validation, ranking, merging, and report generation.
+
 ## Directory Structure
 
 ```text
 health-agent/
 ├── AGENTS.md
 ├── CLAUDE.md -> AGENTS.md
+├── .codex/
+│   └── skills/
+│       ├── medication-history-report/
+│       │   ├── SKILL.md
+│       │   └── references/
+│       │       └── report-template.md
+│       ├── what-next-report/
+│       │   └── SKILL.md
+│       └── unresolved-issue-review/
+│           └── SKILL.md
 ├── LICENSE
 ├── README.md
+├── pyproject.toml
+├── schemas/
+│   ├── action-queue.schema.json
+│   ├── issue-record.schema.json
+│   └── outcome-update.schema.json
+├── src/
+│   └── health_agent/
+│       ├── actions.py
+│       ├── cli.py
+│       ├── issues.py
+│       └── profile.py
 ├── health-agent.code-workspace
 ├── logo.png
+├── .state/
+│   └── template/
+│       ├── action-queue.template.json
+│       ├── issue-record.template.json
+│       └── outcome-update.template.json
+├── .output/
+├── tests/
+│   └── test_cli.py
 └── profiles/
     └── template.yaml.example
 ```
@@ -117,6 +175,16 @@ health-agent/
 ## Output Files
 
 Generated notes or reports should be written under `.output/` so they stay local and ignored by git.
+
+Repo-local operational state belongs under `.state/`. External source directories remain read-only.
+
+## Project Skills
+
+This repo can include project-local Codex skills under `.codex/skills/`. The bundled skills are:
+
+- `medication-history-report`: generate a dated Markdown report of active and past medications and supplements under `.output/`.
+- `what-next-report`: generate a dated prescriptive report under `.output/` with both unresolved-issue actions and health-optimization actions.
+- `unresolved-issue-review`: lower-level stateful workflow for maintaining `.state/issues/`, `.state/action-queue.json`, and unresolved-issue memory.
 
 ## Read-Only Sources
 

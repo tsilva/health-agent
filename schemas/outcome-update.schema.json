@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://health-agent.local/schemas/outcome-update.schema.json",
+  "title": "OutcomeUpdate",
+  "type": "object",
+  "required": [
+    "issue_slug",
+    "event_type",
+    "summary",
+    "date",
+    "attachments_or_source_refs"
+  ],
+  "properties": {
+    "issue_slug": {
+      "type": "string",
+      "minLength": 1
+    },
+    "event_type": {
+      "enum": ["lab", "exam", "visit", "symptom_change", "treatment_trial", "admin"]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "date": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attachments_or_source_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -137,3 +137,4 @@ wheels/
 
 !.state/template/
 !.state/template/*
+.state
