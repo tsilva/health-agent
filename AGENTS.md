@@ -392,6 +392,8 @@ When the task is an unresolved issue review or a follow-up after new evidence:
 
 When the user asks more generally what to do next, generate a dated report under `.output/` that ranks the strongest next actions across both unresolved issues and optimization opportunities. Do not limit the report to unresolved diagnoses if the broader record supports concrete optimization steps.
 
+When the user wants a profile-specific question list that would improve future runs if answered, generate a short ranked report under `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-future-questions.md`. The deliverable should be a concise list of high-yield unanswered questions intended to be answered in a new health-log entry, and all profile-linked external sources remain read-only.
+
 ## Important Notes
 
 - Privacy: runtime profiles and sensitive paths belong in `~/.config/health-agent/`, not in the repo.

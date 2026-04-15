@@ -88,6 +88,7 @@ This adds the `health-agent` CLI used to refresh profile state, rebuild the rank
 "Investigate the root cause of my elevated bilirubin"
 "Prepare a summary for my doctor's appointment next week"
 "What do I do next on my unresolved issues?"
+"Generate the questions I should answer in my health log so future runs do a better job"
 "I saw hematology today; update the plan with this result"
 ```
 
@@ -122,6 +123,8 @@ health-agent outcome-update --profile myname --update-file /path/to/outcome.json
 
 The clinical reasoning still comes from the assistant following [AGENTS.md](AGENTS.md) and the project-local skills. The CLI handles state validation, ranking, merging, and report generation.
 
+Other report workflows can stay skill-only when they depend on broader cross-source reasoning and do not need durable local state. For example, the profile question report writes a standalone markdown artifact at `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-future-questions.md`.
+
 ## Directory Structure
 
 ```text
@@ -131,6 +134,10 @@ health-agent/
 ├── .codex/
 │   └── skills/
 │       ├── medication-history-report/
+│       │   ├── SKILL.md
+│       │   └── references/
+│       │       └── report-template.md
+│       ├── profile-question-report/
 │       │   ├── SKILL.md
 │       │   └── references/
 │       │       └── report-template.md
@@ -178,11 +185,16 @@ Generated notes or reports should be written under `.output/` so they stay local
 
 Repo-local operational state belongs under `.state/`. External source directories remain read-only.
 
+Standalone profile reports may use profile-scoped paths such as:
+
+- `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-future-questions.md`
+
 ## Project Skills
 
 This repo can include project-local Codex skills under `.codex/skills/`. The bundled skills are:
 
 - `medication-history-report`: generate a dated Markdown report of active and past medications and supplements under `.output/`.
+- `profile-question-report`: generate a dated markdown report with a short ranked list of unanswered profile questions for the user to answer in the health log before the next run.
 - `what-next-report`: generate a dated prescriptive report under `.output/` with both unresolved-issue actions and health-optimization actions.
 - `unresolved-issue-review`: lower-level stateful workflow for maintaining `.state/issues/`, `.state/action-queue.json`, and unresolved-issue memory.
 
