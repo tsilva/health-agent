@@ -130,10 +130,9 @@ The current plan report is the primary deliverable. The state files exist to sup
 
 This repo includes project-local Codex skills under `.codex/skills/`:
 
-- `what-next-report`: canonical workflow for having the agent read the parsed record and produce the updated next-steps plan
+- `what-next-report`: canonical workflow for having the agent read the parsed record, produce the updated next-steps plan, and refresh per-profile issue/action memory when useful
 - `profile-question-report`: generate a short ranked list of unanswered questions for the next health-log entry
 - `medication-history-report`: generate a dated medication and supplement history report
-- `unresolved-issue-review`: internal support workflow for refreshing per-profile issue memory when needed
 
 ## Directory Structure
 

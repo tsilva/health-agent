@@ -382,6 +382,7 @@ def test_docs_match_skill_first_workflow() -> None:
 
     assert "Use the what-next-report skill for profile myname" in readme
     assert "The canonical interface is the `what-next-report` skill through the agent." in readme
+    assert "`unresolved-issue-review`" not in readme
     assert "The normal user-facing entrypoint for this repo is the agent invoking the relevant project skill" in agents
     assert "The skill itself is the primary interface." in skill
 

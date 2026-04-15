@@ -64,6 +64,13 @@ Write a report named:
 
 `{profile_slug}/{YYYY-MM-DD}-{profile_slug}-action-plan.md`
 
+The durable repo-local artifacts for this workflow are:
+
+- `IssueStore`: `.state/profiles/{profile_slug}/issues.json`
+- `ActionStore`: `.state/profiles/{profile_slug}/actions.json`
+- `SourceSnapshot`: `.state/profiles/{profile_slug}/sources.json`
+- `ActionPlanReport`: `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-action-plan.md`
+
 The report should usually contain:
 
 1. Title
@@ -143,6 +150,31 @@ If the report clearly centers on unresolved issues, you may also update:
 - `.state/profiles/{profile_slug}/sources.json`
 
 But the primary deliverable is always the report in `.output/`.
+
+When refreshing issue memory:
+
+- identify the important unresolved issues from the current record
+- keep `priority_context` explicit so ranking is encoded rather than implied
+- preserve older evidence that still affects the current plan
+- mark resolved issues as `resolved` instead of deleting them
+
+Each issue record should:
+
+- include `profile_slug`
+- keep `linked_sources` as absolute file paths when possible
+- end in an operator-friendly format:
+  - `Do next`
+  - `Why`
+  - `What to ask for`
+  - `What result to return with`
+
+Use `priority_context` to encode the ranking bucket directly:
+
+- `materially_narrows_differential`
+- `changes_treatment_or_specialist_path`
+- `resolves_missing_objective_evidence`
+- `reduces_risk_if_delayed`
+- `is_lower_value_optimization`
 
 ## Update Mode
 
