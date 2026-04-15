@@ -92,6 +92,8 @@ logs/
 .state/*
 !.state/_template/
 !.state/_template/*
+profiles/*.yaml
+!profiles/template.yaml.example
 .tox/
 .venv
 .webassets-cache

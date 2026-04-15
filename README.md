@@ -7,7 +7,7 @@
   [![Documentation](https://img.shields.io/badge/Docs-AGENTS.md-2d6cdf)](AGENTS.md)
   [![Data Sources](https://img.shields.io/badge/Data_Sources-4-orange)](#data-sources)
 
-  **Unify lab results, medical exams, health journals, and genetic data into one local health-analysis workflow.**
+  **A central health-autopilot hub for diagnosis support, root-cause analysis, prescription-path suggestions, and longitudinal health reasoning.**
 
   [Documentation](AGENTS.md) · [Profile Template](profiles/template.yaml.example)
 
@@ -15,11 +15,11 @@
 
 ## Features
 
-- **Natural-language health queries**: ask plain-English questions about labs, exams, symptoms, medications, genetics, and timelines.
-- **Profile-based configuration**: point the agent at parser outputs for different people without storing raw health data in this repo.
-- **Cross-source analysis**: correlate lab trends, imaging findings, journal entries, conditions, treatments, and genetics over time.
-- **Direct file reads**: work from parser outputs and profile metadata directly.
-- **Privacy-first layout**: runtime config lives under `~/.config/health-agent/`, and generated `.output/` artifacts stay repo-local.
+- **Health-autopilot workflow**: support longitudinal analysis, diagnostic reasoning, root-cause investigation, and quality-of-life optimization.
+- **Concrete next-step planning**: suggest the right specialist path, likely prescription discussions, and evidence-backed follow-up actions.
+- **Profile-based runtime config**: point the agent at external health-data exports without storing the raw data in this repo.
+- **Cross-source analysis**: correlate lab trends, exam findings, journal entries, symptoms, medications, experiments, and genetics over time.
+- **Privacy-first layout**: live runtime config stays under `~/.config/health-agent/`, external data sources are read-only, and generated `.output/` artifacts stay repo-local.
 
 ## Quick Start
 
@@ -57,12 +57,14 @@ Edit `~/.config/health-agent/.env` if you want features like the higher PubMed r
 
 Open your local AI coding assistant in this directory and have it follow [AGENTS.md](AGENTS.md) or `CLAUDE.md`.
 
-The runtime workflow is simple:
+The runtime workflow is:
 
 1. Read a profile from `~/.config/health-agent/profiles/*.yaml`.
-2. Extract the data-source paths from that profile.
-3. Optionally load environment variables from `~/.config/health-agent/.env`.
-4. Query those external parser outputs directly.
+2. If no live profile exists, stop and ask for one. Do not fall back to repo-local `profiles/*.yaml`.
+3. Extract the data-source paths from that profile.
+4. Validate each source as `available`, `missing`, `unreadable`, or `not configured`.
+5. Optionally load environment variables from `~/.config/health-agent/.env`.
+6. Query those external parser outputs directly.
 
 ### 4. Ask Natural Questions
 
@@ -82,14 +84,14 @@ The runtime workflow is simple:
 
 | Source | Output | Description |
 |--------|--------|-------------|
-| [labs-parser](https://github.com/tsilva/labs-parser) | `all.csv` | Lab test results with values, units, reference ranges, and OCR confidence |
-| [medical-exams-parser](https://github.com/tsilva/medical-exams-parser) | `*.summary.md` | Imaging and exam summaries with YAML frontmatter |
-| [health-log-parser](https://github.com/tsilva/health-log-parser) | `current.yaml`, `history.csv`, `entities.json`, `entries/`, `health_log.md` | Current state, timeline history, entity registry, daily entries, and journal narrative |
+| [labs-parser](https://github.com/tsilva/labs-parser) | `all.csv`, `lab_specs.json`, dated source folders | Canonical lab index plus per-document verification artifacts |
+| Standalone exams parser | profile-configured directory | Independent exam corpus; must be validated before use and may be unavailable |
+| [health-log-parser](https://github.com/tsilva/health-log-parser) | `health_log.md`, `.state.json`, `entries/*.raw.md`, `entries/*.processed.md`, `entries/*.labs.md`, `entries/*.exams.md` | Chronological overview, parser state, and day-level journal/lab/exam context |
 | 23andMe | Raw data download | Genetic variants for pharmacogenomics and health-risk interpretation |
 
 ## How It Works
 
-This repository is a lightweight instruction layer around external health-data exports. The agent reads a profile from `~/.config/health-agent/profiles/`, follows the data-source paths in that profile, optionally loads `~/.config/health-agent/.env`, and performs analysis directly against the exported files.
+This repository is a lightweight instruction layer around external health-data exports. The agent reads a live profile from `~/.config/health-agent/profiles/`, validates each configured source, optionally loads `~/.config/health-agent/.env`, and performs analysis directly against the exported files.
 
 ## Directory Structure
 
@@ -115,6 +117,10 @@ health-agent/
 ## Output Files
 
 Generated notes or reports should be written under `.output/` so they stay local and ignored by git.
+
+## Read-Only Sources
+
+All profile-linked external sources are read-only. The agent should never modify files under configured `labs_path`, `exams_path`, `health_log_path`, or `genetics_23andme_path`.
 
 ## Data Privacy
 

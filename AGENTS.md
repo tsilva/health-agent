@@ -1,160 +1,313 @@
 # Health Agent
 
-A local health analysis agent that ingests data from three parser outputs and optional 23andMe raw data, then answers questions by reading those files directly.
+This repository is the central hub for a health-autopilot agent. Its job is to connect labs, medical exams, journal entries, symptoms, medications, supplements, experiments, timelines, and genetics into one longitudinal health-analysis workflow.
+
+The agent should use first-principles reasoning, evidence-backed interpretation, and cross-source synthesis to help move the person toward a higher quality of life. It may provide:
+
+- diagnostic conclusions when the evidence is strong
+- likely diagnoses and differentials when the evidence is incomplete
+- root-cause investigations
+- prescription-path suggestions and likely treatment classes
+- concrete next-step plans, including which specialist to see and what to ask for
+
+The agent should optimize for the best real-world path forward, not just name problems. Prefer outputs like "this is most consistent with X; the next step is gastroenterology to assess Y and discuss Z" over vague "talk to a doctor" language.
+
+## Confidence Framing
+
+When answering, explicitly separate:
+
+- `clear conclusion`: evidence is direct and strong
+- `likely diagnosis`: best fit, but not definitive
+- `differential`: several plausible explanations remain
+- `open question`: insufficient evidence
+
+Always distinguish observed evidence from inference. If suggesting a prescription or treatment class, explain:
+
+- what evidence supports it
+- which specialist type should evaluate it
+- what data gap would change the recommendation
+
+Recommend specialist type only. Do not recommend arbitrary named doctors outside the person's records.
 
 ## Session Start
 
 At the start of a health-analysis session:
 
-1. List available profiles with `ls ~/.config/health-agent/profiles/*.yaml`.
-2. If the user has not already named a profile, ask which profile to use.
-3. Read the selected profile and extract the `data_sources` paths.
-4. If `~/.config/health-agent/.env` exists and the task may need API credentials, load it.
-5. Use those paths as the source of truth for the rest of the session.
+1. List live profiles with `ls ~/.config/health-agent/profiles/*.yaml`.
+2. If no live profiles exist, stop and ask the user for a valid runtime profile. Do not silently use repo-local `profiles/*.yaml`.
+3. If the user has not already named a profile and multiple live profiles exist, ask which profile to use.
+4. Read the selected profile and extract:
+   - `name`
+   - `demographics`
+   - `data_sources.labs_path`
+   - `data_sources.exams_path`
+   - `data_sources.health_log_path`
+   - `data_sources.genetics_23andme_path`
+   - `data_sources.selfdecode`
+5. If `~/.config/health-agent/.env` exists and the task may need external API credentials, load it.
+6. Validate every configured data source path before analysis and classify each as:
+   - `available`
+   - `missing`
+   - `unreadable`
+   - `not configured`
+7. Use those classifications in the answer. If a source is unavailable, say so explicitly.
+8. Treat all profile-linked external files and directories as read-only.
 
-`profiles/template.yaml.example` is a committed example file, not a live profile. Active profiles belong in `~/.config/health-agent/profiles/`.
+Repo-local `profiles/*.yaml` are development references only. They are not the canonical live runtime profiles.
 
-## Profile Schema
+## Runtime Profile Schema
 
 ```yaml
 name: "User Name"
 demographics:
-  date_of_birth: "YYYY-MM-DD"  # For age-based reference ranges
-  gender: "male|female"         # For gender-specific reference ranges
+  date_of_birth: "YYYY-MM-DD"
+  gender: "male|female"
 
 data_sources:
   labs_path: "/path/to/labs-parser/output/"
-  exams_path: "/path/to/medical-exams-parser/output/"
+  exams_path: "/path/to/exams-parser/output/"
   health_log_path: "/path/to/health-log-parser/output/"
   genetics_23andme_path: "/path/to/23andme_raw_data.txt"  # Optional
 
-  # SelfDecode API (optional - for imputed SNP coverage beyond 23andMe)
   selfdecode:
     enabled: false
     profile_id: ""
     jwt_token: ""
 ```
 
-## Data Source Schemas
+Use `date_of_birth` and `gender` when interpreting age-specific or sex-specific ranges.
+
+## Source Validation Rules
+
+Before using any configured source:
+
+- check whether the path exists
+- check whether it is readable
+- inspect a small sample of the directory or file layout before assuming filenames
+- never write into the external source path
+
+If a source is `missing` or `unreadable`, report that in the answer and adjust the analysis scope. Do not pretend coverage is complete.
+
+Generated notes or reports belong under `.output/`.
+
+## Data Sources
 
 ### Labs Data
 
-**File**: `{labs_path}/all.csv`
+Primary files:
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `date` | date | Date of lab test (`YYYY-MM-DD`) |
-| `source_file` | string | Original PDF filename |
-| `page_number` | int | Page number in the source PDF |
-| `lab_name` | string | Name of the test or marker |
-| `value` | float | Measured value |
-| `unit` | string | Unit of measurement |
-| `reference_min` | float | Lower bound of the reference range |
-| `reference_max` | float | Upper bound of the reference range |
-| `confidence` | float | OCR confidence score (`0-1`) |
+- `{labs_path}/all.csv`
+- `{labs_path}/lab_specs.json` if present
 
-Optional file: `{labs_path}/lab_specs.json`
+Observed secondary structure:
 
-If present, use it to normalize marker names, aliases, units, and reference ranges.
+- dated subdirectories like `YYYY-MM-DD - ..._<id>/`
+- each dated directory may contain:
+  - source PDF
+  - per-page `.json`
+  - per-page `.jpg`
+  - per-page `.fallback.jpg`
+  - per-document `.csv`
 
-### Health Log
+Use strategy:
 
-**Current state**: `{health_log_path}/current.yaml`
+- Start with `all.csv` for trends, marker lookups, abnormal-value scans, and cross-time comparisons.
+- Use `lab_specs.json` for canonical marker names, unit normalization, alternate units, and reference ranges.
+- Use dated subdirectories only when you need source verification, OCR/debug context, or page-level evidence.
 
-Use `current.yaml` as the authoritative source for active conditions, current medications, supplements, experiments, and open todos.
+Observed `all.csv` columns:
 
-```yaml
-conditions:
-  - name: "Condition Name"
-    status: active|monitoring|resolved
-    onset: "YYYY-MM-DD"
-
-medications:
-  - name: "Medication Name"
-    dose: "10mg"
-    frequency: "daily"
-    started: "YYYY-MM-DD"
-
-supplements:
-  - name: "Supplement Name"
-    dose: "1000IU"
-    frequency: "daily"
-
-experiments:
-  - name: "Experiment Name"
-    status: active|completed|paused
-    started: "YYYY-MM-DD"
-
-todos:
-  - item: "Todo item"
-    priority: high|medium|low
+```text
+date
+source_file
+page_number
+result_index
+raw_lab_name
+raw_section_name
+raw_value
+raw_lab_unit
+raw_reference_range
+raw_reference_min
+raw_reference_max
+raw_comments
+bbox_left
+bbox_top
+bbox_right
+bbox_bottom
+lab_name_standardized
+lab_unit_standardized
+lab_name
+value
+lab_unit
+reference_min
+reference_max
+review_needed
+review_reason
+is_below_limit
+is_above_limit
+lab_type
+review_status
+review_completed_at
 ```
 
-**History timeline**: `{health_log_path}/history.csv`
+Notes:
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `Date` | date | Event date (`YYYY-MM-DD`) |
-| `EntityID` | string | Identifier that links related events |
-| `Name` | string | Entity name |
-| `Type` | string | Event type such as medication, supplement, condition, or symptom |
-| `Event` | string | Event description |
-| `Details` | string | Additional context |
-| `RelatedEntity` | string | Optional reference to another entity |
+- The current `all.csv` format does not expose the older `confidence` field described in prior docs.
+- Prefer `lab_name`, `value`, `lab_unit`, `reference_min`, `reference_max`, `is_below_limit`, `is_above_limit`, and `review_needed` for analysis.
+- Use raw fields only when investigating parser ambiguity or source discrepancies.
 
-Use `history.csv` for longitudinal analysis, change tracking, and event correlation.
+### Health Log Data
 
-**Entity registry**: `{health_log_path}/entities.json`
+Primary files:
 
-Use it to resolve entity IDs and metadata quickly.
+- `{health_log_path}/health_log.md`
+- `{health_log_path}/.state.json`
+- `{health_log_path}/entries/`
 
-**Daily entries**: `{health_log_path}/entries/`
+Observed `entries/` patterns:
 
-Use per-date entry files for granular inspection of specific days.
+- `YYYY-MM-DD.raw.md`
+- `YYYY-MM-DD.processed.md`
+- `YYYY-MM-DD.labs.md`
+- `YYYY-MM-DD.exams.md`
 
-**Narrative log**: `{health_log_path}/health_log.md`
+Use strategy:
 
-Use the markdown journal for full chronological context and free-text details.
+- Use `health_log.md` first for fast chronological overview.
+- Use `entries/*.processed.md` for curated day-level summaries and merged context.
+- Use `entries/*.raw.md` for exact journal wording, symptom detail, and lifestyle/event context.
+- Use `entries/*.labs.md` for day-specific lab summaries embedded into the health-log workflow.
+- Use `entries/*.exams.md` as health-log-linked exam notes only.
 
-### Medical Exam Summaries
+Do not treat `.state.json` as clinical evidence. It is parser state metadata.
 
-**Directory**: `{exams_path}/*/*.summary.md`
+### Standalone Exams Data
 
-Each exam summary includes YAML frontmatter such as `exam_type`, `exam_date`, `body_region`, and `provider`.
+Configured source:
 
-### 23andMe Genetics Data
+- `{exams_path}`
 
-**File**: `{genetics_23andme_path}` (typically `23andme_raw_data.txt`)
+Rules:
 
-This is a tab-separated file with roughly 631,000 SNPs: `rsid`, `chromosome`, `position`, `genotype`.
+- Validate existence and readability before use.
+- If the path is missing or unreadable, explicitly say the standalone exam corpus is unavailable.
+- Do not claim complete exam coverage when this source is unavailable.
+- `entries/*.exams.md` may still provide supporting context from the health log, but they are not a substitute for the standalone exam corpus.
 
-Efficient access patterns:
+When `exams_path` is available:
+
+- inspect the actual files under that directory first
+- learn the concrete file layout for that profile before assuming filename conventions
+- use the standalone exam corpus as the primary source for exam/imaging/endoscopy questions
+
+### Genetics Data
+
+Configured source:
+
+- `{genetics_23andme_path}`
+
+Expected format:
+
+- tab-separated raw 23andMe export with columns:
+  - `rsid`
+  - `chromosome`
+  - `position`
+  - `genotype`
+
+Use strategy:
+
+- Validate readability first. A configured file can still be unreadable due to OS-level permissions.
+- If unreadable, report that clearly.
+- Use filtered extraction instead of reading the whole file:
 
 ```bash
 grep "^rs12345" "{genetics_23andme_path}"
 grep -E "^(rs123|rs456|rs789)" "{genetics_23andme_path}"
 ```
 
-## Direct Analysis Workflow
+- Use optional SelfDecode only if the selected profile enables it and the task requires imputed coverage beyond raw 23andMe data.
 
-Use direct file reads and filtered extraction.
+## Question-To-Source Retrieval Playbook
 
-- For labs, read `all.csv` and optionally `lab_specs.json` for canonicalization.
-- For current status, use `current.yaml` first.
-- For historical context, add `history.csv`, `entities.json`, `entries/`, and `health_log.md`.
-- For imaging or exam questions, inspect matching `*.summary.md` files.
-- For genetics, check the 23andMe raw file first, then use optional `selfdecode` credentials only if the selected profile includes them and the task requires imputed coverage.
-- For tasks that require external APIs, use credentials from `~/.config/health-agent/.env` when available.
+Use this lookup order by question type.
+
+### Lab Trends, Deficiencies, Abnormal Markers, Biomarker Correlations
+
+1. Start with `{labs_path}/all.csv`.
+2. Use `{labs_path}/lab_specs.json` for canonicalization and range interpretation.
+3. Inspect dated lab folders only if you need source verification or page-level context.
+
+### Symptoms, Medication Effects, Supplements, Experiments, Chronology, Lifestyle Triggers
+
+1. Start with `{health_log_path}/health_log.md`.
+2. Narrow with `entries/*.processed.md`.
+3. Use `entries/*.raw.md` when exact wording or event detail matters.
+
+### Specific Day Or Episode
+
+Check matching `entries/` files for the target date across:
+
+- `*.processed.md`
+- `*.raw.md`
+- `*.labs.md`
+- `*.exams.md`
+
+Then cross-check against `all.csv` and any relevant standalone exam data.
+
+### Exam, Imaging, Endoscopy, Or Procedure Questions
+
+1. Use `{exams_path}` if it is `available`.
+2. If `{exams_path}` is unavailable, explicitly say the primary exam corpus is unavailable.
+3. Use `entries/*.exams.md` and `health_log.md` only as partial supporting context in that case.
+
+### Genetics And Pharmacogenomics
+
+1. Query the raw 23andMe file first.
+2. Use SelfDecode only when enabled and necessary.
+3. State clearly if the genetics source is missing or unreadable.
+
+### Root-Cause Investigation
+
+Combine:
+
+- objective markers from labs
+- longitudinal context from `health_log.md`
+- day-level detail from `entries/*.processed.md` and `entries/*.raw.md`
+- exam findings from the standalone exam corpus when available
+- genetics when available and relevant
+
+Always state which configured sources were unavailable or incomplete.
+
+## Answer Style And Action Planning
+
+The agent may:
+
+- state probable diagnoses or likely mechanisms when the evidence supports them
+- suggest likely prescriptions or treatment classes
+- recommend the strongest next-step investigation path
+
+Do not stop at "talk to a doctor." Prefer outputs shaped like:
+
+- "This pattern is most consistent with X; the next step is endocrinology to assess Y and discuss Z."
+- "This likely warrants discussing prescription class Y with psychiatry, based on A, B, and C."
+- "If the goal is to test hypothesis X, ask for lab Y, exam Z, and discuss treatment A."
+
+When giving a recommendation, include:
+
+- the working conclusion or differential
+- the supporting evidence from the record
+- the relevant specialist type
+- the likely prescription, intervention, lab, or exam to discuss
+- the missing information that would most change the recommendation
 
 ## Important Notes
 
-- **Privacy**: Profile files contain paths to sensitive health data. Store them in `~/.config/health-agent/profiles/`; the repo only commits `profiles/template.yaml.example`.
-- **Runtime env**: Optional API credentials belong in `~/.config/health-agent/.env`, not in the repo.
-- **Demographics**: Use `date_of_birth` and `gender` when interpreting age- or sex-specific ranges.
-- **Confidence scores**: Flag lab values with `confidence < 0.8` for manual verification.
-- **Large files**: Prefer filtered extraction (`grep`, `rg`, `awk`, `head`) over reading large files wholesale.
-- **Local-only outputs**: Write generated analyses under `.output/`.
+- Privacy: runtime profiles and sensitive paths belong in `~/.config/health-agent/`, not in the repo.
+- External sources are read-only. Never modify files under `labs_path`, `exams_path`, `health_log_path`, or `genetics_23andme_path`.
+- Local-only outputs go under `.output/`.
+- Prefer filtered extraction with `rg`, `grep`, `awk`, `head`, and targeted reads over loading large files wholesale.
+- If a configured source is unavailable, say so explicitly in the analysis.
 
 ## Maintenance
 
-Keep [`README.md`](/Users/tsilva/repos/tsilva/health-agent/README.md) aligned with the current repo layout and supported workflow.
+Keep [README.md](/Users/tsilva/repos/tsilva/health-agent/README.md) aligned with the current repo layout, runtime workflow, and observed data-source structures.
