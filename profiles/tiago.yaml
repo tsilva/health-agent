@@ -1,0 +1,40 @@
+# Tiago's lab parser profile
+name: "Tiago Silva"
+
+# Demographics (for review tool - not used in extraction)
+demographics:
+  gender: "male"
+  date_of_birth: "1984-10-16"
+  height_cm: 173
+  weight_kg: 82
+  ethnicity: "caucasian"
+  nationality: "portuguese"
+
+data_sources:
+  # Path to labs-parser output directory containing all.csv
+  labs_path: "/Users/tsilva/Google Drive/My Drive/labsparser-tiago/"
+
+  # Path to medical-exams-parser output directory containing *.summary.md files
+  exams_path: "/Users/tsilva/Google Drive/My Drive/medicalexamesparser-tiago/"
+
+  # Path to health-log-parser output directory containing health_log.md and health_timeline.csv
+  health_log_path: "/Users/tsilva/Google Drive/My Drive/healthlogparser-tiago/"
+
+  genetics_23andme_path: "/Users/tsilva/Google Drive/My Drive/health - labs - tiago/genetics/genome_Tiago_Silva_v5_Full_20250404123045.txt"
+
+  # SelfDecode API (optional - for imputed SNP coverage)
+  # SelfDecode provides ~20M+ imputed SNPs vs 631k raw SNPs from 23andMe
+  #
+  # To get profile_id and JWT token:
+  #   1. Log in to SelfDecode and go to any SNP page (e.g., https://selfdecode.com/app/snp/rs429358)
+  #   2. Open DevTools (F12) > Network tab > filter by "genotype"
+  #   3. Find request to: /service/health-analysis/genes/genotype/?...
+  #   4. From the URL, copy the "profile_id" parameter value
+  #   5. From Request Headers, copy the "authorization" value (starts with "JWT eyJ...")
+  #   6. Set: export SELFDECODE_JWT="eyJ..."  (without the "JWT " prefix)
+  #
+  # JWT tokens expire after ~48 hours - refresh when you get auth errors
+  selfdecode:
+    enabled: true  # Set to true to enable SelfDecode lookups
+    profile_id: "edbd7967-4c2f-45f3-95cf-4c45879d77a4"  # UUID from URL param: ?profile_id=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    jwt_token: "eyJhbGciOiJSUzI1NiIsImtpZCI6IjllNmI0Y2RkZWY5YjBjMTA4ZDczYWE2YjQwNmZjN2RhIn0.eyJpc3MiOiJodHRwczovL3NlbGZkZWNvZGUuY29tL3NlcnZpY2UvaGVhbHRoLWFuYWx5c2lzL2FjY291bnRzL3VzZXIvb3BlbmlkIiwic3ViIjoiZTdkODgyY2UtYzRlMS0zZjEwLWFhYWEtMzhmZjllNTBiZDVhIiwiYXVkIjoiMzg0MDUxIiwiZXhwIjoxNzY5Mjc0MDkyLCJpYXQiOjE3NjkxMDEyOTIsImF1dGhfdGltZSI6MTc2OTEwMTI4Niwibm9uY2UiOiJhU2FYSFI1cXZObVExWUVReWJGeDAwaEJxQ0hsekFxdSIsImF0X2hhc2giOiJ3d2ExVldwZ0U3T2h4NlhYSUhEVXRBIiwiZW1haWwiOiJlbmcudGlhZ28uc2lsdmErdGlhZ29AZ21haWwuY29tIiwiaWQiOiJlN2Q4ODJjZS1jNGUxLTNmMTAtYWFhYS0zOGZmOWU1MGJkNWEiLCJ1dWlkIjoiZTdkODgyY2UtYzRlMS0zZjEwLWFhYWEtMzhmZjllNTBiZDVhIiwidGVuYW50Ijoic2VsZmRlY29kZSIsImlzX2FjdGl2ZSI6dHJ1ZSwicm9sZSI6eyJpc19zdGFmZiI6ZmFsc2UsImlzX3N1cGVydXNlciI6ZmFsc2UsImdyb3VwcyI6W119LCJzdWJzY3JpcHRpb24iOnsiaWQiOiI2OWRmNzU0ZS03Y2I5LTQyYzctODBiMy1iYTAyOGQ2Nzk4NjEiLCJwbGFuIjoibHAtbGlmZXRpbWUtYWNjZXNzIiwiaXNfcHJvZmVzc2lvbmFsIjpmYWxzZSwic3RhcnRfdGltZSI6IjIwMjEtMTItMjcgMTM6Mjk6MTguMDE4NTQ5KzAwOjAwIiwiZW5kX3RpbWUiOiJOb25lIiwic3RhdHVzIjoiYWN0aXZlIn0sInByaXZhdGVfYXBpX2FjY2Vzc19vbmx5IjpmYWxzZX0.ApFRevmGGvCpRk0ChZG2ogubKo74Rdfo5KwGTiBNwkgSpg4_3eG0vvDZA2wgEGZqq1byAE_I3bUycpiKBP_1n-GqnLVldVA-zdHMcvXEl-FnOkoE7sMm_nsLibWGR08Hw9V_87jEBFuNn7C5ZcO01Kpc9Ss9Caoj_K0uT1a2xa9qXi8lQ0Si6UdNf_oUyigIl-i-OXF8FOa3AE96o4uvLqS1YA9huLS7Pd3i5vDrKfWRv8UzUoiCHK4PaQsvUfAb-mmE5Y3rE02rRglPmWSPD-70S9OY_j_CERPeEGibLyP3NyBmdNYSMlsiKnyAeu38J_DIjUXPUwVD4krKHGseQA"

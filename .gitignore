@@ -48,8 +48,6 @@ logs/
 # >>> END MANAGED <<<
 
 # Project-specific rules
-!.state/_template/
-!profiles/_template.yaml
 *$py.class
 **/.cache/
 *.cover
@@ -92,6 +90,8 @@ logs/
 .spyderproject
 .spyproject
 .state/*
+!.state/_template/
+!.state/_template/*
 .tox/
 .venv
 .webassets-cache
@@ -126,7 +126,6 @@ parts/
 pip-delete-this-directory.txt
 pip-log.txt
 profile_default/
-profiles/*.yaml
 sdist/
 share/python-wheels/
 target/
@@ -135,3 +134,4 @@ venv.bak/
 wheels/
 
 !.state/template/
+!.state/template/*

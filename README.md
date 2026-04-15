@@ -1,38 +1,36 @@
 <div align="center">
-  <img src="logo.png" alt="health-agent" width="512"/>
+  <img src="https://raw.githubusercontent.com/tsilva/health-agent/main/logo.png" alt="health-agent" width="512"/>
 
   # health-agent
 
   [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-  [![Claude Code](https://img.shields.io/badge/Claude_Code-Agent-8A2BE2)](https://claude.ai/code)
-  [![Skills](https://img.shields.io/badge/Skills-8-green)](CLAUDE.md)
+  [![Documentation](https://img.shields.io/badge/Docs-AGENTS.md-2d6cdf)](AGENTS.md)
   [![Data Sources](https://img.shields.io/badge/Data_Sources-4-orange)](#data-sources)
 
-  **🩺 Unify lab results, medical exams, and health journals into actionable insights with Claude Code 📊**
+  **Unify lab results, medical exams, health journals, and genetic data into one local health-analysis workflow.**
 
-  [Documentation](CLAUDE.md) · [Profile Template](profiles/_template.yaml)
+  [Documentation](AGENTS.md) · [Profile Template](profiles/template.yaml.example)
 
 </div>
 
 ## Features
 
-- **Natural Language Health Queries** — Ask questions in plain English; no need to memorize skill names or commands
-- **Unified Health Data Access** — Query labs, exams, health journals, and genetic data from a single conversational interface
-- **23andMe Genetics Integration** — SNP lookups, pharmacogenomics analysis, and health risk variant interpretation via SNPedia
-- **Profile-Based Configuration** — Support multiple users with separate data sources and demographics
-- **Cross-Source Correlation** — Connect lab results, genetics, symptoms, treatments, and imaging findings across time
-- **Literature-Backed Analysis** — Root cause investigations include authoritative citations from PubMed and Semantic Scholar
-- **Privacy-First Design** — No health data stored in repo; profile paths are gitignored by default
+- **Natural-language health queries**: ask plain-English questions about labs, exams, symptoms, medications, genetics, and timelines.
+- **Profile-based configuration**: point the agent at parser outputs for different people without storing raw health data in this repo.
+- **Cross-source analysis**: correlate lab trends, imaging findings, journal entries, conditions, treatments, and genetics over time.
+- **Direct file reads**: work from parser outputs and profile metadata directly.
+- **Privacy-first layout**: runtime config lives under `~/.config/health-agent/`, and generated `.output/` artifacts stay repo-local.
 
 ## Quick Start
 
-### 1. Create a Profile
+### 1. Create Your Config Directory
 
 ```bash
-cp profiles/_template.yaml profiles/myname.yaml
+mkdir -p ~/.config/health-agent/profiles
+cp profiles/template.yaml.example ~/.config/health-agent/profiles/myname.yaml
 ```
 
-Edit `profiles/myname.yaml`:
+Edit `~/.config/health-agent/profiles/myname.yaml`:
 
 ```yaml
 name: "Your Name"
@@ -47,13 +45,28 @@ data_sources:
   genetics_23andme_path: "/path/to/23andme_raw_data.txt"  # Optional
 ```
 
-### 2. Start a Session
+### 2. Optional: Add API Keys
 
-Open Claude Code in this directory. You'll be prompted to select a profile.
-
-### 3. Ask Natural Questions
-
+```bash
+cp .env.example ~/.config/health-agent/.env
 ```
+
+Edit `~/.config/health-agent/.env` if you want features like the higher PubMed rate limit.
+
+### 3. Start a Session
+
+Open your local AI coding assistant in this directory and have it follow [AGENTS.md](AGENTS.md) or `CLAUDE.md`.
+
+The runtime workflow is simple:
+
+1. Read a profile from `~/.config/health-agent/profiles/*.yaml`.
+2. Extract the data-source paths from that profile.
+3. Optionally load environment variables from `~/.config/health-agent/.env`.
+4. Query those external parser outputs directly.
+
+### 4. Ask Natural Questions
+
+```text
 "Show me my cholesterol trends over the past year"
 "What abnormal labs do I have in the last 6 months?"
 "Find all symptoms related to episode_003"
@@ -67,119 +80,59 @@ Open Claude Code in this directory. You'll be prompted to select a profile.
 
 ## Data Sources
 
-| Parser | Output | Description |
+| Source | Output | Description |
 |--------|--------|-------------|
-| [labs-parser](https://github.com/tsilva/labs-parser) | `all.csv` | Lab test results with values, units, reference ranges |
-| [medical-exams-parser](https://github.com/tsilva/medical-exams-parser) | `*.summary.md` | Imaging and exam transcriptions with YAML metadata |
-| [health-log-parser](https://github.com/tsilva/health-log-parser) | `current.yaml` + `history.csv` + `health_log.md` | Current health state (source of truth) and timeline |
-| 23andMe | Raw data download | Genetic variants for pharmacogenomics and health risks |
+| [labs-parser](https://github.com/tsilva/labs-parser) | `all.csv` | Lab test results with values, units, reference ranges, and OCR confidence |
+| [medical-exams-parser](https://github.com/tsilva/medical-exams-parser) | `*.summary.md` | Imaging and exam summaries with YAML frontmatter |
+| [health-log-parser](https://github.com/tsilva/health-log-parser) | `current.yaml`, `history.csv`, `entities.json`, `entries/`, `health_log.md` | Current state, timeline history, entity registry, daily entries, and journal narrative |
+| 23andMe | Raw data download | Genetic variants for pharmacogenomics and health-risk interpretation |
 
-## Core Capabilities
+## How It Works
 
-Health Agent provides 8 specialized skills for complex workflows, plus natural language analysis for everyday queries.
-
-### External Integrations (APIs + Caching)
-
-| Capability | When It's Used | Description |
-|------------|----------------|-------------|
-| **genetics-snp-lookup** | "Look up rs12345", "Check my CYP2D6 status", "What's my APOE genotype?" | Queries SNPedia API for genetic variant interpretations. Handles SNP lookups, pharmacogenomics genes (CYP2D6, CYP2C19, etc.), and health risk variants (APOE, Factor V Leiden, etc.). Results cached for 30 days. |
-| **genetics-selfdecode-lookup** | "Check selfdecode for rs...", SNP not found in 23andMe, user requests imputed data | Queries SelfDecode API for imputed SNP genotypes (~20M+ SNPs vs 631k in raw 23andMe). Requires authentication. Results cached for 30 days. |
-| **genetics-validate-interpretation** | Validating genetic interpretations or cross-referencing allele orientation | Validates genetic findings against SNPedia and verifies allele orientation for accuracy. |
-| **scientific-literature-search** | "Find papers on X mechanism", automatic use in root cause investigations | Queries PubMed and Semantic Scholar for authoritative research citations. Used automatically to validate biological mechanisms in hypothesis investigations. Results cached for 30 days. |
-
-### Orchestration Workflows
-
-| Capability | When It's Used | Description |
-|------------|----------------|-------------|
-| **health-dashboard** | Session start, `/health-dashboard`, "show my health dashboard" | Interactive entry point with profile selection, state initialization, visual dashboard (conditions, actions, medications, goals), and action menus. Primary way to start a health session. |
-| **investigate-root-cause** | "Investigate root cause of [condition]", "Why do I have [symptom]?", "What's causing my [abnormal finding]?" | Multi-turn hypothesis investigation with evidence gathering, literature-backed mechanism validation, comprehensive genetic analysis, and ranked competing explanations. Saves detailed reports to `.output/`. |
-| **prepare-provider-visit** | "Prepare for my doctor visit", "Generate a summary for my appointment", "Create medical documentation" | Intelligent orchestration of medications, labs, health events, conditions, and genetics (when relevant) into coherent provider-appropriate narratives. Adapts content based on visit type (annual/specialist/follow-up/urgent). |
-| **generate-questionnaire** | "Create questionnaire", "Systematically augment health log data" | Generates comprehensive questionnaires to identify gaps in health log data and systematically collect missing information. |
-
-### Natural Language Analysis
-
-All other health data analysis is performed naturally through conversational queries:
-
-- **Lab trends** — "How has my HbA1c changed over time?"
-- **Abnormal values** — "What labs are out of range?"
-- **Episode investigation** — "Tell me about my headache episode"
-- **Temporal correlations** — "Does stress correlate with my blood pressure?"
-- **Medication tracking** — "What am I currently taking?"
-- **Health summaries** — "Summarize my health in 2024"
-- **Exam searches** — "List my imaging studies"
-
-These queries use bash patterns (grep, awk) combined with Claude's reasoning—no separate skills required.
+This repository is a lightweight instruction layer around external health-data exports. The agent reads a profile from `~/.config/health-agent/profiles/`, follows the data-source paths in that profile, optionally loads `~/.config/health-agent/.env`, and performs analysis directly against the exported files.
 
 ## Directory Structure
 
-```
+```text
 health-agent/
-├── CLAUDE.md                          # Agent instructions and data schemas
-├── profiles/
-│   ├── _template.yaml                 # Profile template
-│   └── {name}.yaml                    # User profiles (gitignored)
-├── .claude/
-│   └── skills/
-│       └── health-agent/
-│           ├── generate-questionnaire/SKILL.md
-│           ├── genetics-selfdecode-lookup/SKILL.md
-│           ├── genetics-snp-lookup/SKILL.md
-│           ├── genetics-validate-interpretation/SKILL.md
-│           ├── health-dashboard/SKILL.md
-│           ├── investigate-root-cause/SKILL.md
-│           ├── prepare-provider-visit/SKILL.md
-│           ├── scientific-literature-search/SKILL.md
-│           └── references/
-│               ├── data-access-helpers.sh         # Standardized data extraction functions
-│               ├── lab-specs-helpers.sh           # Helper functions for lab_specs.json
-│               └── status-keywords.md             # Status determination keywords
-└── README.md
+├── AGENTS.md
+├── CLAUDE.md -> AGENTS.md
+├── LICENSE
+├── README.md
+├── health-agent.code-workspace
+├── logo.png
+└── profiles/
+    └── template.yaml.example
 ```
 
-## Output Directory Structure
-
-Generated reports and analyses are saved to `.output/{profile}/`:
-
-```
-.output/{profile}/
-├── provider-visit-{visit_type}-YYYY-MM-DD.md     # Provider summaries
-├── hypothesis-investigation-{condition}-YYYY-MM-DD.md  # Root cause analyses
-└── health-log-augmentation-YYYY-MM-DD.md         # Questionnaires
+```text
+~/.config/health-agent/
+├── .env
+└── profiles/
+    └── {name}.yaml
 ```
 
-The `.output/` directory is gitignored to protect sensitive health data.
+## Output Files
 
-## Creating Custom Skills
-
-Create additional skills in `~/.claude/skills/` or `.claude/skills/` for custom analyses:
-
-```markdown
----
-name: my-custom-analysis
-description: "Describe what this skill does and trigger phrases"
----
-
-# My Custom Analysis
-
-Instructions for performing the analysis...
-```
+Generated notes or reports should be written under `.output/` so they stay local and ignored by git.
 
 ## Data Privacy
 
-- Profile YAML files contain paths to sensitive health data
-- All profiles except `_template.yaml` are gitignored
-- No health data is stored in this repository—only paths to external sources
-- Demographics (DOB, gender) enable age/sex-specific reference range interpretation
-- 23andMe raw data files are processed locally; genetic data never leaves your machine
+- Runtime profiles live in `~/.config/health-agent/profiles/`, outside this repository.
+- Optional API keys live in `~/.config/health-agent/.env`.
+- `profiles/template.yaml.example` is the committed example file.
+- No health data is stored in this repository by design, only paths to external sources.
+- 23andMe raw data should be processed locally.
+- Demographics such as date of birth and gender enable age- and sex-aware interpretation.
 
 ## Requirements
 
-- [Claude Code](https://claude.ai/code) CLI
+- A local AI coding assistant or workflow that can follow [AGENTS.md](AGENTS.md)
 - Output from one or more supported parsers:
   - [labs-parser](https://github.com/tsilva/labs-parser)
   - [medical-exams-parser](https://github.com/tsilva/medical-exams-parser)
   - [health-log-parser](https://github.com/tsilva/health-log-parser)
-- Optional: 23andMe raw data download (Settings > 23andMe Data > Download Raw Data)
+- Optional: 23andMe raw data download
 
 ## License
 

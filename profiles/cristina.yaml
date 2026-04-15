@@ -1,0 +1,23 @@
+# Cristina's lab parser profile
+name: "Cristina Correia"
+
+# Demographics (for review tool - not used in extraction)
+demographics:
+  gender: "female"
+  date_of_birth: "1973-05-19"
+  height_cm: 162
+  weight_kg: 43
+  ethnicity: "caucasian"
+  nationality: "portuguese"
+
+data_sources:
+  # Path to labs-parser output directory containing all.csv
+  labs_path: "/Users/tsilva/Google Drive/My Drive/labsparser-cristina/"
+
+  # Path to medical-exams-parser output directory containing *.summary.md files
+  exams_path: "/Users/tsilva/Google Drive/My Drive/medicalexamesparser-cristina/"
+
+  # Path to health-log-parser output directory containing health_log.md and health_timeline.csv
+  health_log_path: "/Users/tsilva/Google Drive/My Drive/healthlogparser-cristina/"
+
+  genetics_23andme_path: "/Users/tsilva/Google Drive/My Drive/health - labs - cristina/genetics/genome_Tininha_Flor_v5_Full_20250404122343.txt"
