@@ -55,6 +55,21 @@ At the start of a health-analysis session:
 
 Repo-local `profiles/*.yaml` are development references only. They are not the canonical live runtime profiles.
 
+## Primary Interface
+
+The normal user-facing entrypoint for this repo is the agent invoking the relevant project skill, usually `what-next-report`.
+
+For “what should I do next?” requests, prefer the skill-first path:
+
+1. load the live profile
+2. validate the configured sources
+3. read the parsed source folders directly
+4. reason over the record
+5. write the report under `.output/`
+6. refresh minimal `.state/` memory only when it helps continuity
+
+Treat the local Python CLI as internal deterministic support. It may help with rescans or rendering, but it is not the main product surface and should not be the primary story presented to the user.
+
 ## Runtime Profile Schema
 
 ```yaml
@@ -103,7 +118,7 @@ Treat `.state/` as internal support for memory and ranking, not as the primary u
 
 1. the user updates the real-world record outside this repo
 2. parser repos refresh the configured output folders
-3. run `health-agent plan --profile <profile-name>`
+3. ask the agent to use the `what-next-report` skill for the selected live profile
 4. read the refreshed plan under `.output/`
 
 Use these artifacts:
@@ -135,7 +150,7 @@ Optional but encouraged fields:
 - `priority_context`
 - `recent_updates`
 
-Use the local CLI for deterministic rescans and report generation:
+Use the local CLI only when deterministic helper behavior is useful during implementation or maintenance:
 
 ```bash
 python3 -m health_agent plan --profile <profile-name>
@@ -377,7 +392,7 @@ When the task is an unresolved issue review or a follow-up after new parsed evid
   - `What to ask for`
   - `What result to return with`
 
-When the user asks more generally what to do next, generate a dated report under `.output/` that ranks the strongest next actions across both unresolved issues and optimization opportunities. Do not limit the report to unresolved diagnoses if the broader record supports concrete optimization steps.
+When the user asks more generally what to do next, use the `what-next-report` skill path and generate a dated report under `.output/` that ranks the strongest next actions across both unresolved issues and optimization opportunities. Do not limit the report to unresolved diagnoses if the broader record supports concrete optimization steps.
 
 When the user wants a profile-specific question list that would improve future runs if answered, generate a short ranked report under `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-future-questions.md`. The deliverable should be a concise list of high-yield unanswered questions intended to be answered in a new health-log entry, and all profile-linked external sources remain read-only.
 

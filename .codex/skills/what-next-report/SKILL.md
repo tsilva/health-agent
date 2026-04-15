@@ -5,7 +5,7 @@ description: Generate a dated what-next report for a selected live health-agent 
 
 # What Next Report
 
-This is the default high-level workflow for the repo.
+This is the canonical high-level workflow for the repo.
 
 When the user invokes this skill, the expected output is simple:
 
@@ -16,6 +16,8 @@ When the user invokes this skill, the expected output is simple:
 - write one dated report under `.output/`
 
 State files under `.state/` are implementation details. Use them when helpful, but do not make the user think about them unless they explicitly ask.
+
+The expected user experience is simple: they ask the agent for next steps, this skill does the end-to-end work, and the report appears under `.output/`.
 
 ## Goals
 
@@ -39,15 +41,22 @@ Default to the shortest path that still produces a defensible current report.
    - latest relevant labs from `all.csv`
    - latest relevant standalone exam summaries
    - latest relevant `health_log.md` and `entries/*.processed.md` updates
-2. Use existing `.state/profiles/{profile_slug}/issues.json` and `.state/profiles/{profile_slug}/actions.json` as internal memory if they already exist for the selected profile.
-3. Pull older landmark findings only when they still change the current plan.
-4. Do not detour into a broad historical reread unless the current evidence is too thin to rank next actions.
-5. Prefer the built-in repo helper when it matches the current workflow:
+2. If `.state/profiles/{profile_slug}/issues.json` and `.state/profiles/{profile_slug}/actions.json` already exist, use them as internal memory and refresh them when the current evidence changes the plan.
+3. If that state does not exist yet, do a first-run synthesis directly from the parsed record:
+   - identify the main unresolved issues from the current evidence
+   - write the report anyway on that first pass
+   - optionally create `.state/profiles/{profile_slug}/issues.json`, `.state/profiles/{profile_slug}/actions.json`, and `.state/profiles/{profile_slug}/sources.json` after the reasoning is complete
+   - do not stop just because repo-local state is empty
+4. Pull older landmark findings only when they still change the current plan.
+5. Do not detour into a broad historical reread unless the current evidence is too thin to rank next actions.
+6. Use the built-in repo helper only as internal support when it reduces deterministic file work:
 
 ```bash
 health-agent plan --profile <profile-name>
 python3 -m health_agent plan --profile <profile-name>
 ```
+
+Do not frame the CLI as the primary user interface. The skill itself is the primary interface.
 
 ## Output
 
@@ -124,6 +133,8 @@ Rank actions in this order:
 ## Using Repo State
 
 If durable issue records already exist under `.state/profiles/{profile_slug}/issues.json`, use them as memory and refresh them when helpful.
+
+If repo state does not exist yet, the skill must still complete the task from the parsed source folders alone. Empty `.state/` is a normal first-run condition, not a blocker.
 
 If the report clearly centers on unresolved issues, you may also update:
 

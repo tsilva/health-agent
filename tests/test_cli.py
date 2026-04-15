@@ -372,7 +372,7 @@ def test_outcome_update_alias_rescans_without_manual_event_file(
     assert (repo_root / ".state" / "profiles" / "test-user" / "sources.json").exists()
 
 
-def test_docs_match_plan_workflow() -> None:
+def test_docs_match_skill_first_workflow() -> None:
     repo_root = Path(__file__).resolve().parents[1]
     readme = (repo_root / "README.md").read_text(encoding="utf-8")
     agents = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
@@ -380,7 +380,11 @@ def test_docs_match_plan_workflow() -> None:
         repo_root / ".codex" / "skills" / "what-next-report" / "SKILL.md"
     ).read_text(encoding="utf-8")
 
+    assert "Use the what-next-report skill for profile myname" in readme
+    assert "The canonical interface is the `what-next-report` skill through the agent." in readme
+    assert "The normal user-facing entrypoint for this repo is the agent invoking the relevant project skill" in agents
+    assert "The skill itself is the primary interface." in skill
+
     for content in (readme, agents, skill):
-        assert "health-agent plan --profile" in content
         assert "outcome-update --profile" not in content
         assert "health-agent review --profile" not in content

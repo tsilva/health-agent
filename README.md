@@ -7,7 +7,7 @@
   [![Documentation](https://img.shields.io/badge/Docs-AGENTS.md-2d6cdf)](AGENTS.md)
   [![Data Sources](https://img.shields.io/badge/Data_Sources-4-orange)](#data-sources)
 
-  **A read-only health-autopilot layer that rescans parsed health data and writes the current next-step plan.**
+  **A skill-first health-autopilot layer: invoke the agent, let it read the parsed data, and have it write the current next-step plan.**
 
   [Documentation](AGENTS.md) · [Profile Template](profiles/template.yaml.example)
 
@@ -19,16 +19,16 @@
 
 1. update the health log, labs, or exams in the upstream systems
 2. run the parser repos so their output folders are current
-3. run `health-agent plan --profile <profile>`
+3. tell the agent to use the `what-next-report` skill for your live profile
 4. read the refreshed plan in `.output/<profile_slug>/`
 
 This repo never asks the user to separately encode the same event again in repo-local JSON.
 
 ## Features
 
-- **Rescan-driven autopilot**: validate configured sources, build a compact evidence snapshot, and refresh the current plan from the latest parser outputs.
+- **Skill-first autopilot**: the normal path is to invoke the repo skill through the agent and let it handle profile loading, source validation, reasoning, and report writing.
 - **Concrete next-step planning**: rank the highest-value specialist, test, and treatment-path discussions.
-- **Minimal repo-local memory**: keep per-profile derived state under `.state/profiles/<profile_slug>/` and rebuild aggressively from current sources.
+- **Minimal repo-local memory**: keep per-profile derived state under `.state/profiles/<profile_slug>/` and rebuild or refresh it from current sources when helpful.
 - **Profile-based runtime config**: point the agent at external parser outputs without storing raw health data in this repo.
 - **Cross-source analysis**: correlate labs, exams, journal entries, symptoms, medications, experiments, and genetics over time.
 
@@ -62,17 +62,27 @@ data_sources:
 cp .env.example ~/.config/health-agent/.env
 ```
 
-### 3. Install the Local Helper
+### 3. Invoke The Skill Through The Agent
+
+From your AI coding assistant in this repo, use a prompt like:
+
+```text
+Use the what-next-report skill for profile myname and write the refreshed next-steps report.
+```
+
+That is the primary interface for this repo.
+
+### 4. Optional: Install The Local Helper
 
 ```bash
 python3 -m pip install -e .[dev]
 ```
 
-### 4. Keep Parser Outputs Current
+### 5. Keep Parser Outputs Current
 
 When you add a health-log entry or new labs/exams, rerun the relevant parser repos so the configured output folders contain the latest parsed data.
 
-### 5. Refresh the Current Plan
+### 6. Optional: Refresh The Deterministic Helper State Directly
 
 ```bash
 health-agent plan --profile myname
@@ -86,7 +96,7 @@ The command:
 - refreshes per-profile derived state
 - writes the current action plan to `.output/<profile_slug>/`
 
-Deprecated aliases `health-agent intake`, `health-agent review`, and `health-agent outcome-update` still route to `plan` temporarily, but they are no longer the primary workflow.
+Use the CLI only when you specifically want the internal deterministic helper path. Deprecated aliases `health-agent intake`, `health-agent review`, and `health-agent outcome-update` still route to `plan` temporarily, but they are not the primary workflow.
 
 ## Data Sources
 
@@ -96,6 +106,12 @@ Deprecated aliases `health-agent intake`, `health-agent review`, and `health-age
 | Standalone exams parser | profile-configured directory | Independent exam corpus; must be validated before use and may be unavailable |
 | [health-log-parser](https://github.com/tsilva/health-log-parser) | `health_log.md`, `.state.json`, `entries/*.raw.md`, `entries/*.processed.md`, `entries/*.labs.md`, `entries/*.exams.md` | Chronological overview, parser state, and day-level journal/lab/exam context |
 | 23andMe | Raw data download | Genetic variants for pharmacogenomics and health-risk interpretation |
+
+## Primary Interface
+
+The canonical interface is the `what-next-report` skill through the agent.
+
+The CLI exists only as an internal support tool for deterministic rescans and state rendering. It is not the main product surface.
 
 ## Repo-Local State
 
@@ -114,7 +130,7 @@ The current plan report is the primary deliverable. The state files exist to sup
 
 This repo includes project-local Codex skills under `.codex/skills/`:
 
-- `what-next-report`: default workflow for rescanning the current parsed record and producing the updated plan
+- `what-next-report`: canonical workflow for having the agent read the parsed record and produce the updated next-steps plan
 - `profile-question-report`: generate a short ranked list of unanswered questions for the next health-log entry
 - `medication-history-report`: generate a dated medication and supplement history report
 - `unresolved-issue-review`: internal support workflow for refreshing per-profile issue memory when needed

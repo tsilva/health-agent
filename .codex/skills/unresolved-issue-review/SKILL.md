@@ -5,7 +5,7 @@ description: Maintain repo-local per-profile issue memory and action-plan state 
 
 # Unresolved Issue Review
 
-Use this workflow only when the task specifically needs durable per-profile issue memory refreshed, not as the default user-facing entrypoint.
+Use this workflow only when the task specifically needs durable per-profile issue memory refreshed, not as the default user-facing entrypoint. For normal user requests, stay on `what-next-report`.
 
 For normal "what should I do next?" requests, prefer the `what-next-report` skill and treat this workflow as internal support.
 
