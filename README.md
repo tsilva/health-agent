@@ -110,7 +110,7 @@ For closed-loop issue management, the repo now keeps a local control plane:
 - `.state/action-queue.json`: ranked next actions across active issues
 - `.state/profile-cache/{profile_slug}.json`: latest profile and source-status snapshot
 - `.state/outcome-updates/{YYYY-MM-DD}-{issue_slug}.json`: structured follow-up events
-- `.output/{profile_slug}-action-plan-{YYYY-MM-DD}.md`: user-facing “tell me what to do” report
+- `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-action-plan.md`: user-facing “tell me what to do” report
 
 The local CLI supports three flows:
 

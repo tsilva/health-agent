@@ -17,7 +17,7 @@ from health_agent.issues import (
     validate_outcome_update,
 )
 from health_agent.jsonio import load_json, write_json
-from health_agent.paths import ensure_repo_dirs, output_path, state_path
+from health_agent.paths import ensure_repo_dirs, profile_output_path, state_path
 from health_agent.profile import load_profile_context
 
 
@@ -70,8 +70,9 @@ def _write_action_queue_and_report(
         issues=issues,
         action_queue=action_queue,
     )
-    report_name = f"{profile_context.slug}-action-plan-{generated_at[:10]}.md"
-    report_path = output_path(repo_root, report_name)
+    report_name = f"{generated_at[:10]}-{profile_context.slug}-action-plan.md"
+    report_path = profile_output_path(repo_root, profile_context.slug, report_name)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(report_body, encoding="utf-8")
     return action_queue_path, report_path
 

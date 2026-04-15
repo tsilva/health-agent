@@ -21,6 +21,10 @@ def output_path(repo_root: Path, *parts: str) -> Path:
     return repo_path(repo_root, ".output", *parts)
 
 
+def profile_output_path(repo_root: Path, profile_slug: str, *parts: str) -> Path:
+    return output_path(repo_root, profile_slug, *parts)
+
+
 def profiles_dir(home_dir: Path) -> Path:
     return home_dir.joinpath(".config", "health-agent", "profiles")
 

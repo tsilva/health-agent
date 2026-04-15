@@ -30,6 +30,19 @@ State files under `.state/` are implementation details. Use them when helpful, b
 3. Write the user-facing report under `.output/`.
 4. Use `.state/` only as internal memory or ranking support.
 
+## Working Order
+
+Default to the shortest path that still produces a defensible current report.
+
+1. Start with a focused current-evidence pass:
+   - latest relevant labs from `all.csv`
+   - latest relevant standalone exam summaries
+   - latest relevant `health_log.md` and `entries/*.processed.md` updates
+2. Use existing `.state/issues/` and `.state/action-queue.json` as memory if they already exist for the selected profile.
+3. Pull older landmark findings only when they still change the current plan.
+4. Do not detour into a broad historical reread unless the current evidence is too thin to rank next actions.
+5. If a repo CLI or helper renders a different report shape, do not hand it back as the final answer just because it exists. Either adapt its outputs to the required what-next format or bypass it and synthesize the report directly.
+
 ## Output
 
 Write a report named:

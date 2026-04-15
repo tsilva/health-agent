@@ -136,7 +136,7 @@ def test_intake_creates_state_and_action_plan(tmp_path: Path) -> None:
     assert (repo_root / ".state" / "profile-cache" / "test-user.json").exists()
     action_queue = json.loads((repo_root / ".state" / "action-queue.json").read_text())
     assert action_queue["actions"][0]["issue_slug"] == "issue-a"
-    report = next((repo_root / ".output").glob("test-user-action-plan-*.md"))
+    report = next((repo_root / ".output" / "test-user").glob("????-??-??-test-user-action-plan.md"))
     report_text = report.read_text(encoding="utf-8")
     assert "Top 3 Ranked Actions" in report_text
     assert "Do next: Book a targeted hematology visit." in report_text
@@ -172,7 +172,7 @@ def test_review_reports_missing_sources(tmp_path: Path) -> None:
     )
 
     assert exit_code == 0
-    report = next((repo_root / ".output").glob("test-user-action-plan-*.md"))
+    report = next((repo_root / ".output" / "test-user").glob("????-??-??-test-user-action-plan.md"))
     report_text = report.read_text(encoding="utf-8")
     assert "`exams_path`: missing" in report_text
 
@@ -264,7 +264,7 @@ def test_outcome_update_merges_evidence_and_reorders_queue(tmp_path: Path) -> No
 
     action_queue = json.loads((repo_root / ".state" / "action-queue.json").read_text())
     assert action_queue["actions"][0]["issue_slug"] == "issue-b"
-    report = next((repo_root / ".output").glob("test-user-action-plan-*.md"))
+    report = next((repo_root / ".output" / "test-user").glob("????-??-??-test-user-action-plan.md"))
     assert "Issue B (`issue-b`)" in report.read_text(encoding="utf-8")
 
 

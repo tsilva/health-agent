@@ -107,7 +107,7 @@ Use these artifacts:
 - `ActionQueue`: `.state/action-queue.json`
 - `Profile cache`: `.state/profile-cache/{profile_slug}.json`
 - `OutcomeUpdate`: `.state/outcome-updates/{YYYY-MM-DD}-{issue_slug}.json`
-- `ActionPlanReport`: `.output/{profile_slug}-action-plan-{YYYY-MM-DD}.md`
+- `ActionPlanReport`: `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-action-plan.md`
 
 Issue records should contain:
 
@@ -383,7 +383,7 @@ When the task is an unresolved issue review or a follow-up after new evidence:
 
 - persist or revise the relevant issue files under `.state/issues/`
 - rebuild `.state/action-queue.json`
-- regenerate `.output/{profile_slug}-action-plan-{YYYY-MM-DD}.md`
+- regenerate `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-action-plan.md`
 - make each active issue end with:
   - `Do next`
   - `Why`
