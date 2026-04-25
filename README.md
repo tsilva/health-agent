@@ -5,7 +5,7 @@
 
   [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
   [![Documentation](https://img.shields.io/badge/Docs-AGENTS.md-2d6cdf)](AGENTS.md)
-  [![Data Sources](https://img.shields.io/badge/Data_Sources-4-orange)](#data-sources)
+  [![Data Sources](https://img.shields.io/badge/Data_Sources-8-orange)](#data-sources)
 
   **A skill-first health-autopilot layer: invoke the agent, let it read the parsed data, and have it write the current next-step plan.**
 
@@ -54,6 +54,10 @@ data_sources:
   exams_path: "/path/to/medical-exams-parser/output/"
   health_log_path: "/path/to/health-log-parser/output/"
   genetics_23andme_path: "/path/to/23andme_raw_data.txt"  # Optional
+  schedule_md_path: "/path/to/daily-schedule.md"  # Optional
+  nutrition_md_path: "/path/to/nutrition-plan.md"  # Optional
+  exercise_md_path: "/path/to/exercise-plan.md"  # Optional
+  lifestyle_constraints_md_path: "/path/to/lifestyle-constraints.md"  # Optional
 ```
 
 ### 2. Optional: Add API Keys
@@ -98,6 +102,22 @@ The command:
 
 Use the CLI only when you specifically want the internal deterministic helper path. Deprecated aliases `health-agent intake`, `health-agent review`, and `health-agent outcome-update` still route to `plan` temporarily, but they are not the primary workflow.
 
+To build only the factual evidence-prep packet that the agent can use before reasoning:
+
+```bash
+health-agent evidence-packet --profile myname
+```
+
+This writes `.state/profiles/<profile_slug>/evidence-packet.json`. It captures source status, freshness, changed files, factual lab/log/exam extracts, medication and supplement mention lines, lifestyle summaries, and current issue/action memory. It does not generate diagnoses; the agent still does the reasoning.
+
+To render a draft daily lifestyle plan from profile-linked Markdown sources:
+
+```bash
+health-agent daily-plan --profile myname --date 2026-04-16
+```
+
+This writes `.output/<profile_slug>/<YYYY-MM-DD>-<profile_slug>-daily-plan.md`. It reads the source Markdown files and applies the sidecar constraint file, but it does not edit any source file.
+
 ## Data Sources
 
 | Source | Output | Description |
@@ -106,6 +126,12 @@ Use the CLI only when you specifically want the internal deterministic helper pa
 | Standalone exams parser | profile-configured directory | Independent exam corpus; must be validated before use and may be unavailable |
 | [health-log-parser](https://github.com/tsilva/health-log-parser) | `health_log.md`, `.state.json`, `entries/*.raw.md`, `entries/*.processed.md`, `entries/*.labs.md`, `entries/*.exams.md` | Chronological overview, parser state, and day-level journal/lab/exam context |
 | 23andMe | Raw data download | Genetic variants for pharmacogenomics and health-risk interpretation |
+| Lifestyle schedule | `schedule_md_path` Markdown file | Default daily schedule template, including wake/sleep, work, gym, meal, and supplement timing |
+| Lifestyle nutrition | `nutrition_md_path` Markdown file | Default food plan template used for draft meal-plan regeneration |
+| Lifestyle exercise | `exercise_md_path` Markdown file | Default exercise plan template used for draft workout regeneration |
+| Lifestyle constraints | `lifestyle_constraints_md_path` Markdown file | Durable constraints, food triggers, targets, conflict precedence, and regeneration rules |
+
+Lifestyle Markdown files are read-only source inputs. Keep stable rules in the sidecar constraints file instead of duplicating them into every generated plan. Generated drafts belong under `.output/`.
 
 ## Primary Interface
 
@@ -120,9 +146,11 @@ The CLI exists only as an internal support tool for deterministic rescans and st
 The main per-profile derived artifacts are:
 
 - `.state/profiles/<profile_slug>/sources.json`
+- `.state/profiles/<profile_slug>/evidence-packet.json`
 - `.state/profiles/<profile_slug>/issues.json`
 - `.state/profiles/<profile_slug>/actions.json`
 - `.output/<profile_slug>/<YYYY-MM-DD>-<profile_slug>-action-plan.md`
+- `.output/<profile_slug>/<YYYY-MM-DD>-<profile_slug>-daily-plan.md`
 
 The current plan report is the primary deliverable. The state files exist to support reranking, continuity, and deterministic rescans.
 
@@ -131,7 +159,7 @@ The current plan report is the primary deliverable. The state files exist to sup
 This repo includes project-local Codex skills under `.codex/skills/`:
 
 - `what-next-report`: canonical workflow for having the agent read the parsed record, produce the updated next-steps plan, and refresh per-profile issue/action memory when useful
-- `profile-question-report`: generate a short ranked list of unanswered questions for the next health-log entry
+- `profile-question-report`: interactively ask high-yield unanswered questions and draft a paste-ready health-log entry
 - `medication-history-report`: generate a dated medication and supplement history report
 
 ## Directory Structure

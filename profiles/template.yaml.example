@@ -8,6 +8,10 @@ data_sources:
   exams_path: "/path/to/medical-exams-parser/output/"
   health_log_path: "/path/to/health-log-parser/output/"
   genetics_23andme_path: "/path/to/23andme_raw_data.txt"
+  schedule_md_path: "/path/to/daily-schedule.md"
+  nutrition_md_path: "/path/to/nutrition-plan.md"
+  exercise_md_path: "/path/to/exercise-plan.md"
+  lifestyle_constraints_md_path: "/path/to/lifestyle-constraints.md"
 
   selfdecode:
     enabled: false

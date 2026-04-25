@@ -1,6 +1,6 @@
-# Future Questions For The Agent
+# Health Log Entry Draft - YYYY-MM-DD
 
-Report generated: YYYY-MM-DD
+Draft generated: YYYY-MM-DD
 
 Profile: NAME
 
@@ -11,16 +11,20 @@ Profile: NAME
 - Health log: available|missing|unreadable|not configured
 - Genetics: available|missing|unreadable|not configured
 
-## How to use this report
+## Interview note
 
-Answer the questions below in a new health-log entry. Keep the answers concrete and dated when possible so the next run can use them as new evidence.
+Asked N high-yield questions from the available record.
 
-## Top questions to answer next
+## Paste-ready health-log entry
 
-1. Question
-2. Question
-3. Question
+Date: YYYY-MM-DD
 
-## Questions already mostly answered / do not repeat
+Today I answered follow-up questions for my health record.
 
-- Optional short note when a topic is already well-covered in the record.
+Topic:
+
+- First-person answer summary with dates, severity, medication/supplement names, testing, specialist guidance, and uncertainty preserved exactly when relevant.
+
+## Not answered / still unclear
+
+- Omit this section unless there were skipped, ambiguous, or uncertain answers.

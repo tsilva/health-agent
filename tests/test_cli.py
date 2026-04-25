@@ -17,6 +17,9 @@ def _write_profile(
     slug: str = "test-user",
     display_name: str = "Test User",
     missing_exams: bool = False,
+    lifestyle_sources: bool = False,
+    missing_lifestyle_source: str | None = None,
+    unreadable_lifestyle_source: str | None = None,
 ) -> dict[str, Path]:
     config_dir = home_dir / ".config" / "health-agent" / "profiles"
     config_dir.mkdir(parents=True, exist_ok=True)
@@ -61,6 +64,57 @@ def _write_profile(
         exams_dir.mkdir(parents=True, exist_ok=True)
         (exams_dir / "summary.md").write_text("# exam summary\n", encoding="utf-8")
 
+    lifestyle_paths: dict[str, Path] = {}
+    if lifestyle_sources or missing_lifestyle_source or unreadable_lifestyle_source:
+        lifestyle_dir = profile_root / "lifestyle"
+        lifestyle_dir.mkdir(parents=True, exist_ok=True)
+        lifestyle_content = {
+            "schedule_md_path": (
+                "# Daily Schedule\n"
+                "## Default Day\n"
+                "- Fixed work 09:00-17:00\n"
+                "- Sleep 23:00-07:00\n"
+            ),
+            "nutrition_md_path": (
+                "# Nutrition Plan\n"
+                "## Default Meal Plan\n"
+                "- Breakfast: banana and oats\n"
+                "- Lunch: rice and chicken\n"
+            ),
+            "exercise_md_path": (
+                "# Exercise Plan\n"
+                "## Default Training Plan\n"
+                "- Gym workout 10:00-11:00\n"
+            ),
+            "lifestyle_constraints_md_path": (
+                "# Lifestyle Constraints\n"
+                "## Global Precedence\n"
+                "1. Symptom triggers and medical constraints\n"
+                "## Nutrition Constraints\n"
+                "- Foods to avoid: banana\n"
+                "## Regeneration Rules\n"
+                "- What may be changed: generated drafts only\n"
+            ),
+        }
+        filenames = {
+            "schedule_md_path": "daily-schedule.md",
+            "nutrition_md_path": "nutrition-plan.md",
+            "exercise_md_path": "exercise-plan.md",
+            "lifestyle_constraints_md_path": "lifestyle-constraints.md",
+        }
+        for field, content in lifestyle_content.items():
+            path = lifestyle_dir / filenames[field]
+            lifestyle_paths[field] = path
+            if field == missing_lifestyle_source:
+                continue
+            path.write_text(content, encoding="utf-8")
+            if field == unreadable_lifestyle_source:
+                path.chmod(0)
+
+    lifestyle_profile_fields = ""
+    for field, path in lifestyle_paths.items():
+        lifestyle_profile_fields += f'  {field}: "{path}"\n'
+
     profile = f"""
 name: "{display_name}"
 demographics:
@@ -72,6 +126,7 @@ data_sources:
   exams_path: "{exams_dir}"
   health_log_path: "{health_log_dir}"
   genetics_23andme_path: "{genetics_file}"
+{lifestyle_profile_fields.rstrip()}
 """
     (config_dir / f"{slug}.yaml").write_text(profile.strip() + "\n", encoding="utf-8")
     return {
@@ -80,6 +135,7 @@ data_sources:
         "health_log_dir": health_log_dir,
         "entries_dir": entries_dir,
         "genetics_file": genetics_file,
+        **lifestyle_paths,
     }
 
 
@@ -138,6 +194,35 @@ def _write_issue_store(
     )
 
 
+def _external_source_snapshot(paths: dict[str, Path]) -> dict[str, str]:
+    root_paths = [
+        paths["labs_dir"],
+        paths["exams_dir"],
+        paths["health_log_dir"],
+        paths["genetics_file"],
+    ]
+    for field in (
+        "schedule_md_path",
+        "nutrition_md_path",
+        "exercise_md_path",
+        "lifestyle_constraints_md_path",
+    ):
+        if field in paths:
+            root_paths.append(paths[field])
+
+    snapshot: dict[str, str] = {}
+    for root_path in root_paths:
+        if root_path.is_file():
+            candidates = [root_path]
+        elif root_path.exists():
+            candidates = [path for path in root_path.rglob("*") if path.is_file()]
+        else:
+            candidates = []
+        for path in candidates:
+            snapshot[str(path)] = path.read_text(encoding="utf-8")
+    return snapshot
+
+
 def test_plan_creates_per_profile_state_and_report_on_first_run(tmp_path: Path) -> None:
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
@@ -161,8 +246,11 @@ def test_plan_creates_per_profile_state_and_report_on_first_run(tmp_path: Path) 
     assert (profile_state_dir / "sources.json").exists()
     assert (profile_state_dir / "issues.json").exists()
     assert (profile_state_dir / "actions.json").exists()
+    assert (profile_state_dir / "evidence-packet.json").exists()
 
     sources = json.loads((profile_state_dir / "sources.json").read_text())
+    packet = json.loads((profile_state_dir / "evidence-packet.json").read_text())
+    assert sources == packet["source_snapshot"]
     assert (
         sources["sources"]["health_log_path"]["details"]["recent_processed_entries"]
         == ["2026-04-12.processed.md"]
@@ -218,6 +306,176 @@ def test_plan_uses_profile_issue_store_and_dedupes_actions(tmp_path: Path) -> No
     actions = json.loads((repo_root / ".state" / "profiles" / "test-user" / "actions.json").read_text())
     assert len(actions["actions"]) == 1
     assert sorted(actions["actions"][0]["related_issues"]) == ["issue-a", "issue-b"]
+    assert actions["actions"][0]["source_citations"] == ["/tmp/source.md"]
+
+
+def test_evidence_packet_creates_factual_packet_from_all_sources(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    home_dir = tmp_path / "home"
+    paths = _write_profile(home_dir, lifestyle_sources=True)
+    (paths["labs_dir"] / "all.csv").write_text(
+        "\n".join(
+            [
+                "date,lab_name,value,lab_unit,is_above_limit,is_below_limit,review_needed,source_file,page_number",
+                "2026-04-10,Ferritin,18,ng/mL,false,true,false,lab-a.pdf,1",
+                "2026-04-12,Hemoglobin,11.6,g/dL,false,true,true,lab-b.pdf,2",
+                "2026-04-15,Ferritin,22,ng/mL,false,false,false,lab-c.pdf,1",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (paths["entries_dir"] / "2026-04-15.processed.md").write_text(
+        "Fatigue improved after sleep stabilized.\n"
+        "Started magnesium supplement at night and stopped pantoprazole.\n",
+        encoding="utf-8",
+    )
+
+    exit_code = main(
+        [
+            "--repo-root",
+            str(repo_root),
+            "--home-dir",
+            str(home_dir),
+            "evidence-packet",
+            "--profile",
+            "test-user",
+        ]
+    )
+
+    assert exit_code == 0
+    packet_path = repo_root / ".state" / "profiles" / "test-user" / "evidence-packet.json"
+    packet = json.loads(packet_path.read_text(encoding="utf-8"))
+    assert packet["profile_slug"] == "test-user"
+    assert packet["source_freshness"]["labs_path"]["status"] == "available"
+    assert packet["source_freshness"]["exams_path"]["status"] == "available"
+    assert packet["source_freshness"]["health_log_path"]["status"] == "available"
+    assert packet["genetics"]["sample_rsids"] == ["rs123", "rs456"]
+    assert packet["lifestyle"]["lifestyle_constraints_md_path"]["status"] == "available"
+    assert "2026-04-15" in packet["labs"]["latest_lab_dates"]
+    assert any(item["label"] == "Hemoglobin" for item in packet["labs"]["abnormal_markers"])
+    assert {"label": "Ferritin", "date_count": 2} in packet["labs"]["trend_candidates"]
+    assert packet["exams"]["latest_exam_summaries"][0]["path"].endswith("summary.md")
+    assert any(
+        "Fatigue improved" in item["text"]
+        for item in packet["health_log"]["unresolved_symptom_or_treatment_signal_lines"]
+    )
+    assert any(
+        "magnesium supplement" in item["text"]
+        for item in packet["health_log"]["medication_supplement_mentions_needing_review"]
+    )
+
+
+def test_evidence_packet_detects_changed_files_since_last_run(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    home_dir = tmp_path / "home"
+    paths = _write_profile(home_dir)
+
+    first_exit_code = main(
+        [
+            "--repo-root",
+            str(repo_root),
+            "--home-dir",
+            str(home_dir),
+            "evidence-packet",
+            "--profile",
+            "test-user",
+        ]
+    )
+    assert first_exit_code == 0
+
+    (paths["entries_dir"] / "2026-04-16.processed.md").write_text(
+        "Sleep worse after a medication change.\n",
+        encoding="utf-8",
+    )
+
+    second_exit_code = main(
+        [
+            "--repo-root",
+            str(repo_root),
+            "--home-dir",
+            str(home_dir),
+            "evidence-packet",
+            "--profile",
+            "test-user",
+        ]
+    )
+    assert second_exit_code == 0
+
+    packet = json.loads(
+        (repo_root / ".state" / "profiles" / "test-user" / "evidence-packet.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert any(
+        item["change_type"] == "added"
+        and item["source_name"] == "health_log_path"
+        and item["relative_path"] == "entries/2026-04-16.processed.md"
+        for item in packet["changed_files_since_last_run"]
+    )
+
+
+def test_evidence_packet_reports_missing_and_unreadable_sources(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    home_dir = tmp_path / "home"
+    paths = _write_profile(
+        home_dir,
+        missing_exams=True,
+        lifestyle_sources=True,
+        unreadable_lifestyle_source="exercise_md_path",
+    )
+
+    try:
+        exit_code = main(
+            [
+                "--repo-root",
+                str(repo_root),
+                "--home-dir",
+                str(home_dir),
+                "evidence-packet",
+                "--profile",
+                "test-user",
+            ]
+        )
+
+        assert exit_code == 0
+        packet = json.loads(
+            (repo_root / ".state" / "profiles" / "test-user" / "evidence-packet.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        assert packet["source_freshness"]["exams_path"]["status"] == "missing"
+        assert packet["source_freshness"]["exercise_md_path"]["status"] == "unreadable"
+        assert packet["exams"]["status"] == "missing"
+        assert packet["lifestyle"]["exercise_md_path"]["status"] == "unreadable"
+    finally:
+        paths["exercise_md_path"].chmod(0o644)
+
+
+def test_evidence_packet_does_not_write_external_sources(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    home_dir = tmp_path / "home"
+    paths = _write_profile(home_dir, lifestyle_sources=True)
+    before = _external_source_snapshot(paths)
+
+    exit_code = main(
+        [
+            "--repo-root",
+            str(repo_root),
+            "--home-dir",
+            str(home_dir),
+            "evidence-packet",
+            "--profile",
+            "test-user",
+        ]
+    )
+
+    assert exit_code == 0
+    assert _external_source_snapshot(paths) == before
 
 
 def test_plan_reports_missing_sources(tmp_path: Path) -> None:
@@ -299,6 +557,126 @@ def test_plan_rescans_updated_sources(tmp_path: Path) -> None:
     assert any(item["label"] == "CRP" for item in flagged)
 
 
+def test_plan_captures_lifestyle_markdown_sources(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    home_dir = tmp_path / "home"
+    _write_profile(home_dir, lifestyle_sources=True)
+
+    exit_code = main(
+        [
+            "--repo-root",
+            str(repo_root),
+            "--home-dir",
+            str(home_dir),
+            "plan",
+            "--profile",
+            "test-user",
+        ]
+    )
+
+    assert exit_code == 0
+    sources = json.loads((repo_root / ".state" / "profiles" / "test-user" / "sources.json").read_text())
+    assert sources["sources"]["schedule_md_path"]["status"] == "available"
+    assert "Default Day" in sources["sources"]["schedule_md_path"]["details"]["headings"]
+    constraint_snippets = sources["sources"]["lifestyle_constraints_md_path"]["details"]["relevant_snippets"]
+    assert any("Foods to avoid" in snippet for snippet in constraint_snippets)
+
+    report = next((repo_root / ".output" / "test-user").glob("????-??-??-test-user-action-plan.md"))
+    report_text = report.read_text(encoding="utf-8")
+    assert "`lifestyle_constraints_md_path`: available" in report_text
+    assert "Markdown headings" in report_text
+
+
+def test_plan_reports_lifestyle_markdown_source_statuses(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    home_dir = tmp_path / "home"
+    paths = _write_profile(
+        home_dir,
+        lifestyle_sources=True,
+        missing_lifestyle_source="nutrition_md_path",
+        unreadable_lifestyle_source="exercise_md_path",
+    )
+
+    try:
+        exit_code = main(
+            [
+                "--repo-root",
+                str(repo_root),
+                "--home-dir",
+                str(home_dir),
+                "plan",
+                "--profile",
+                "test-user",
+            ]
+        )
+
+        assert exit_code == 0
+        sources = json.loads((repo_root / ".state" / "profiles" / "test-user" / "sources.json").read_text())
+        assert sources["sources"]["schedule_md_path"]["status"] == "available"
+        assert sources["sources"]["nutrition_md_path"]["status"] == "missing"
+        assert sources["sources"]["exercise_md_path"]["status"] == "unreadable"
+        assert sources["sources"]["lifestyle_constraints_md_path"]["status"] == "available"
+    finally:
+        paths["exercise_md_path"].chmod(0o644)
+
+
+def test_plan_marks_lifestyle_sources_not_configured_by_default(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    home_dir = tmp_path / "home"
+    _write_profile(home_dir)
+
+    exit_code = main(
+        [
+            "--repo-root",
+            str(repo_root),
+            "--home-dir",
+            str(home_dir),
+            "plan",
+            "--profile",
+            "test-user",
+        ]
+    )
+
+    assert exit_code == 0
+    sources = json.loads((repo_root / ".state" / "profiles" / "test-user" / "sources.json").read_text())
+    assert sources["sources"]["schedule_md_path"]["status"] == "not configured"
+    assert sources["sources"]["nutrition_md_path"]["status"] == "not configured"
+    assert sources["sources"]["exercise_md_path"]["status"] == "not configured"
+    assert sources["sources"]["lifestyle_constraints_md_path"]["status"] == "not configured"
+
+
+def test_daily_plan_applies_sidecar_constraints_without_copying_them(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    home_dir = tmp_path / "home"
+    _write_profile(home_dir, lifestyle_sources=True)
+
+    exit_code = main(
+        [
+            "--repo-root",
+            str(repo_root),
+            "--home-dir",
+            str(home_dir),
+            "daily-plan",
+            "--profile",
+            "test-user",
+            "--date",
+            "2026-04-16",
+        ]
+    )
+
+    assert exit_code == 0
+    report_path = repo_root / ".output" / "test-user" / "2026-04-16-test-user-daily-plan.md"
+    report_text = report_path.read_text(encoding="utf-8")
+    assert "banana" not in report_text
+    assert "excluded because they matched the sidecar constraint source" in report_text
+    assert "Exercise template time overlaps a fixed schedule block" in report_text
+    assert "Sidecar constraints are read from `lifestyle_constraints_md_path`" in report_text
+
+
 def test_plan_migrates_legacy_flat_issue_state_per_profile(tmp_path: Path) -> None:
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
@@ -344,6 +722,56 @@ def test_plan_migrates_legacy_flat_issue_state_per_profile(tmp_path: Path) -> No
     assert [issue["slug"] for issue in issues["issues"]] == ["alpha-issue"]
     actions = json.loads((repo_root / ".state" / "profiles" / "alpha" / "actions.json").read_text())
     assert actions["actions"][0]["issue_slug"] == "alpha-issue"
+
+
+def test_plan_issues_from_directory_only_imports_matching_profile(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    home_dir = tmp_path / "home"
+    _write_profile(home_dir, slug="alpha", display_name="Alpha User")
+    _write_profile(home_dir, slug="beta", display_name="Beta User")
+
+    import_dir = repo_root / "issue-import"
+    _write_json(
+        import_dir / "alpha-issue.json",
+        _issue_payload(
+            profile_slug="alpha",
+            title="Alpha Issue",
+            confidence_frame="differential",
+            next_best_action="Book hematology.",
+            why="High-yield next step.",
+        ),
+    )
+    _write_json(
+        import_dir / "beta-issue.json",
+        _issue_payload(
+            profile_slug="beta",
+            title="Beta Issue",
+            confidence_frame="likely diagnosis",
+            next_best_action="Book gastroenterology.",
+            why="Profile-specific follow-up.",
+        ),
+    )
+
+    exit_code = main(
+        [
+            "--repo-root",
+            str(repo_root),
+            "--home-dir",
+            str(home_dir),
+            "plan",
+            "--profile",
+            "alpha",
+            "--issues-from",
+            str(import_dir),
+        ]
+    )
+
+    assert exit_code == 0
+    issues = json.loads((repo_root / ".state" / "profiles" / "alpha" / "issues.json").read_text())
+    assert [issue["slug"] for issue in issues["issues"]] == ["alpha-issue"]
+    actions = json.loads((repo_root / ".state" / "profiles" / "alpha" / "actions.json").read_text())
+    assert [action["issue_slug"] for action in actions["actions"]] == ["alpha-issue"]
 
 
 def test_outcome_update_alias_rescans_without_manual_event_file(

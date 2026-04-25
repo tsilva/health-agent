@@ -43,6 +43,10 @@ At the start of a health-analysis session:
    - `data_sources.exams_path`
    - `data_sources.health_log_path`
    - `data_sources.genetics_23andme_path`
+   - `data_sources.schedule_md_path`
+   - `data_sources.nutrition_md_path`
+   - `data_sources.exercise_md_path`
+   - `data_sources.lifestyle_constraints_md_path`
    - `data_sources.selfdecode`
 5. If `~/.config/health-agent/.env` exists and the task may need external API credentials, load it.
 6. Validate every configured data source path before analysis and classify each as:
@@ -83,6 +87,10 @@ data_sources:
   exams_path: "/path/to/exams-parser/output/"
   health_log_path: "/path/to/health-log-parser/output/"
   genetics_23andme_path: "/path/to/23andme_raw_data.txt"  # Optional
+  schedule_md_path: "/path/to/daily-schedule.md"  # Optional
+  nutrition_md_path: "/path/to/nutrition-plan.md"  # Optional
+  exercise_md_path: "/path/to/exercise-plan.md"  # Optional
+  lifestyle_constraints_md_path: "/path/to/lifestyle-constraints.md"  # Optional
 
   selfdecode:
     enabled: false
@@ -307,6 +315,34 @@ grep -E "^(rs123|rs456|rs789)" "{genetics_23andme_path}"
 
 - Use optional SelfDecode only if the selected profile enables it and the task requires imputed coverage beyond raw 23andMe data.
 
+### Lifestyle Markdown Data
+
+Configured sources:
+
+- `{schedule_md_path}`: default schedule template
+- `{nutrition_md_path}`: default food plan template
+- `{exercise_md_path}`: default exercise plan template
+- `{lifestyle_constraints_md_path}`: durable constraints, targets, avoids, and precedence rules
+
+Rules:
+
+- Validate existence and readability before use.
+- Treat all lifestyle Markdown files as read-only source inputs.
+- Use `lifestyle_constraints_md_path` as the authority when schedule, food, exercise, symptoms, weight goals, and preferences conflict.
+- Do not copy the full constraints into generated daily plans; reference the sidecar constraint source and include only brief conflict notes.
+- Generated lifestyle drafts belong under `.output/{profile_slug}/`.
+
+Use strategy:
+
+- Start with the constraint sidecar to identify hard constraints, trigger foods, fixed schedule blocks, recovery limits, target weight changes, and regeneration rules.
+- Use the schedule, nutrition, and exercise Markdown files as current/default templates.
+- Preserve the template structure unless the constraint file allows or requires a change.
+- For deterministic draft rendering, use:
+
+```bash
+python3 -m health_agent daily-plan --profile <profile-name> --date YYYY-MM-DD
+```
+
 ## Question-To-Source Retrieval Playbook
 
 Use this lookup order by question type.
@@ -322,6 +358,15 @@ Use this lookup order by question type.
 1. Start with `{health_log_path}/health_log.md`.
 2. Narrow with `entries/*.processed.md`.
 3. Use `entries/*.raw.md` when exact wording or event detail matters.
+4. Use `{lifestyle_constraints_md_path}` for durable food triggers, schedule constraints, exercise constraints, and target-weight rules.
+
+### Schedule, Nutrition, Exercise, And Daily Plan Optimization
+
+1. Start with `{lifestyle_constraints_md_path}` for conflict precedence and hard constraints.
+2. Use `{schedule_md_path}` for the default day structure and fixed/flexible blocks.
+3. Use `{nutrition_md_path}` for the current default food plan.
+4. Use `{exercise_md_path}` for the current default training plan.
+5. Cross-check against `health_log.md`, recent processed entries, labs, and exams when symptoms, recovery, GI tolerance, or objective markers could change the plan.
 
 ### Specific Day Or Episode
 
@@ -394,7 +439,7 @@ When the task is an unresolved issue review or a follow-up after new parsed evid
 
 When the user asks more generally what to do next, use the `what-next-report` skill path and generate a dated report under `.output/` that ranks the strongest next actions across both unresolved issues and optimization opportunities. Do not limit the report to unresolved diagnoses if the broader record supports concrete optimization steps.
 
-When the user wants a profile-specific question list that would improve future runs if answered, generate a short ranked report under `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-future-questions.md`. The deliverable should be a concise list of high-yield unanswered questions intended to be answered in a new health-log entry, and all profile-linked external sources remain read-only.
+When the user wants profile-specific questions that would improve future runs if answered, use the `profile-question-report` skill to ask the highest-yield questions interactively and generate a paste-ready health-log entry draft under `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-health-log-entry.md`. The deliverable should be a concise first-person Markdown entry based on the user's answers, and all profile-linked external sources remain read-only.
 
 ## Important Notes
 

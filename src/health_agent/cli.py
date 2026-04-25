@@ -9,6 +9,11 @@ from typing import Any
 
 from health_agent.actions import build_action_queue_payload, render_plan_report
 from health_agent.evidence import build_evidence_snapshot
+from health_agent.evidence_packet import (
+    build_evidence_packet,
+    evidence_packet_path,
+    load_previous_evidence_packet,
+)
 from health_agent.issues import (
     ValidationError,
     load_issue_collection,
@@ -16,6 +21,7 @@ from health_agent.issues import (
     save_issue_store,
 )
 from health_agent.jsonio import write_json
+from health_agent.lifestyle import render_daily_plan
 from health_agent.paths import (
     ensure_repo_dirs,
     profile_output_path,
@@ -104,6 +110,8 @@ def _sync_issue_inputs(
 ) -> dict[str, dict[str, Any]]:
     issues = _load_profile_issues(repo_root, profile_slug=profile_slug)
     for issue_file in load_issue_collection(source_path):
+        if issue_file.payload["profile_slug"] != profile_slug:
+            continue
         payload = dict(issue_file.payload)
         payload["profile_slug"] = profile_slug
         issues[issue_file.slug] = payload
@@ -118,12 +126,45 @@ def _sync_issue_inputs(
     return issues
 
 
+def _build_and_write_evidence_packet(
+    *,
+    repo_root: Path,
+    profile_context: Any,
+    generated_at: str,
+    issues: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    previous_packet = load_previous_evidence_packet(repo_root, profile_context.slug)
+    packet = build_evidence_packet(
+        repo_root=repo_root,
+        profile_context=profile_context,
+        generated_at=generated_at,
+        issues=issues,
+        previous_packet=previous_packet,
+    )
+    write_json(evidence_packet_path(repo_root, profile_context.slug), packet)
+    return packet
+
+
+def run_evidence_packet(args: argparse.Namespace) -> int:
+    repo_root = args.repo_root.resolve()
+    profile_context = load_profile_context(args.profile, home_dir=args.home_dir)
+    ensure_repo_dirs(repo_root, profile_context.slug)
+    generated_at = _utc_now()
+    issues = _load_profile_issues(repo_root, profile_slug=profile_context.slug)
+    _build_and_write_evidence_packet(
+        repo_root=repo_root,
+        profile_context=profile_context,
+        generated_at=generated_at,
+        issues=issues,
+    )
+    return 0
+
+
 def run_plan(args: argparse.Namespace) -> int:
     repo_root = args.repo_root.resolve()
     profile_context = load_profile_context(args.profile, home_dir=args.home_dir)
     ensure_repo_dirs(repo_root, profile_context.slug)
     generated_at = _utc_now()
-    evidence_snapshot = build_evidence_snapshot(profile_context, generated_at=generated_at)
 
     issues = _load_profile_issues(repo_root, profile_slug=profile_context.slug)
     if args.issues_from:
@@ -134,6 +175,13 @@ def run_plan(args: argparse.Namespace) -> int:
             profile_name=profile_context.cache_payload["profile_name"],
             generated_at=generated_at,
         )
+    evidence_packet = _build_and_write_evidence_packet(
+        repo_root=repo_root,
+        profile_context=profile_context,
+        generated_at=generated_at,
+        issues=issues,
+    )
+    evidence_snapshot = evidence_packet["source_snapshot"]
     _write_profile_state(
         repo_root=repo_root,
         profile_context=profile_context,
@@ -141,6 +189,40 @@ def run_plan(args: argparse.Namespace) -> int:
         evidence_snapshot=evidence_snapshot,
         issues=issues,
     )
+    return 0
+
+
+def _validate_plan_date(value: str) -> str:
+    try:
+        datetime.strptime(value, "%Y-%m-%d")
+    except ValueError as exc:
+        raise ValidationError("--date must use YYYY-MM-DD format.") from exc
+    return value
+
+
+def run_daily_plan(args: argparse.Namespace) -> int:
+    repo_root = args.repo_root.resolve()
+    profile_context = load_profile_context(args.profile, home_dir=args.home_dir)
+    ensure_repo_dirs(repo_root, profile_context.slug)
+    generated_at = _utc_now()
+    target_date = _validate_plan_date(args.date or generated_at[:10])
+    evidence_snapshot = build_evidence_snapshot(profile_context, generated_at=generated_at)
+
+    write_json(
+        profiles_state_path(repo_root, profile_context.slug, "sources.json"),
+        evidence_snapshot,
+    )
+    report_body = render_daily_plan(
+        profile_slug=profile_context.slug,
+        profile_name=profile_context.cache_payload["profile_name"],
+        generated_at=generated_at,
+        target_date=target_date,
+        evidence_snapshot=evidence_snapshot,
+    )
+    report_name = f"{target_date}-{profile_context.slug}-daily-plan.md"
+    report_path = profile_output_path(repo_root, profile_context.slug, report_name)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(report_body, encoding="utf-8")
     return 0
 
 
@@ -222,6 +304,24 @@ def build_parser() -> argparse.ArgumentParser:
     _add_profile_argument(plan)
     _add_optional_issues_argument(plan)
     plan.set_defaults(func=run_plan)
+
+    packet = subparsers.add_parser(
+        "evidence-packet",
+        help="Build the deterministic evidence packet used by agent-facing planning.",
+    )
+    _add_profile_argument(packet)
+    packet.set_defaults(func=run_evidence_packet)
+
+    daily_plan = subparsers.add_parser(
+        "daily-plan",
+        help="Render a draft daily lifestyle plan from profile-linked Markdown sources.",
+    )
+    _add_profile_argument(daily_plan)
+    daily_plan.add_argument(
+        "--date",
+        help="Target date for the draft plan in YYYY-MM-DD format. Defaults to today.",
+    )
+    daily_plan.set_defaults(func=run_daily_plan)
 
     intake = subparsers.add_parser(
         "intake",

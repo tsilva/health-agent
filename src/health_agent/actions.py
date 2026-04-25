@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from health_agent.constants import PRIORITY_BUCKETS
+from health_agent.lifestyle import LIFESTYLE_SOURCE_FIELDS
 
 
 PRIORITY_LABELS = {
@@ -37,6 +38,7 @@ class RankedAction:
     priority_bucket: str
     expected_payoff: str
     related_issues: list[str]
+    source_citations: list[str]
 
     def dedupe_key(self) -> str:
         return self.do_next.strip().lower()
@@ -83,6 +85,7 @@ def build_ranked_actions(issues: dict[str, dict[str, Any]]) -> list[RankedAction
                 priority_bucket=bucket,
                 expected_payoff=EXPECTED_PAYOFF[bucket],
                 related_issues=[slug],
+                source_citations=list(issue.get("linked_sources", [])),
             )
         )
 
@@ -108,6 +111,9 @@ def dedupe_actions(actions: list[RankedAction]) -> list[RankedAction]:
         existing = seen[key]
         if action.issue_slug not in existing.related_issues:
             existing.related_issues.append(action.issue_slug)
+        for citation in action.source_citations:
+            if citation not in existing.source_citations:
+                existing.source_citations.append(citation)
     return deduped
 
 
@@ -137,6 +143,7 @@ def build_action_queue_payload(
                 "expected_payoff": action.expected_payoff,
                 "owner": "user",
                 "related_issues": action.related_issues,
+                "source_citations": action.source_citations,
             }
             for index, action in enumerate(ranked, start=1)
         ],
@@ -177,6 +184,13 @@ def _describe_source_details(source_name: str, metadata: dict[str, Any]) -> list
         rsids = details.get("sample_rsids", [])
         if rsids:
             lines.append(f"Sample rsids: {', '.join(rsids)}")
+    elif source_name in LIFESTYLE_SOURCE_FIELDS:
+        headings = details.get("headings", [])
+        if headings:
+            lines.append(f"Markdown headings: {', '.join(headings[:6])}")
+        snippets = details.get("relevant_snippets", [])
+        if snippets:
+            lines.append(f"Relevant snippets: {'; '.join(snippets[:4])}")
 
     latest_modified_at = metadata.get("latest_modified_at")
     if latest_modified_at:

@@ -1,24 +1,25 @@
 ---
 name: profile-question-report
-description: Generate a dated markdown report for a selected live health-agent profile with a short ranked list of unanswered questions the user should answer in their next health-log entry to improve future agent reasoning.
+description: Ask a selected live health-agent profile's 10 highest-yield unanswered questions interactively, then write a paste-ready Markdown health-log entry under .output/ for the user's real health log.
 ---
 
-# Profile Question Report
+# Profile Health-Log Interview
 
-Generate a standalone repo-local markdown report for the selected live profile.
+Run an interactive interview for the selected live profile, then generate a paste-ready health-log entry.
 
-Use this when the user wants a profile-specific question list that will help the agent do a better job on later runs after the answers are added to the health log.
+Use this when the user wants the agent to ask profile-specific questions and turn the answers into a health-log entry that will help future runs reason better.
 
 ## Required Session Rules
 
 1. Follow the session-start and source-validation rules in `AGENTS.md`.
 2. Treat all profile-linked external sources as read-only.
-3. Write the user-facing report under `.output/`.
+3. Write the user-facing health-log entry draft under `.output/`.
 4. Do not create new `.state/` artifacts for this workflow.
+5. Never write into the configured external `health_log_path`.
 
 ## Goal
 
-Produce a short ranked list of the highest-yield unanswered questions for that profile.
+Ask the highest-yield unanswered questions for that profile, then transform the user's answers into a concise Markdown health-log entry draft.
 
 The questions should help the next run by clarifying:
 
@@ -43,6 +44,10 @@ Do not pad the report with broad intake questions, generic wellness prompts, or 
 5. Prefer the shortest path that can prove a question is still worth asking.
 
 ## Question Selection Rules
+
+Select exactly 10 questions when the available evidence supports 10 meaningful questions.
+
+Ask fewer than 10 only when the record cannot support 10 high-yield questions without padding. If asking fewer, state the reason briefly in the generated entry's metadata section.
 
 Include questions only when the answer would likely change future recommendations in a meaningful way.
 
@@ -72,21 +77,57 @@ Rank questions in this order:
 4. answers that clarify whether a concerning issue is still active
 5. foundational context questions for sparse records
 
-Keep the final list short enough that a user is likely to answer it in one new health-log entry.
+## Interactive Interview Rules
+
+Prefer the structured question tool when it is available.
+
+Use batches of at most 3 questions:
+
+1. Ask questions 1-3.
+2. Ask questions 4-6.
+3. Ask questions 7-9.
+4. Ask question 10.
+
+For each question-tool prompt:
+
+- Use a stable `snake_case` answer id.
+- Keep the header 12 characters or shorter.
+- Provide 2-3 short mutually exclusive options, usually `Yes`, `No`, and `Unsure` or equivalent context-specific choices.
+- In the prompt text, tell the user to use the free-form `Other` answer when they can provide details, dates, severity, medication names, test names, or specialist guidance.
+- Do not include an `Other` option manually if the tool adds it automatically.
+
+After each batch, preserve the user's answers verbatim enough to avoid losing dates, qualifiers, and uncertainty.
+
+If the question tool is unavailable, ask the ranked questions as a numbered chat list and wait for the user's answers before writing the entry. The fallback output must match the normal `.output/` entry format.
+
+## Health-Log Entry Drafting Rules
+
+Write in first person as a paste-ready health-log entry from the user's perspective.
+
+Preserve uncertainty clearly. Use wording like:
+
+- "I am unsure whether..."
+- "I do not remember..."
+- "I have not answered..."
+
+Do not invent answers, dates, severity, medications, test results, specialist advice, or symptom patterns.
+
+Group related answers by topic when it improves readability. Keep the entry concise and free of agent-facing explanation inside the paste-ready entry body.
+
+Include a short `Not answered / still unclear` section only when the user skipped questions, gave ambiguous answers, or chose `Unsure`.
 
 ## Output
 
-Write the report under `.output/` using this filename:
+Write the health-log entry draft under `.output/` using this filename:
 
-`{profile_slug}/{YYYY-MM-DD}-{profile_slug}-future-questions.md`
+`{profile_slug}/{YYYY-MM-DD}-{profile_slug}-health-log-entry.md`
 
 Use [references/report-template.md](references/report-template.md) as the starting structure.
 
-## Report Rules
+## Output Rules
 
-- Keep the report concise and ranked.
-- Questions should be written as direct prompts the user can answer in a new health-log entry.
-- Do not add a rationale block under each question.
-- Add a short note near the top telling the user to answer the questions in a new health-log entry so the next run can ingest them.
+- Include the profile name and source status.
 - If a source is unavailable, say so explicitly and adjust the questions to that narrower evidence base.
-- If the record is already strong in one area, add a brief optional section for questions that are mostly answered already so the user does not waste time repeating them.
+- Include the generated paste-ready health-log entry.
+- Keep the question list out of the final output unless a short "Questions asked" appendix is needed to clarify skipped or uncertain answers.
+- Do not create a standalone unanswered-question report.

@@ -11,7 +11,7 @@ When the user invokes this skill, the expected output is simple:
 
 - read the selected live profile
 - validate the configured sources
-- rescan the current parsed source folders
+- generate/read the deterministic evidence packet from the current parsed source folders
 - synthesize the best next actions from the record
 - write one dated report under `.output/`
 
@@ -37,19 +37,25 @@ The expected user experience is simple: they ask the agent for next steps, this 
 
 Default to the shortest path that still produces a defensible current report.
 
-1. Start with a focused current-evidence pass:
-   - latest relevant labs from `all.csv`
-   - latest relevant standalone exam summaries
-   - latest relevant `health_log.md` and `entries/*.processed.md` updates
-2. If `.state/profiles/{profile_slug}/issues.json` and `.state/profiles/{profile_slug}/actions.json` already exist, use them as internal memory and refresh them when the current evidence changes the plan.
-3. If that state does not exist yet, do a first-run synthesis directly from the parsed record:
+1. Load the live profile and validate every configured source.
+2. Generate or read the current evidence packet:
+
+```bash
+health-agent evidence-packet --profile <profile-name>
+python3 -m health_agent evidence-packet --profile <profile-name>
+```
+
+3. Use `.state/profiles/{profile_slug}/evidence-packet.json` as the first evidence map. It is factual only: source status, freshness, changed files, lab/log/exam extracts, medication/supplement mention lines, lifestyle summaries, and issue/action memory.
+4. Inspect the cited source snippets or files directly before making high-impact conclusions, especially diagnoses, medication/treatment-class suggestions, specialist direction, or surveillance timing.
+5. If `.state/profiles/{profile_slug}/issues.json` and `.state/profiles/{profile_slug}/actions.json` already exist, use them as internal memory and refresh them only when current evidence changes conclusions, action ranking, or source citations.
+6. If that state does not exist yet, do a first-run synthesis directly from the parsed record:
    - identify the main unresolved issues from the current evidence
    - write the report anyway on that first pass
    - optionally create `.state/profiles/{profile_slug}/issues.json`, `.state/profiles/{profile_slug}/actions.json`, and `.state/profiles/{profile_slug}/sources.json` after the reasoning is complete
    - do not stop just because repo-local state is empty
-4. Pull older landmark findings only when they still change the current plan.
-5. Do not detour into a broad historical reread unless the current evidence is too thin to rank next actions.
-6. Use the built-in repo helper only as internal support when it reduces deterministic file work:
+7. Pull older landmark findings only when they still change the current plan.
+8. Do not detour into a broad historical reread unless the current evidence packet and current issue memory are too thin to rank next actions.
+9. Use the built-in repo helper only as internal support when it reduces deterministic file work:
 
 ```bash
 health-agent plan --profile <profile-name>
@@ -66,6 +72,7 @@ Write a report named:
 
 The durable repo-local artifacts for this workflow are:
 
+- `EvidencePacket`: `.state/profiles/{profile_slug}/evidence-packet.json`
 - `IssueStore`: `.state/profiles/{profile_slug}/issues.json`
 - `ActionStore`: `.state/profiles/{profile_slug}/actions.json`
 - `SourceSnapshot`: `.state/profiles/{profile_slug}/sources.json`
@@ -81,6 +88,8 @@ The report should usually contain:
 6. `Unresolved issues`
 7. `Optimization opportunities`
 8. `What to return with`
+
+When lifestyle sources are configured, include them in source status and use `lifestyle_constraints_md_path` as the authority for conflicts between schedule, nutrition, exercise, symptom triggers, target weight changes, and preferences.
 
 ## Report Content Rules
 
@@ -123,8 +132,20 @@ Examples:
 - GI optimization based on recurring symptoms and response patterns
 - exercise or biomechanics changes when the record suggests a likely mechanical driver
 - supplement or medication timing or trial cleanups when the record shows confusion or repeated unclear reactions
+- meal timing, food substitutions, workout placement, or recovery changes when profile-linked lifestyle Markdown files provide concrete constraints
 
 Do not pad the report with generic lifestyle advice.
+
+### Lifestyle Constraints
+
+If the profile configures lifestyle Markdown files:
+
+- read `lifestyle_constraints_md_path` before changing schedule, nutrition, or exercise plans
+- treat schedule, nutrition, and exercise Markdown files as current/default templates
+- do not edit or rewrite the source Markdown files
+- write regenerated draft plans under `.output/{profile_slug}/`
+- avoid copying the full sidecar constraints into generated plans; include only short conflict notes and source references
+- use `health-agent daily-plan --profile <profile-name> --date YYYY-MM-DD` as deterministic support when it helps render a draft daily plan
 
 ## Prioritization Rules
 
@@ -162,6 +183,7 @@ Each issue record should:
 
 - include `profile_slug`
 - keep `linked_sources` as absolute file paths when possible
+- keep citations current when evidence changes; these citations flow into action state as `source_citations`
 - end in an operator-friendly format:
   - `Do next`
   - `Why`

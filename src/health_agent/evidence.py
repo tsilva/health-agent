@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from health_agent.lifestyle import LIFESTYLE_SOURCE_FIELDS, summarize_markdown_source
 from health_agent.paths import expand_home
 from health_agent.profile import ProfileContext
 
@@ -176,6 +177,8 @@ def _build_source_snapshot(name: str, metadata: dict[str, Any]) -> dict[str, Any
         snapshot["details"] = _summarize_exams(source_path)
     elif name == "genetics_23andme_path":
         snapshot["details"] = _summarize_genetics(source_path)
+    elif name in LIFESTYLE_SOURCE_FIELDS:
+        snapshot["details"] = summarize_markdown_source(source_path)
     else:
         snapshot["details"] = {}
 

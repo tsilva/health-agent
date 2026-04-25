@@ -16,6 +16,10 @@ SOURCE_FIELDS = (
     "exams_path",
     "health_log_path",
     "genetics_23andme_path",
+    "schedule_md_path",
+    "nutrition_md_path",
+    "exercise_md_path",
+    "lifestyle_constraints_md_path",
 )
 
 
