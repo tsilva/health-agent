@@ -74,6 +74,12 @@ From your AI coding assistant in this repo, use a prompt like:
 Use the what-next-report skill for profile myname and write the refreshed next-steps report.
 ```
 
+For a probability-ranked differential, use:
+
+```text
+Use the root-cause-analysis skill for profile myname to find the top 5 most likely causes of recurring fatigue.
+```
+
 That is the primary interface for this repo.
 
 ### 4. Optional: Install The Local Helper
@@ -137,6 +143,8 @@ Lifestyle Markdown files are read-only source inputs. Keep stable rules in the s
 
 The canonical interface is the `what-next-report` skill through the agent.
 
+For targeted probability-ranked differentials, use the `root-cause-analysis` skill.
+
 The CLI exists only as an internal support tool for deterministic rescans and state rendering. It is not the main product surface.
 
 ## Repo-Local State
@@ -159,6 +167,7 @@ The current plan report is the primary deliverable. The state files exist to sup
 This repo includes project-local Codex skills under `.codex/skills/`:
 
 - `what-next-report`: canonical workflow for having the agent read the parsed record, produce the updated next-steps plan, and refresh per-profile issue/action memory when useful
+- `root-cause-analysis`: generate a probability-ranked root-cause differential for a symptom, condition, abnormal marker, episode, or pattern, with probabilities adding to 100%
 - `profile-question-report`: interactively ask high-yield unanswered questions and draft a paste-ready health-log entry
 - `medication-history-report`: generate a dated medication and supplement history report
 
