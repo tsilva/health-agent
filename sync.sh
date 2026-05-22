@@ -9,7 +9,7 @@ Usage:
 
 Runs parser outputs in dependency order:
   1. parselabs
-  2. medicalexamsparser
+  2. parsemedicalexams
   3. parsehealthlog
 
 If no profile is provided, each parser runs all configured profiles.
@@ -79,18 +79,18 @@ run_parser() {
 }
 
 require_command parselabs
-require_command medicalexamsparser
+require_command parsemedicalexams
 require_command parsehealthlog
 
 if [[ -n "$profile" ]]; then
   echo "Running parser sync for profile: $profile"
   run_parser parselabs --profile "$profile"
-  run_parser medicalexamsparser --profile "$profile"
+  run_parser parsemedicalexams --profile "$profile"
   run_parser parsehealthlog --profile "$profile"
 else
   echo "Running parser sync for all configured profiles"
   run_parser parselabs
-  run_parser medicalexamsparser
+  run_parser parsemedicalexams
   run_parser parsehealthlog
 fi
 

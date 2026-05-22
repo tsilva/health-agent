@@ -221,6 +221,7 @@ def _current_active_condition_lines(issues: dict[str, dict[str, Any]]) -> list[s
 def _current_medication_stack_lines(evidence_packet: dict[str, Any] | None) -> list[str]:
     health_log = (evidence_packet or {}).get("health_log", {})
     current_stack = health_log.get("current_medication_supplement_stack", [])
+    mentions = health_log.get("medication_supplement_mentions_needing_review", [])
     if current_stack:
         lines = [
             "- Current stack extracted from explicit health-log stack section; reconcile if newer entries changed it."
@@ -244,9 +245,21 @@ def _current_medication_stack_lines(evidence_packet: dict[str, Any] | None) -> l
                     else ""
                 )
                 lines.append(f"- {text}{suffix}")
+        if mentions:
+            lines.append(
+                "- Recent medication/supplement mentions needing reconciliation against that stack:"
+            )
+            for mention in mentions[:6]:
+                location = mention.get("path", "")
+                line_number = mention.get("line")
+                if location and line_number:
+                    location = f"{location}:{line_number}"
+                text = mention.get("text", "Medication/supplement mention captured.").strip()
+                if text.startswith("- "):
+                    text = text[2:].strip()
+                lines.append(f"- {text} ({location})" if location else f"- {text}")
         return lines
 
-    mentions = health_log.get("medication_supplement_mentions_needing_review", [])
     if not mentions:
         health_log_status = health_log.get("status")
         if health_log_status and health_log_status != "available":
@@ -267,7 +280,9 @@ def _current_medication_stack_lines(evidence_packet: dict[str, Any] | None) -> l
         line_number = mention.get("line")
         if location and line_number:
             location = f"{location}:{line_number}"
-        text = mention.get("text", "Medication/supplement mention captured.")
+        text = mention.get("text", "Medication/supplement mention captured.").strip()
+        if text.startswith("- "):
+            text = text[2:].strip()
         lines.append(f"- {text} ({location})" if location else f"- {text}")
     return lines
 
