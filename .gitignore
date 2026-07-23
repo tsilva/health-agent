@@ -48,6 +48,8 @@ logs/
 # >>> END MANAGED <<<
 
 # Project-specific rules
+/output/
+/tmp/
 *$py.class
 **/.cache/
 *.cover
