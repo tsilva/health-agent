@@ -12,11 +12,13 @@ Runs parser outputs in dependency order:
   2. parsemedicalexams
   3. parsehealthlog
 
-If no profile is provided, each parser runs all configured profiles.
+If no profile is provided, every live Healthpilot profile is passed
+explicitly to each parser.
 EOF
 }
 
 profile=""
+profile_dir="${HEALTHPILOT_PROFILE_DIR:-${HOME}/.config/healthpilot/profiles}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -88,10 +90,24 @@ if [[ -n "$profile" ]]; then
   run_parser parsemedicalexams --profile "$profile"
   run_parser parsehealthlog --profile "$profile"
 else
-  echo "Running parser sync for all configured profiles"
-  run_parser parselabs
-  run_parser parsemedicalexams
-  run_parser parsehealthlog
+  profiles=()
+  for profile_path in "$profile_dir"/*.yaml; do
+    [[ -e "$profile_path" ]] || continue
+    profile_name="$(basename "$profile_path" .yaml)"
+    profiles+=("$profile_name")
+  done
+
+  if [[ ${#profiles[@]} -eq 0 ]]; then
+    echo "error: no live profiles found in $profile_dir" >&2
+    exit 1
+  fi
+
+  echo "Running parser sync for all live profiles: ${profiles[*]}"
+  for command_name in parselabs parsemedicalexams parsehealthlog; do
+    for profile_name in "${profiles[@]}"; do
+      run_parser "$command_name" --profile "$profile_name"
+    done
+  done
 fi
 
 echo

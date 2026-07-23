@@ -39,6 +39,8 @@ Reports are written under `.output/<profile_slug>/`. Each what-next report opens
 
 ```bash
 pytest                                      # run tests
+./sync.sh                                   # sync every live profile
+./sync.sh --profile myname                  # sync one live profile
 healthpilot plan --profile myname          # refresh state and render the action plan
 healthpilot evidence-packet --profile myname
 healthpilot daily-plan --profile myname --date 2026-04-29
