@@ -1,0 +1,4 @@
+interface:
+  display_name: "Healthpilot Report: Organ System Health"
+  short_description: "Score and rank organ-system health from profile data"
+  default_prompt: "Use $healthpilot-report-organ-system-health to score and rank organ and bodily-system health for the selected live profile."

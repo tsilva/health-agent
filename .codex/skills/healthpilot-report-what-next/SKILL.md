@@ -1,5 +1,5 @@
 ---
-name: what-next-report
+name: healthpilot-report-what-next
 description: Generate a dated what-next report for a selected live healthpilot profile. Use when the user wants a prescriptive "what should I do next?" answer, a current action report, or an updated report after new labs, exams, visit feedback, or symptom changes. The report should include both unresolved-issue actions and health-optimization actions when the data supports them.
 ---
 
@@ -13,11 +13,11 @@ When the user invokes this skill, the expected output is simple:
 - validate the configured sources
 - generate/read the deterministic evidence packet from the current parsed source folders
 - synthesize the best next actions from the record
-- write one dated report under `.output/`
+- write one dated report under `.output/{profile_slug}/`
 
 State files under `.state/` are implementation details. Use them when helpful, but do not make the user think about them unless they explicitly ask.
 
-The expected user experience is simple: they ask the agent for next steps, this skill does the end-to-end work, and the report appears under `.output/`.
+The expected user experience is simple: they ask the agent for next steps, this skill does the end-to-end work, and the report appears under `.output/{profile_slug}/`.
 
 ## Goals
 
@@ -31,7 +31,7 @@ The expected user experience is simple: they ask the agent for next steps, this 
 
 1. Follow the profile and source-validation rules from `AGENTS.md`.
 2. Treat external profile-linked sources as read-only.
-3. Write the user-facing report under `.output/`.
+3. Write the user-facing report under `.output/{profile_slug}/`.
 4. Use `.state/` only as internal memory or ranking support.
 
 ## Working Order
@@ -73,11 +73,15 @@ python3 -m healthpilot plan --profile <profile-name>
 
 Do not frame the CLI as the primary user interface. The skill itself is the primary interface.
 
-## Output
+## Output Contract
 
-Write a report named:
+Follow the common Healthpilot report convention:
 
-`{profile_slug}/{YYYY-MM-DD}-{profile_slug}-action-plan.md`
+- directory: `.output/{profile_slug}/`
+- filename: `{YYYY-MM-DD}-{profile_slug}-action-plan.md`
+- canonical path: `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-action-plan.md`
+
+Use the local report date and canonical profile slug. Create the profile output directory when needed. If regenerating on the same date, refresh the canonical file instead of creating an alternate filename.
 
 The durable repo-local artifacts for this workflow are:
 
@@ -227,7 +231,7 @@ If the report clearly centers on unresolved issues, you may also update:
 - `.state/profiles/{profile_slug}/actions.json`
 - `.state/profiles/{profile_slug}/sources.json`
 
-But the primary deliverable is always the report in `.output/`.
+But the primary deliverable is always the report in `.output/{profile_slug}/`.
 
 When refreshing issue memory:
 

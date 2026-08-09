@@ -8,7 +8,7 @@
 
 healthpilot is a local, file-based workflow for turning parsed health records into ranked next steps. It connects runtime profiles, labs, exams, health-log entries, medications, supplements, lifestyle notes, genetics, and project Codex skills into one longitudinal planning loop.
 
-The canonical interface is the `what-next-report` skill through the agent. The Python CLI exists as deterministic support for rescans, evidence packets, cached SNP lookups, and draft daily plans.
+The canonical interface is the `healthpilot-report-what-next` skill through the agent. The Python CLI exists as deterministic support for rescans, evidence packets, cached SNP lookups, and draft daily plans.
 
 ## Install
 
@@ -30,10 +30,10 @@ Edit `~/.config/healthpilot/profiles/myname.yaml` so it points at the parser out
 Then invoke the agent from this repo with a prompt like:
 
 ```text
-Use the what-next-report skill for profile myname and write the refreshed next-steps report.
+Use the healthpilot-report-what-next skill for profile myname and write the refreshed next-steps report.
 ```
 
-Reports are written under `.output/<profile_slug>/`. Each what-next report opens with a current status summary covering active conditions and the current medication/supplement stack, or the recent medication/supplement evidence that still needs reconciliation. Reports also include researched self-experiments ranked by practical ROI when the record supports independent action, blending expected benefit with ease, cost, safety, reversibility, measurability, and time-to-feedback.
+Reports are written under `.output/<profile_slug>/` using `<YYYY-MM-DD>-<profile_slug>-<artifact_slug>.md`. Each what-next report opens with a current status summary covering active conditions and the current medication/supplement stack, or the recent medication/supplement evidence that still needs reconciliation. Reports also include researched self-experiments ranked by practical ROI when the record supports independent action, blending expected benefit with ease, cost, safety, reversibility, measurability, and time-to-feedback.
 
 ## Commands
 
@@ -58,7 +58,7 @@ Deprecated aliases such as `healthpilot intake`, `healthpilot review`, and `heal
 - Derived state lives under `.state/profiles/<profile_slug>/`; user-facing reports live under `.output/<profile_slug>/`.
 - The primary data sources are `labs-parser`, `medical-exams-parser`, `health-log-parser`, optional raw 23andMe data, optional SelfDecode genotype lookups, and optional lifestyle Markdown files.
 - SelfDecode JWTs are transient credentials. The cache stores genotype results only, in `.state/profiles/<profile_slug>/selfdecode-genotypes.json`.
-- Project skills live under `.codex/skills/`: `what-next-report`, `root-cause-analysis`, `profile-question-report`, and `medication-history-report`.
+- Project report skills live under `.codex/skills/` and share the `healthpilot-report-` prefix: `healthpilot-report-what-next`, `healthpilot-report-root-cause`, `healthpilot-report-profile-question`, `healthpilot-report-medication-history`, `healthpilot-report-current-treatment`, `healthpilot-report-organ-system-health`, and `healthpilot-report-mortality-risk`.
 
 ## Architecture
 

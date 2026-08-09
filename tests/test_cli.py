@@ -1010,11 +1010,14 @@ def test_docs_match_skill_first_workflow() -> None:
     readme = (repo_root / "README.md").read_text(encoding="utf-8")
     agents = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
     skill = (
-        repo_root / ".codex" / "skills" / "what-next-report" / "SKILL.md"
+        repo_root / ".codex" / "skills" / "healthpilot-report-what-next" / "SKILL.md"
     ).read_text(encoding="utf-8")
 
-    assert "Use the what-next-report skill for profile myname" in readme
-    assert "The canonical interface is the `what-next-report` skill through the agent." in readme
+    assert "Use the healthpilot-report-what-next skill for profile myname" in readme
+    assert (
+        "The canonical interface is the `healthpilot-report-what-next` skill through the agent."
+        in readme
+    )
     assert "`unresolved-issue-review`" not in readme
     assert "The normal user-facing entrypoint for this repo is the agent invoking the relevant project skill" in agents
     assert "The skill itself is the primary interface." in skill
@@ -1022,3 +1025,50 @@ def test_docs_match_skill_first_workflow() -> None:
     for content in (readme, agents, skill):
         assert "outcome-update --profile" not in content
         assert "healthpilot review --profile" not in content
+
+
+def test_report_skills_share_naming_and_output_contract() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    skills_root = repo_root / ".codex" / "skills"
+    expected_filenames = {
+        "healthpilot-report-what-next": "{YYYY-MM-DD}-{profile_slug}-action-plan.md",
+        "healthpilot-report-root-cause": (
+            "{YYYY-MM-DD}-{profile_slug}-root-cause-{query_slug}.md"
+        ),
+        "healthpilot-report-profile-question": (
+            "{YYYY-MM-DD}-{profile_slug}-health-log-entry.md"
+        ),
+        "healthpilot-report-medication-history": (
+            "{YYYY-MM-DD}-{profile_slug}-medication-history.md"
+        ),
+        "healthpilot-report-current-treatment": (
+            "{YYYY-MM-DD}-{profile_slug}-current-treatment.md"
+        ),
+        "healthpilot-report-mortality-risk": (
+            "{YYYY-MM-DD}-{profile_slug}-mortality-risk.md"
+        ),
+        "healthpilot-report-organ-system-health": (
+            "{YYYY-MM-DD}-{profile_slug}-organ-system-health.md"
+        ),
+    }
+
+    for skill_name, filename in expected_filenames.items():
+        skill_dir = skills_root / skill_name
+        skill_text = (skill_dir / "SKILL.md").read_text(encoding="utf-8")
+        agent_text = (skill_dir / "agents" / "openai.yaml").read_text(encoding="utf-8")
+
+        assert f"name: {skill_name}" in skill_text
+        assert "- directory: `.output/{profile_slug}/`" in skill_text
+        assert f"- filename: `{filename}`" in skill_text
+        assert f"${skill_name}" in agent_text
+
+    legacy_names = {
+        "what-next-report",
+        "root-cause-analysis",
+        "profile-question-report",
+        "medication-history-report",
+        "current-treatment-report",
+        "mortality-risk-report",
+        "organ-system-health-report",
+    }
+    assert not any((skills_root / name).exists() for name in legacy_names)

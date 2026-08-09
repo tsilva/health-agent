@@ -1,6 +1,6 @@
 ---
-name: medication-history-report
-description: Generate a dated Markdown report of active medications, past medications, and supplements from a selected live healthpilot profile. Use when the user asks for a medication list, supplement list, medication history, or a written medication/supplement report in .output/.
+name: healthpilot-report-medication-history
+description: Generate a dated Markdown report of active medications, past medications, and supplements from a selected live healthpilot profile. Use when the user asks for a medication list, supplement list, medication history, or a written medication/supplement report in .output/{profile_slug}/.
 ---
 
 # Medication History Report
@@ -29,11 +29,15 @@ Generate a repo-local Markdown report for the selected live profile.
 - Deduplicate synonyms such as `PPI` and `Pantoprazole` when they clearly refer to the same item.
 - For active medications and active supplements, include dosage and schedule when recorded. If the item is active but the dose is unclear, write `dose not recorded`.
 
-## Output
+## Output Contract
 
-Write the report under `.output/` using a filename shaped like:
+Follow the common Healthpilot report convention:
 
-`{profile_slug}-medication-history-{YYYY-MM-DD}.md`
+- directory: `.output/{profile_slug}/`
+- filename: `{YYYY-MM-DD}-{profile_slug}-medication-history.md`
+- canonical path: `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-medication-history.md`
+
+Use the local report date and canonical profile slug. Create the profile output directory when needed. If regenerating on the same date, refresh the canonical file instead of creating an alternate filename.
 
 The report must include the generation date inside the file near the top:
 

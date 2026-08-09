@@ -1,6 +1,6 @@
 ---
-name: profile-question-report
-description: Ask a selected live healthpilot profile's 10 highest-yield unanswered questions interactively, then write a paste-ready Markdown health-log entry under .output/ for the user's real health log.
+name: healthpilot-report-profile-question
+description: Ask a selected live healthpilot profile's 10 highest-yield unanswered questions interactively, then write a paste-ready Markdown health-log entry under .output/{profile_slug}/ for the user's real health log.
 ---
 
 # Profile Health-Log Interview
@@ -13,7 +13,7 @@ Use this when the user wants the agent to ask profile-specific questions and tur
 
 1. Follow the session-start and source-validation rules in `AGENTS.md`.
 2. Treat all profile-linked external sources as read-only.
-3. Write the user-facing health-log entry draft under `.output/`.
+3. Write the user-facing health-log entry draft under `.output/{profile_slug}/`.
 4. Do not create new `.state/` artifacts for this workflow.
 5. Never write into the configured external `health_log_path`.
 
@@ -98,7 +98,7 @@ For each question-tool prompt:
 
 After each batch, preserve the user's answers verbatim enough to avoid losing dates, qualifiers, and uncertainty.
 
-If the question tool is unavailable, ask the ranked questions as a numbered chat list and wait for the user's answers before writing the entry. The fallback output must match the normal `.output/` entry format.
+If the question tool is unavailable, ask the ranked questions as a numbered chat list and wait for the user's answers before writing the entry. The fallback output must match the normal `.output/{profile_slug}/` entry format.
 
 ## Health-Log Entry Drafting Rules
 
@@ -116,11 +116,15 @@ Group related answers by topic when it improves readability. Keep the entry conc
 
 Include a short `Not answered / still unclear` section only when the user skipped questions, gave ambiguous answers, or chose `Unsure`.
 
-## Output
+## Output Contract
 
-Write the health-log entry draft under `.output/` using this filename:
+Follow the common Healthpilot report convention:
 
-`{profile_slug}/{YYYY-MM-DD}-{profile_slug}-health-log-entry.md`
+- directory: `.output/{profile_slug}/`
+- filename: `{YYYY-MM-DD}-{profile_slug}-health-log-entry.md`
+- canonical path: `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-health-log-entry.md`
+
+Use the local report date and canonical profile slug. If regenerating on the same date, refresh the canonical file instead of creating an alternate filename.
 
 Use [references/report-template.md](references/report-template.md) as the starting structure.
 

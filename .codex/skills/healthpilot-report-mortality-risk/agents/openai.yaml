@@ -1,0 +1,4 @@
+interface:
+  display_name: "Healthpilot Report: Mortality Risk"
+  short_description: "Rank personalized causes of death with probabilities"
+  default_prompt: "Use $healthpilot-report-mortality-risk to generate a top-10 mortality-risk report for the selected live profile."

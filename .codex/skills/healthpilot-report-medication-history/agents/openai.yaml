@@ -1,0 +1,4 @@
+interface:
+  display_name: "Healthpilot Report: Medication History"
+  short_description: "Summarize active and historical medications"
+  default_prompt: "Use $healthpilot-report-medication-history to generate a medication and supplement history for the selected live profile."

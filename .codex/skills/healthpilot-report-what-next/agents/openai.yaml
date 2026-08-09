@@ -1,0 +1,4 @@
+interface:
+  display_name: "Healthpilot Report: What Next"
+  short_description: "Generate a ranked current health action plan"
+  default_prompt: "Use $healthpilot-report-what-next to generate the current action plan for the selected live profile."

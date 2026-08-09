@@ -1,0 +1,4 @@
+interface:
+  display_name: "Healthpilot Report: Root Cause"
+  short_description: "Rank likely root causes with calibrated probabilities"
+  default_prompt: "Use $healthpilot-report-root-cause to rank the likely causes of a health issue for the selected live profile."

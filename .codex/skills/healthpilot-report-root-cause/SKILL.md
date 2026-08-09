@@ -1,5 +1,5 @@
 ---
-name: root-cause-analysis
+name: healthpilot-report-root-cause
 description: Generate a dated root-cause differential report for a selected live healthpilot profile. Use when the user asks for the most likely causes of a symptom, condition, abnormal marker, episode, pattern, or health problem, especially when they want top-K hypotheses with explicit probabilities that add to 100% and explanations for each probability.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a dated root-cause differential report for a selected live
 
 Use this skill when the user asks "what is causing X?", "find the root cause of X", "rank likely causes", or wants a probability-weighted differential for a symptom, condition, abnormal lab, episode, recurring pattern, or unresolved health problem.
 
-The deliverable is a dated Markdown report under `.output/` containing the top K hypotheses, sorted by probability, with probabilities adding exactly to 100%.
+The deliverable is a dated Markdown report under `.output/{profile_slug}/` containing the top K hypotheses, sorted by probability, with probabilities adding exactly to 100%.
 
 ## Required Session Rules
 
@@ -109,13 +109,15 @@ The report should include:
 9. `Next best actions`
 10. `What to return with`
 
-## Output Filename
+## Output Contract
 
-Write the report to:
+Follow the common Healthpilot report convention:
 
-`{profile_slug}/{YYYY-MM-DD}-{profile_slug}-root-cause-{query_slug}.md`
+- directory: `.output/{profile_slug}/`
+- filename: `{YYYY-MM-DD}-{profile_slug}-root-cause-{query_slug}.md`
+- canonical path: `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-root-cause-{query_slug}.md`
 
-Keep `query_slug` short, lowercase, and filesystem-safe.
+Use the local report date and canonical profile slug. Keep `query_slug` short, lowercase, and filesystem-safe. If regenerating the same query on the same date, refresh the canonical file instead of creating an alternate filename.
 
 ## Reasoning Standard
 

@@ -61,7 +61,15 @@ Repo-local `profiles/*.yaml` are development references only. They are not the c
 
 ## Primary Interface
 
-The normal user-facing entrypoint for this repo is the agent invoking the relevant project skill, usually `what-next-report`.
+The normal user-facing entrypoint for this repo is the agent invoking the relevant project skill, usually `healthpilot-report-what-next`.
+
+All user-facing report skills use the `healthpilot-report-` prefix. They write to `.output/{profile_slug}/` with filenames shaped as `{YYYY-MM-DD}-{profile_slug}-{artifact_slug}.md`. Use the local report date and canonical profile slug; same-day regeneration refreshes the canonical path instead of creating an alternate name. A report-specific disambiguator such as a root-cause query slug may follow the artifact slug.
+
+For requests to rank the most likely causes of death or estimate personalized cause-specific mortality probabilities, use the `healthpilot-report-mortality-risk` skill. It must consider every available configured source category and calibrate against current age/sex/geography-matched official mortality data.
+
+For requests for the person's current medications, supplements, therapies, devices, lifestyle treatments, monitoring, or overall active regimen, use the `healthpilot-report-current-treatment` skill. Keep recommendations, unconfirmed plans, conflicts, and recently completed treatments separate from the evidence-supported current regimen.
+
+For requests to score or rank the current health of organs and bodily systems, use the `healthpilot-report-organ-system-health` skill. Score every canonical system from 0 to 10, sort lowest to highest, consider every available source category, and keep health evidence separate from evidence confidence so missing data is not presented as good health.
 
 For “what should I do next?” requests, prefer the skill-first path:
 
@@ -127,7 +135,7 @@ Treat `.state/` as internal support for memory and ranking, not as the primary u
 
 1. the user updates the real-world record outside this repo
 2. parser repos refresh the configured output folders
-3. ask the agent to use the `what-next-report` skill for the selected live profile
+3. ask the agent to use the `healthpilot-report-what-next` skill for the selected live profile
 4. read the refreshed plan under `.output/`
 
 Use these artifacts:
@@ -460,7 +468,7 @@ When the task is an unresolved issue review or a follow-up after new parsed evid
   - `What to ask for`
   - `What result to return with`
 
-When the user asks more generally what to do next, use the `what-next-report` skill path and generate a dated report under `.output/` that ranks the strongest next actions across both unresolved issues and optimization opportunities. Do not limit the report to unresolved diagnoses if the broader record supports concrete optimization steps.
+When the user asks more generally what to do next, use the `healthpilot-report-what-next` skill path and generate a dated report under `.output/{profile_slug}/` that ranks the strongest next actions across both unresolved issues and optimization opportunities. Do not limit the report to unresolved diagnoses if the broader record supports concrete optimization steps.
 
 Every what-next report must start its substantive content with a current status summary before source status or ranked actions. Include:
 
@@ -471,7 +479,7 @@ This lets the user confirm whether the report took current status into account b
 
 Every what-next report should also include `Self-experiments ranked by ROI` unless there are no defensible self-directed experiments to recommend. These should be researched, tailored to the profile, and ranked by expected benefit relative to effort, cost, safety, reversibility, time-to-feedback, measurability, and evidence quality. Include supplements, lifestyle changes, diet timing, sleep, exercise, recovery, tracking, environmental changes, or other independent experiments only when they are plausible for the user's record and constraints. For each experiment, state the hypothesis, what to do, duration, success metric, stop/avoid criteria, evidence basis, and expected ROI. Do not recommend unsafe self-treatment, prescription-only interventions, or experiments likely to obscure an active diagnostic workup.
 
-When the user wants profile-specific questions that would improve future runs if answered, use the `profile-question-report` skill to ask the highest-yield questions interactively and generate a paste-ready health-log entry draft under `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-health-log-entry.md`. The deliverable should be a concise first-person Markdown entry based on the user's answers, and all profile-linked external sources remain read-only.
+When the user wants profile-specific questions that would improve future runs if answered, use the `healthpilot-report-profile-question` skill to ask the highest-yield questions interactively and generate a paste-ready health-log entry draft under `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-health-log-entry.md`. The deliverable should be a concise first-person Markdown entry based on the user's answers, and all profile-linked external sources remain read-only.
 
 ## Important Notes
 
@@ -484,4 +492,4 @@ When the user wants profile-specific questions that would improve future runs if
 
 ## Maintenance
 
-Keep [README.md](/Users/tsilva/repos/tsilva/healthpilot/README.md) aligned with the current repo layout, runtime workflow, and observed data-source structures.
+Keep [README.md](README.md) aligned with the current repo layout, runtime workflow, and observed data-source structures.
