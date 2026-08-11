@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the required structure of a current-treatment report."""
+"""Validate the required structure of a Healthpilot treatment record."""
 
 from __future__ import annotations
 
@@ -9,8 +9,7 @@ from pathlib import Path
 
 
 REQUIRED_HEADINGS = (
-    "## Reconciliation summary",
-    "## Source coverage",
+    "## Current regimen at a glance",
     "## Current medications",
     "## Current supplements",
     "## Current non-medication treatments",
@@ -18,16 +17,13 @@ REQUIRED_HEADINGS = (
     "## Planned or recommended—not confirmed started",
     "## Unclear or conflicting current status",
     "## Recently stopped or completed",
+    "## Medication and supplement history",
     "## Reconciliation flags",
-    "## Evidence notes",
+    "## Evidence appendix",
+    "### Source coverage",
+    "### Evidence notes and limitations",
 )
-REQUIRED_METADATA = (
-    "**Report generated:**",
-    "**Profile:**",
-    "**Record cutoff:**",
-    "**Snapshot confidence:**",
-)
-ACTIVE_SECTION_RULES = {
+SECTION_RULES = {
     "## Current medications": "No current medications were identified in the available record.",
     "## Current supplements": "No current supplements were identified in the available record.",
     "## Current non-medication treatments": (
@@ -36,9 +32,14 @@ ACTIVE_SECTION_RULES = {
     "## Current monitoring and follow-up": (
         "No current monitoring or follow-up regimen was identified in the available record."
     ),
+    "## Medication and supplement history": (
+        "No additional historical medications or supplements were identified in the available record."
+    ),
 }
 PLACEHOLDER_RE = re.compile(r"\{[^{}]+\}|YYYY-MM-DD")
-DATA_ROW_RE = re.compile(r"^\|(?!\s*(?:---|Medication|Supplement|Treatment|Monitoring))", re.I)
+DATA_ROW_RE = re.compile(
+    r"^\|(?!\s*(?:---|Medication|Supplement|Treatment|Monitoring|Item)\s*\|)", re.I
+)
 
 
 def _section(text: str, heading: str) -> str:
@@ -50,9 +51,6 @@ def _section(text: str, heading: str) -> str:
 def validate(text: str) -> list[str]:
     errors: list[str] = []
 
-    for label in REQUIRED_METADATA:
-        if label not in text:
-            errors.append(f"missing required metadata: {label}")
     for heading in REQUIRED_HEADINGS:
         if heading not in text:
             errors.append(f"missing required heading: {heading}")
@@ -60,7 +58,7 @@ def validate(text: str) -> list[str]:
     if PLACEHOLDER_RE.search(text):
         errors.append("report still contains template placeholders")
 
-    for heading, empty_statement in ACTIVE_SECTION_RULES.items():
+    for heading, empty_statement in SECTION_RULES.items():
         if heading not in text:
             continue
         section = _section(text, heading)
@@ -70,36 +68,26 @@ def validate(text: str) -> list[str]:
                 f"{heading} must contain at least one data row or the explicit empty statement"
             )
 
-    if "### Clear conclusion" not in text:
-        errors.append("reconciliation summary must include ### Clear conclusion")
-    if "### Open question" not in text:
-        errors.append("reconciliation summary must include ### Open question")
+    if "**Clear conclusion:**" not in text:
+        errors.append("current regimen summary must include **Clear conclusion:**")
+    if "**Confirmation needed next:**" not in text:
+        errors.append("current regimen summary must include **Confirmation needed next:**")
 
     return errors
 
 
 def _self_test() -> None:
-    active_sections = []
-    for heading, empty_statement in ACTIVE_SECTION_RULES.items():
-        active_sections.extend([heading, empty_statement])
+    required_sections = []
+    for heading, empty_statement in SECTION_RULES.items():
+        required_sections.extend([heading, empty_statement])
 
     fixture = "\n".join(
         [
-            "# Current Medications and Treatments — Test User",
-            "**Report generated:** 2026-08-09 12:00 WEST",
-            "**Profile:** Test User",
-            "**Record cutoff:** 2026-08-08",
-            "**Snapshot confidence:** moderate",
-            "## Reconciliation summary",
-            "### Clear conclusion",
-            "- No confirmed items.",
-            "### Open question",
-            "- None.",
-            "## Source coverage",
-            "| Source | Status |",
-            "|---|---|",
-            "| Health log | available |",
-            *active_sections,
+            "# Treatment Record — Test User",
+            "## Current regimen at a glance",
+            "- **Clear conclusion:** No confirmed items.",
+            "- **Confirmation needed next:** None.",
+            *required_sections,
             "## Planned or recommended—not confirmed started",
             "- None.",
             "## Unclear or conflicting current status",
@@ -108,12 +96,17 @@ def _self_test() -> None:
             "- None.",
             "## Reconciliation flags",
             "- None identified from the available record.",
-            "## Evidence notes",
+            "## Evidence appendix",
+            "### Source coverage",
+            "| Source | Status |",
+            "|---|---|",
+            "| Health log | available |",
+            "### Evidence notes and limitations",
             "- Latest direct sources reviewed.",
         ]
     )
     assert validate(fixture) == []
-    assert validate(fixture.replace("**Record cutoff:**", "Record cutoff:"))
+    assert validate(fixture.replace("**Clear conclusion:**", "Clear conclusion:"))
     assert validate(fixture + "\n{unfilled placeholder}")
 
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Healthpilot Report: Treatment Record"
+  short_description: "Reconcile current and historical treatments"
+  default_prompt: "Use $healthpilot-report-treatment-record to reconcile the current regimen and treatment history for the selected live profile."

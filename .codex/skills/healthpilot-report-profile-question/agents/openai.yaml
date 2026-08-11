@@ -1,4 +1,0 @@
-interface:
-  display_name: "Healthpilot Report: Profile Questions"
-  short_description: "Ask high-yield questions and draft a health-log entry"
-  default_prompt: "Use $healthpilot-report-profile-question to ask the highest-yield unanswered questions for the selected live profile."

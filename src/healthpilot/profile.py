@@ -9,6 +9,7 @@ from typing import Any
 
 import yaml
 
+from healthpilot.evidence_hygiene import is_internal_path
 from healthpilot.paths import expand_home, profiles_dir
 
 SOURCE_FIELDS = (
@@ -48,7 +49,11 @@ def discover_profile_path(profile_ref: str, *, home_dir: Path) -> Path:
 def _sample_path(path: Path) -> list[str]:
     if path.is_dir():
         try:
-            return sorted(entry.name for entry in path.iterdir())[:5]
+            return sorted(
+                entry.name
+                for entry in path.iterdir()
+                if not is_internal_path(entry, source_root=path)
+            )[:5]
         except PermissionError:
             return []
     try:

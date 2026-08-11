@@ -68,24 +68,19 @@ COMPONENTS = (
 )
 
 REQUIRED_HEADINGS = (
-    "## Executive summary",
+    "## Lowest-scoring systems",
     "## Score meaning",
     "## Current status context",
-    "## Source coverage",
     "## Ranked system scores",
     "## Detailed organ and subsystem scores",
     "## Five lowest systems",
     "## Cross-system findings",
     "## Evidence gaps",
-    "## Safety notes",
-    "## Limitations",
-    "## Sources",
-)
-REQUIRED_METADATA = (
-    "**Report generated:**",
-    "**Profile:**",
-    "**Age / profile sex:**",
-    "**Record cutoff:**",
+    "## Evidence appendix",
+    "### Source coverage",
+    "### Safety notes",
+    "### Limitations",
+    "### Evidence references",
 )
 SYSTEM_ROW_RE = re.compile(
     r"^\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|\s*([0-9]+(?:\.[0-9]+)?)\s*/\s*10\s*\|"
@@ -109,9 +104,6 @@ def _valid_score(score: float) -> bool:
 def validate(text: str) -> list[str]:
     errors: list[str] = []
 
-    for label in REQUIRED_METADATA:
-        if label not in text:
-            errors.append(f"missing required metadata: {label}")
     for heading in REQUIRED_HEADINGS:
         if heading not in text:
             errors.append(f"missing required heading: {heading}")
@@ -184,17 +176,11 @@ def _self_test() -> None:
     fixture = "\n".join(
         [
             "# Organ and Bodily-System Health Report — Test User",
-            "**Report generated:** 2026-08-09 12:00 WEST",
-            "**Profile:** Test User",
-            "**Age / profile sex:** 40 / male",
-            "**Record cutoff:** 2026-08-08",
-            "## Executive summary",
+            "## Lowest-scoring systems",
             "- Test.",
             "## Score meaning",
             "- Test.",
             "## Current status context",
-            "- Test.",
-            "## Source coverage",
             "- Test.",
             "## Ranked system scores",
             *system_rows,
@@ -206,11 +192,14 @@ def _self_test() -> None:
             "- Test.",
             "## Evidence gaps",
             "- Test.",
-            "## Safety notes",
+            "## Evidence appendix",
+            "### Source coverage",
             "- Test.",
-            "## Limitations",
+            "### Safety notes",
             "- Test.",
-            "## Sources",
+            "### Limitations",
+            "- Test.",
+            "### Evidence references",
             "- Test.",
         ]
     )

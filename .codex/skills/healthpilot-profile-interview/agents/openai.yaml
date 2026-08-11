@@ -1,0 +1,4 @@
+interface:
+  display_name: "Healthpilot Profile Interview"
+  short_description: "Ask high-yield questions and draft a log entry"
+  default_prompt: "Use $healthpilot-profile-interview to ask the highest-yield unanswered questions for the selected live profile and draft a health-log entry."

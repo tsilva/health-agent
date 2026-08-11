@@ -63,13 +63,17 @@ Repo-local `profiles/*.yaml` are development references only. They are not the c
 
 The normal user-facing entrypoint for this repo is the agent invoking the relevant project skill, usually `healthpilot-report-what-next`.
 
-All user-facing report skills use the `healthpilot-report-` prefix. They write to `.output/{profile_slug}/` with filenames shaped as `{YYYY-MM-DD}-{profile_slug}-{artifact_slug}.md`. Use the local report date and canonical profile slug; same-day regeneration refreshes the canonical path instead of creating an alternate name. A report-specific disambiguator such as a root-cause query slug may follow the artifact slug.
+All user-facing report skills use the `healthpilot-report-` prefix. Write reports to `.output/{profile_slug}/{report_bucket}/` with filenames shaped as `{YYYY-MM-DD}-{profile_slug}-{artifact_slug}.md`. Canonical buckets are `what-next`, `root-cause`, `treatment-record`, `organ-system-health`, `mortality-risk`, `doctor-appointment`, `profile-interview`, and `daily-plan`. Use the local report date and canonical profile slug; same-day regeneration refreshes the canonical path. A query or clinician slug may disambiguate report identity.
+
+Markdown reports follow `.codex/skills/_shared/healthpilot-report-contract.md`: required metadata and a decision-first section appear before change tracking and analysis, while source coverage, methods, evidence references, unavailable sources, and limitations live in the evidence appendix. Use report-safe evidence IDs from the v2 evidence packet and never expose absolute local paths or parser metadata in user-facing artifacts.
 
 For requests to rank the most likely causes of death or estimate personalized cause-specific mortality probabilities, use the `healthpilot-report-mortality-risk` skill. It must consider every available configured source category and calibrate against current age/sex/geography-matched official mortality data.
 
-For requests for the person's current medications, supplements, therapies, devices, lifestyle treatments, monitoring, or overall active regimen, use the `healthpilot-report-current-treatment` skill. Keep recommendations, unconfirmed plans, conflicts, and recently completed treatments separate from the evidence-supported current regimen.
+For requests for the person's current or past medications, supplements, therapies, devices, lifestyle treatments, monitoring, active regimen, medication reconciliation, or treatment history, use the `healthpilot-report-treatment-record` skill. Put the current regimen first and keep planned, unclear, completed, and historical items visibly separate.
 
 For requests to score or rank the current health of organs and bodily systems, use the `healthpilot-report-organ-system-health` skill. Score every canonical system from 0 to 10, sort lowest to highest, consider every available source category, and keep health evidence separate from evidence confidence so missing data is not presented as good health.
+
+For preparation for a doctor, clinician, specialist, consultation, or follow-up appointment, use the `healthpilot-report-doctor-appointment` skill. It must produce exactly two PDFs: a facts-only clinician summary constrained to one page and a patient briefing of any necessary length with selected printable supporting records merged into it. When the named clinician can be tied to a completed prior visit, prominently distinguish only material facts that are new since the latest such visit. Keep hypotheses, questions, requests, and treatment discussions in the patient PDF; the clinician PDF must remain concise, neutral, attributed, and free of diagnostic suggestions.
 
 For “what should I do next?” requests, prefer the skill-first path:
 
@@ -125,7 +129,7 @@ Generated notes or reports belong under `.output/`.
 
 When the user wants an unresolved issue review, a prescriptive “what do I do next?” answer, or a refresh after new labs/exams/health-log updates, maintain repo-local state instead of stopping at a one-off memo.
 
-For the normal user-facing experience, prefer generating a single dated what-next report under `.output/` that can include both:
+For the normal user-facing experience, prefer generating a single dated what-next report under `.output/{profile_slug}/what-next/` that can include both:
 
 - unresolved issue actions
 - broader health optimization actions supported by the record
@@ -136,14 +140,14 @@ Treat `.state/` as internal support for memory and ranking, not as the primary u
 1. the user updates the real-world record outside this repo
 2. parser repos refresh the configured output folders
 3. ask the agent to use the `healthpilot-report-what-next` skill for the selected live profile
-4. read the refreshed plan under `.output/`
+4. read the refreshed plan under `.output/{profile_slug}/what-next/`
 
 Use these artifacts:
 
 - `SourceSnapshot`: `.state/profiles/{profile_slug}/sources.json`
 - `IssueStore`: `.state/profiles/{profile_slug}/issues.json`
 - `ActionStore`: `.state/profiles/{profile_slug}/actions.json`
-- `ActionPlanReport`: `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-action-plan.md`
+- `ActionPlanReport`: `.output/{profile_slug}/what-next/{YYYY-MM-DD}-{profile_slug}-action-plan.md`
 
 Issue records should contain:
 
@@ -167,7 +171,7 @@ Optional but encouraged fields:
 - `priority_context`
 - `recent_updates`
 
-Use the local CLI only when deterministic helper behavior is useful during implementation or maintenance:
+Use the local CLI only when deterministic evidence and state refresh behavior is useful during implementation or maintenance. It does not render the user-facing action plan:
 
 ```bash
 python3 -m healthpilot plan --profile <profile-name>
@@ -360,7 +364,7 @@ Rules:
 - Treat all lifestyle Markdown files as read-only source inputs.
 - Use `lifestyle_constraints_md_path` as the authority when schedule, food, exercise, symptoms, weight goals, and preferences conflict.
 - Do not copy the full constraints into generated daily plans; reference the sidecar constraint source and include only brief conflict notes.
-- Generated lifestyle drafts belong under `.output/{profile_slug}/`.
+- Generated lifestyle drafts belong under `.output/{profile_slug}/daily-plan/`.
 
 Use strategy:
 
@@ -461,16 +465,17 @@ When the task is an unresolved issue review or a follow-up after new parsed evid
 - refresh `.state/profiles/{profile_slug}/issues.json`
 - refresh `.state/profiles/{profile_slug}/actions.json`
 - refresh `.state/profiles/{profile_slug}/sources.json`
-- regenerate `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-action-plan.md`
-- make each active issue end with:
+- regenerate `.output/{profile_slug}/what-next/{YYYY-MM-DD}-{profile_slug}-action-plan.md`
+- keep the complete operator fields in issue/action state:
   - `Do next`
   - `Why`
   - `What to ask for`
   - `What result to return with`
+- in the report, present those fields once in ranked actions; issue evidence sections should reference the action rank instead of repeating them
 
-When the user asks more generally what to do next, use the `healthpilot-report-what-next` skill path and generate a dated report under `.output/{profile_slug}/` that ranks the strongest next actions across both unresolved issues and optimization opportunities. Do not limit the report to unresolved diagnoses if the broader record supports concrete optimization steps.
+When the user asks more generally what to do next, use the `healthpilot-report-what-next` skill path and generate a dated report under `.output/{profile_slug}/what-next/` that ranks the strongest next actions across both unresolved issues and optimization opportunities. Do not limit the report to unresolved diagnoses if the broader record supports concrete optimization steps.
 
-Every what-next report must start its substantive content with a current status summary before source status or ranked actions. Include:
+Every what-next report must start its substantive content with a current status summary followed by a `Now / Next / Later` action board. Put source coverage in the evidence appendix. Include:
 
 - `Current active conditions`: active or monitoring conditions/issues with confidence frame and working conclusion.
 - `Current medication / supplement stack`: the current stack if directly supported by the parsed record, or a clear reconciliation note with the recent medication/supplement evidence used.
@@ -479,7 +484,7 @@ This lets the user confirm whether the report took current status into account b
 
 Every what-next report should also include `Self-experiments ranked by ROI` unless there are no defensible self-directed experiments to recommend. These should be researched, tailored to the profile, and ranked by expected benefit relative to effort, cost, safety, reversibility, time-to-feedback, measurability, and evidence quality. Include supplements, lifestyle changes, diet timing, sleep, exercise, recovery, tracking, environmental changes, or other independent experiments only when they are plausible for the user's record and constraints. For each experiment, state the hypothesis, what to do, duration, success metric, stop/avoid criteria, evidence basis, and expected ROI. Do not recommend unsafe self-treatment, prescription-only interventions, or experiments likely to obscure an active diagnostic workup.
 
-When the user wants profile-specific questions that would improve future runs if answered, use the `healthpilot-report-profile-question` skill to ask the highest-yield questions interactively and generate a paste-ready health-log entry draft under `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-health-log-entry.md`. The deliverable should be a concise first-person Markdown entry based on the user's answers, and all profile-linked external sources remain read-only.
+When the user wants profile-specific questions that would improve future runs if answered, use the `healthpilot-profile-interview` skill to ask the highest-yield questions interactively and generate a paste-ready health-log entry draft under `.output/{profile_slug}/profile-interview/{YYYY-MM-DD}-{profile_slug}-health-log-entry.md`. The deliverable should be a concise first-person Markdown entry based on the user's answers, and all profile-linked external sources remain read-only.
 
 ## Important Notes
 

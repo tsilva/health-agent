@@ -246,7 +246,7 @@ def _external_source_snapshot(paths: dict[str, Path]) -> dict[str, str]:
     return snapshot
 
 
-def test_plan_creates_per_profile_state_and_report_on_first_run(tmp_path: Path) -> None:
+def test_plan_creates_per_profile_state_without_rendering_report(tmp_path: Path) -> None:
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
     home_dir = tmp_path / "home"
@@ -295,17 +295,12 @@ def test_plan_creates_per_profile_state_and_report_on_first_run(tmp_path: Path) 
     )
     actions = json.loads((profile_state_dir / "actions.json").read_text())
     assert actions["actions"] == []
-
-    report = next((repo_root / ".output" / "test-user").glob("????-??-??-test-user-action-plan.md"))
-    report_text = report.read_text(encoding="utf-8")
-    assert report_text.index("## Current Status Summary") < report_text.index("## Source Status")
-    assert "### Current Active Conditions" in report_text
-    assert "### Current Medication / Supplement Stack" in report_text
-    assert "No active or monitoring conditions are currently tracked in issue state." in report_text
-    assert "Current Evidence Snapshot" in report_text
-    assert "Recent results: 2026-04-11 CRP 0.3mg/L" in report_text
-    assert "Old file-order tail" not in report_text
-    assert "No active actions. All tracked issues are resolved or parked." in report_text
+    assert any(item["label"] == "CRP" for item in packet["labs"]["latest_results"])
+    assert not list(
+        (repo_root / ".output" / "test-user").glob(
+            "????-??-??-test-user-action-plan.md"
+        )
+    )
 
 
 def test_plan_uses_profile_issue_store_and_dedupes_actions(tmp_path: Path) -> None:
@@ -356,10 +351,26 @@ def test_plan_uses_profile_issue_store_and_dedupes_actions(tmp_path: Path) -> No
     assert sorted(actions["actions"][0]["related_issues"]) == ["issue-a", "issue-b"]
     assert actions["actions"][0]["source_citations"] == ["/tmp/source.md"]
 
-    report = next((repo_root / ".output" / "test-user").glob("????-??-??-test-user-action-plan.md"))
-    report_text = report.read_text(encoding="utf-8")
-    assert "Issue A (`issue-a`): active; differential; Working conclusion for test coverage." in report_text
-    assert "Started magnesium supplement at night and stopped pantoprazole." in report_text
+    packet = json.loads(
+        (
+            repo_root
+            / ".state"
+            / "profiles"
+            / "test-user"
+            / "evidence-packet.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert any(
+        "magnesium supplement" in item["text"]
+        for item in packet["health_log"][
+            "medication_supplement_mentions_needing_review"
+        ]
+    )
+    assert not list(
+        (repo_root / ".output" / "test-user").glob(
+            "????-??-??-test-user-action-plan.md"
+        )
+    )
 
 
 def test_evidence_packet_creates_factual_packet_from_all_sources(tmp_path: Path) -> None:
@@ -400,6 +411,9 @@ def test_evidence_packet_creates_factual_packet_from_all_sources(tmp_path: Path)
     assert exit_code == 0
     packet_path = repo_root / ".state" / "profiles" / "test-user" / "evidence-packet.json"
     packet = json.loads(packet_path.read_text(encoding="utf-8"))
+    assert packet["schema_version"] == 2
+    assert len(packet["snapshot_id"]) == 16
+    assert packet["citation_index"]
     assert packet["profile_slug"] == "test-user"
     assert packet["source_freshness"]["labs_path"]["status"] == "available"
     assert packet["source_freshness"]["exams_path"]["status"] == "available"
@@ -408,6 +422,10 @@ def test_evidence_packet_creates_factual_packet_from_all_sources(tmp_path: Path)
     assert packet["lifestyle"]["lifestyle_constraints_md_path"]["status"] == "available"
     assert "2026-04-15" in packet["labs"]["latest_lab_dates"]
     assert any(item["label"] == "Hemoglobin" for item in packet["labs"]["abnormal_markers"])
+    assert all(
+        item["citation_id"].startswith("[LAB:")
+        for item in packet["labs"]["latest_results"]
+    )
     assert {"label": "Ferritin", "date_count": 2} in packet["labs"]["trend_candidates"]
     assert packet["exams"]["latest_exam_summaries"][0]["path"].endswith("summary.md")
     assert any(
@@ -418,6 +436,75 @@ def test_evidence_packet_creates_factual_packet_from_all_sources(tmp_path: Path)
         "magnesium supplement" in item["text"]
         for item in packet["health_log"]["medication_supplement_mentions_needing_review"]
     )
+
+
+def test_evidence_packet_filters_parser_comments_and_hidden_artifacts(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    home_dir = tmp_path / "home"
+    paths = _write_profile(home_dir)
+    (paths["health_log_dir"] / "health_log.md").write_text(
+        "<!-- DEPS: internal parser metadata\n"
+        "still internal -->\n"
+        "# Visible health overview\n"
+        "Fatigue improved after sleep.\n",
+        encoding="utf-8",
+    )
+    (paths["entries_dir"] / ".state.json").write_text(
+        '{"medication": "internal"}\n',
+        encoding="utf-8",
+    )
+    (paths["exams_dir"] / ".DS_Store").write_bytes(b"metadata")
+
+    assert main(
+        [
+            "--repo-root",
+            str(repo_root),
+            "--home-dir",
+            str(home_dir),
+            "evidence-packet",
+            "--profile",
+            "test-user",
+        ]
+    ) == 0
+
+    packet = json.loads(
+        (repo_root / ".state" / "profiles" / "test-user" / "evidence-packet.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert (
+        packet["source_snapshot"]["sources"]["health_log_path"]["details"]["headline"]
+        == "# Visible health overview"
+    )
+    serialized = json.dumps(packet)
+    assert "DEPS:" not in serialized
+    assert ".DS_Store" not in serialized
+    assert ".state.json" not in serialized
+    snapshot_id = packet["snapshot_id"]
+
+    (paths["entries_dir"] / ".state.json").write_text(
+        '{"medication": "changed internal metadata"}\n',
+        encoding="utf-8",
+    )
+    (paths["exams_dir"] / ".DS_Store").write_bytes(b"changed metadata")
+    assert main(
+        [
+            "--repo-root",
+            str(repo_root),
+            "--home-dir",
+            str(home_dir),
+            "evidence-packet",
+            "--profile",
+            "test-user",
+        ]
+    ) == 0
+    refreshed = json.loads(
+        (repo_root / ".state" / "profiles" / "test-user" / "evidence-packet.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert refreshed["snapshot_id"] == snapshot_id
 
 
 def test_plan_extracts_current_stack_from_health_log_overview(tmp_path: Path) -> None:
@@ -463,11 +550,11 @@ def test_plan_extracts_current_stack_from_health_log_overview(tmp_path: Path) ->
         "Pea protein powder 10g daily, w/ breakfast",
     ]
 
-    report = next((repo_root / ".output" / "test-user").glob("????-??-??-test-user-action-plan.md"))
-    report_text = report.read_text(encoding="utf-8")
-    assert "Current stack extracted from explicit health-log stack section" in report_text
-    assert "Venex 900mg 2x daily, w/ breakfast and dinner" in report_text
-    assert "No current medication or supplement stack was captured" not in report_text
+    assert not list(
+        (repo_root / ".output" / "test-user").glob(
+            "????-??-??-test-user-action-plan.md"
+        )
+    )
 
 
 def test_selfdecode_genotypes_uses_cache_without_token(tmp_path: Path, capsys) -> None:
@@ -683,7 +770,7 @@ def test_evidence_packet_does_not_write_external_sources(tmp_path: Path) -> None
     assert _external_source_snapshot(paths) == before
 
 
-def test_plan_reports_missing_sources(tmp_path: Path) -> None:
+def test_plan_records_missing_sources_without_rendering_report(tmp_path: Path) -> None:
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
     home_dir = tmp_path / "home"
@@ -702,9 +789,15 @@ def test_plan_reports_missing_sources(tmp_path: Path) -> None:
     )
 
     assert exit_code == 0
-    report = next((repo_root / ".output" / "test-user").glob("????-??-??-test-user-action-plan.md"))
-    report_text = report.read_text(encoding="utf-8")
-    assert "`exams_path`: missing" in report_text
+    sources = json.loads(
+        (repo_root / ".state" / "profiles" / "test-user" / "sources.json").read_text()
+    )
+    assert sources["sources"]["exams_path"]["status"] == "missing"
+    assert not list(
+        (repo_root / ".output" / "test-user").glob(
+            "????-??-??-test-user-action-plan.md"
+        )
+    )
 
 
 def test_plan_rescans_updated_sources(tmp_path: Path) -> None:
@@ -787,10 +880,11 @@ def test_plan_captures_lifestyle_markdown_sources(tmp_path: Path) -> None:
     constraint_snippets = sources["sources"]["lifestyle_constraints_md_path"]["details"]["relevant_snippets"]
     assert any("Foods to avoid" in snippet for snippet in constraint_snippets)
 
-    report = next((repo_root / ".output" / "test-user").glob("????-??-??-test-user-action-plan.md"))
-    report_text = report.read_text(encoding="utf-8")
-    assert "`lifestyle_constraints_md_path`: available" in report_text
-    assert "Markdown headings" in report_text
+    assert not list(
+        (repo_root / ".output" / "test-user").glob(
+            "????-??-??-test-user-action-plan.md"
+        )
+    )
 
 
 def test_plan_reports_lifestyle_markdown_source_statuses(tmp_path: Path) -> None:
@@ -874,7 +968,13 @@ def test_daily_plan_applies_sidecar_constraints_without_copying_them(tmp_path: P
     )
 
     assert exit_code == 0
-    report_path = repo_root / ".output" / "test-user" / "2026-04-16-test-user-daily-plan.md"
+    report_path = (
+        repo_root
+        / ".output"
+        / "test-user"
+        / "daily-plan"
+        / "2026-04-16-test-user-daily-plan.md"
+    )
     report_text = report_path.read_text(encoding="utf-8")
     assert "banana" not in report_text
     assert "excluded because they matched the sidecar constraint source" in report_text
@@ -1021,6 +1121,8 @@ def test_docs_match_skill_first_workflow() -> None:
     assert "`unresolved-issue-review`" not in readme
     assert "The normal user-facing entrypoint for this repo is the agent invoking the relevant project skill" in agents
     assert "The skill itself is the primary interface." in skill
+    assert "The CLI does not render the user-facing action plan." in skill
+    assert "refresh deterministic evidence and state" in readme
 
     for content in (readme, agents, skill):
         assert "outcome-update --profile" not in content
@@ -1031,36 +1133,59 @@ def test_report_skills_share_naming_and_output_contract() -> None:
     repo_root = Path(__file__).resolve().parents[1]
     skills_root = repo_root / ".codex" / "skills"
     expected_filenames = {
-        "healthpilot-report-what-next": "{YYYY-MM-DD}-{profile_slug}-action-plan.md",
+        "healthpilot-report-what-next": (
+            "what-next",
+            ("{YYYY-MM-DD}-{profile_slug}-action-plan.md",),
+        ),
         "healthpilot-report-root-cause": (
-            "{YYYY-MM-DD}-{profile_slug}-root-cause-{query_slug}.md"
+            "root-cause",
+            ("{YYYY-MM-DD}-{profile_slug}-root-cause-{query_slug}.md",),
         ),
-        "healthpilot-report-profile-question": (
-            "{YYYY-MM-DD}-{profile_slug}-health-log-entry.md"
-        ),
-        "healthpilot-report-medication-history": (
-            "{YYYY-MM-DD}-{profile_slug}-medication-history.md"
-        ),
-        "healthpilot-report-current-treatment": (
-            "{YYYY-MM-DD}-{profile_slug}-current-treatment.md"
+        "healthpilot-report-treatment-record": (
+            "treatment-record",
+            ("{YYYY-MM-DD}-{profile_slug}-treatment-record.md",),
         ),
         "healthpilot-report-mortality-risk": (
-            "{YYYY-MM-DD}-{profile_slug}-mortality-risk.md"
+            "mortality-risk",
+            ("{YYYY-MM-DD}-{profile_slug}-mortality-risk.md",),
         ),
         "healthpilot-report-organ-system-health": (
-            "{YYYY-MM-DD}-{profile_slug}-organ-system-health.md"
+            "organ-system-health",
+            ("{YYYY-MM-DD}-{profile_slug}-organ-system-health.md",),
+        ),
+        "healthpilot-report-doctor-appointment": (
+            "doctor-appointment",
+            (
+                "{YYYY-MM-DD}-{profile_slug}-appointment-{clinician_slug}-doctor.pdf",
+                "{YYYY-MM-DD}-{profile_slug}-appointment-{clinician_slug}-patient.pdf",
+            ),
         ),
     }
 
-    for skill_name, filename in expected_filenames.items():
+    for skill_name, (bucket, filenames) in expected_filenames.items():
         skill_dir = skills_root / skill_name
         skill_text = (skill_dir / "SKILL.md").read_text(encoding="utf-8")
         agent_text = (skill_dir / "agents" / "openai.yaml").read_text(encoding="utf-8")
 
         assert f"name: {skill_name}" in skill_text
-        assert "- directory: `.output/{profile_slug}/`" in skill_text
-        assert f"- filename: `{filename}`" in skill_text
+        assert f"- directory: `.output/{{profile_slug}}/{bucket}/`" in skill_text
+        for filename in filenames:
+            assert f"- filename: `{filename}`" in skill_text
         assert f"${skill_name}" in agent_text
+
+    interview_name = "healthpilot-profile-interview"
+    interview_dir = skills_root / interview_name
+    interview_skill = (interview_dir / "SKILL.md").read_text(encoding="utf-8")
+    interview_agent = (interview_dir / "agents" / "openai.yaml").read_text(
+        encoding="utf-8"
+    )
+    assert f"name: {interview_name}" in interview_skill
+    assert "- directory: `.output/{profile_slug}/profile-interview/`" in interview_skill
+    assert (
+        "- filename: `{YYYY-MM-DD}-{profile_slug}-health-log-entry.md`"
+        in interview_skill
+    )
+    assert f"${interview_name}" in interview_agent
 
     legacy_names = {
         "what-next-report",
@@ -1070,5 +1195,9 @@ def test_report_skills_share_naming_and_output_contract() -> None:
         "current-treatment-report",
         "mortality-risk-report",
         "organ-system-health-report",
+        "doctor-appointment-report",
+        "healthpilot-report-profile-question",
+        "healthpilot-report-medication-history",
+        "healthpilot-report-current-treatment",
     }
     assert not any((skills_root / name).exists() for name in legacy_names)

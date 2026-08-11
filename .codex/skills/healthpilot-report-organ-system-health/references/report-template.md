@@ -2,65 +2,53 @@
 
 **Report generated:** {YYYY-MM-DD HH:MM TZ}
 **Profile:** {profile_name}
-**Age / profile sex:** {age} / {sex}
 **Record cutoff:** {latest evidence date reviewed}
+**Evidence snapshot:** {snapshot_id} at {snapshot_generated_at}
+**Previous comparable report:** {filename or none}
+**Source-gap severity:** {none | minor | material | critical}
 
-> Scores use a nonvalidated Healthpilot prioritization rubric. They are not diagnoses, probabilities, clinical grades, or comparisons with other people. Low-confidence scores may represent missing evidence rather than impaired health.
+> Scores use a nonvalidated Healthpilot prioritization rubric. They are not diagnoses, probabilities, clinical grades, or comparisons with other people.
 
-## Executive summary
+## Lowest-scoring systems
 
-- **Lowest-scoring systems:** {three systems and scores}
-- **Main impairment-driven finding:** {finding or none established}
-- **Main uncertainty-driven score:** {system and missing evidence}
-- **Most valuable next data point:** {test, exam, or reconciliation item}
+| Rank | System | Score | Plausible range | Confidence frame | Evidence confidence | Driver | Urgency | Next useful data point |
+|---:|---|---:|---:|---|---|---|---|---|
+| 1 | {system} | {N.N}/10 | {L–H} | {frame} | {high/moderate/low} | {impairment/uncertainty/mixed} | {urgency} | {test or reconciliation} |
+
+## Changes since previous report
+
+{For a baseline, use the exact baseline statement. Otherwise classify Added, Changed, Resolved, and Unchanged score changes with current evidence IDs.}
 
 ## Score meaning
 
 - `10` = exceptional directly evidenced health across structure, function, symptoms, disease control, and trajectory.
 - `5` = neutral/indeterminate midpoint when evidence is missing or mixed; it does not mean 50% healthy.
 - `0` = directly evidenced acute critical failure.
-- Systems are sorted from lowest to highest health score. Confidence and plausible range must be read with the score.
+- Read every score with its plausible range and evidence confidence.
 
 ## Current status context
 
 ### Active conditions
 
-{List active/monitoring conditions with confidence frames.}
+{Active or monitoring conditions with confidence frames.}
 
 ### Current medications and treatments considered
 
-{Summarize the reconciled current regimen or the evidence needing reconciliation.}
-
-## Source coverage
-
-| Source | Status | Freshness / span | Systems informed | Limitation or uncertainty impact |
-|---|---|---|---|---|
-| Live profile / demographics | {status} | {date} | {systems} | {limitation} |
-| Labs | {status} | {span} | {systems} | {limitation} |
-| Standalone exams | {status} | {span} | {systems} | {limitation} |
-| Health log | {status} | {span} | {systems} | {limitation} |
-| Genetics / SelfDecode cache | {status} | {date} | {systems or none} | {limitation} |
-| Schedule | {status} | {date} | {systems or none} | {limitation} |
-| Nutrition | {status} | {date} | {systems or none} | {limitation} |
-| Exercise | {status} | {date} | {systems or none} | {limitation} |
-| Lifestyle constraints | {status} | {date} | {systems or none} | {limitation} |
-| Prior Healthpilot state | {status} | {date} | {systems or none} | {limitation} |
+{Reconciled current regimen or evidence needing reconciliation.}
 
 ## Ranked system scores
 
 | Rank | Organ/system | Health score | Plausible range | Evidence confidence | Driver | Main evidence or gap |
 |---:|---|---:|---:|---|---|---|
-| 1 | {lowest canonical system} | {N.N}/10 | {L–H} | {High/Moderate/Low} | {driver} | {evidence} |
-| … | {continue all 16 canonical systems in ascending score order} | {N.N}/10 | {L–H} | {confidence} | {driver} | {evidence} |
+| 1 | {lowest canonical system} | {N.N}/10 | {L–H} | {confidence} | {driver} | {safe citation or gap} |
+| … | {all 16 canonical systems in ascending score order} | {N.N}/10 | {L–H} | {confidence} | {driver} | {evidence} |
 | 16 | {highest canonical system} | {N.N}/10 | {L–H} | {confidence} | {driver} | {evidence} |
 
 ## Detailed organ and subsystem scores
 
 | Parent system | Organ or subsystem | Health score | Plausible range | Evidence confidence | Driver | Main evidence or gap |
 |---|---|---:|---:|---|---|---|
-| {parent} | {required organ/subsystem from inventory} | {N.N}/10 | {L–H} | {confidence} | {driver} | {evidence} |
-
-{Include every required inventory row and add evidence-supported extra organs.}
+| {parent} | {required organ/subsystem} | {N.N}/10 | {L–H} | {confidence} | {driver} | {evidence} |
 
 ## Five lowest systems
 
@@ -68,38 +56,44 @@
 
 - **Working conclusion:** {conclusion}
 - **Confidence frame:** {clear conclusion | likely diagnosis | differential | open question}
+- **Evidence confidence:** {high | moderate | low}
+- **Urgency:** {immediate | soon | routine | monitoring}
 - **Driver:** {impairment-driven | uncertainty-driven | mixed | healthy-evidenced}
 - **Dimension scores:** structure {N}/2; function {N}/2; symptoms/impact {N}/2; disease/control {N}/2; trajectory/reserve {N}/2
-- **Observed supporting evidence:** {dated evidence}
-- **Reassuring or contradicting evidence:** {dated evidence}
+- **Observed supporting evidence:** {dated evidence IDs}
+- **Reassuring or contradicting evidence:** {dated evidence IDs}
 - **Missing data that would change the score:** {data}
-- **Next best test, monitoring step, or specialist discussion:** {specific action and specialist type if appropriate}
+- **Next step:** {test, monitoring step, or specialist discussion}
 - **Result that would most change the score:** {result}
 
 {Repeat for ranks 2–5.}
 
 ## Cross-system findings
 
-- {Systemic signal, primary scoring location, downstream relevance, and how double-counting was avoided.}
+- {Systemic signal, primary scoring location, downstream relevance, and double-counting control.}
 
 ## Evidence gaps
 
 1. {Highest-impact gap and affected systems.}
-2. {Gap.}
-3. {Gap.}
 
-## Safety notes
+## Evidence appendix
 
-- {Urgent red flag if present, otherwise `No acute organ-failure signal was identified in the available record.`}
+### Source coverage
 
-## Limitations
+| Source | Status | Freshness / span | Systems informed | Limitation or uncertainty impact |
+|---|---|---|---|---|
+| {source} | {available/missing/unreadable/not configured} | {date or span} | {systems} | {limitation} |
 
-- {Unavailable or stale sources.}
-- {Explain uncertainty-driven midpoint scores.}
-- {Explain that this is current health, not lifetime risk or prognosis.}
-- {Explain why scores should not be compared across people.}
+**Unavailable sources:** {list, or `None`}
 
-## Sources
+### Safety notes
 
-- {Direct local source citations with dates/paths.}
-- {Current authoritative external sources used for high-impact interpretations, if any.}
+- {Urgent red flag, or `No acute organ-failure signal was identified in the available record.`}
+
+### Limitations
+
+- {Missing evidence, uncertainty scoring, current-health horizon, and noncomparability across people.}
+
+### Evidence references
+
+- {Report-safe evidence ID}: {dated evidence label; never an absolute path}

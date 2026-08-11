@@ -13,7 +13,7 @@ Treat every score as a nonvalidated Healthpilot decision-support rating, not a d
 
 1. Follow the live-profile selection and source-validation rules in `AGENTS.md`.
 2. Treat all profile-linked external sources as read-only.
-3. Write the report under `.output/{profile_slug}/`.
+3. Write the report under `.output/{profile_slug}/organ-system-health/`.
 4. Use `.state/` only as retrieval support; verify material conclusions in canonical sources.
 5. Distinguish observed evidence, inference, and missing data.
 6. Use age- and sex-appropriate interpretation from the profile. Cite current authoritative evidence when a high-impact interpretation depends on external guidelines or ranges not already supplied by the record.
@@ -97,17 +97,19 @@ Apply these controls:
 ## Report Requirements
 
 Use [references/report-template.md](references/report-template.md) as the starting structure.
+Read [../_shared/healthpilot-report-contract.md](../_shared/healthpilot-report-contract.md) and apply it in full.
 
 The report must contain:
 
-1. score meaning and methodology
-2. source coverage and freshness
-3. exactly 16 canonical system scores sorted lowest to highest
-4. all core organ/subsystem scores from the inventory
-5. detailed explanations for the five lowest system scores
-6. cross-system findings with double-counting controls
-7. missing data that would most change scores
-8. safety notes and limitations
+1. `Lowest-scoring systems` decision table with the bottom five, evidence confidence, driver, urgency, and next useful data point
+2. `Changes since previous report`
+3. score meaning and methodology
+4. exactly 16 canonical system scores sorted lowest to highest
+5. all core organ/subsystem scores from the inventory
+6. detailed explanations for the five lowest system scores
+7. cross-system findings with double-counting controls
+8. missing data that would most change scores
+9. an evidence appendix containing source coverage, unavailable sources, safety notes, limitations, and report-safe citations
 
 For each of the five lowest-scoring systems, state:
 
@@ -134,17 +136,22 @@ Use `clear conclusion` only for directly established findings, `likely diagnosis
 
 Follow the common Healthpilot report convention:
 
-- directory: `.output/{profile_slug}/`
+- directory: `.output/{profile_slug}/organ-system-health/`
 - filename: `{YYYY-MM-DD}-{profile_slug}-organ-system-health.md`
-- canonical path: `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-organ-system-health.md`
+- canonical path: `.output/{profile_slug}/organ-system-health/{YYYY-MM-DD}-{profile_slug}-organ-system-health.md`
 
 Use the local report date and canonical profile slug. If regenerating on the same date, refresh the canonical file instead of creating an alternate filename.
 
 Validate the finished report:
 
 ```bash
+python3 -m healthpilot validate-report \
+  --type organ-system-health \
+  --report .output/{profile_slug}/organ-system-health/{YYYY-MM-DD}-{profile_slug}-organ-system-health.md \
+  [--previous .output/{profile_slug}/organ-system-health/{previous-filename}]
+
 python3 .codex/skills/healthpilot-report-organ-system-health/scripts/validate_report.py \
-  .output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-organ-system-health.md
+  .output/{profile_slug}/organ-system-health/{YYYY-MM-DD}-{profile_slug}-organ-system-health.md
 ```
 
 Fix every validator error. In the user-facing answer, link the report and summarize the lowest three systems, whether low scores reflect impairment or uncertainty, unavailable sources, and the single most valuable next data point.

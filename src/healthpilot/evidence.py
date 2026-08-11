@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from healthpilot.evidence_hygiene import is_internal_path, visible_lines
 from healthpilot.lifestyle import LIFESTYLE_SOURCE_FIELDS, summarize_markdown_source
 from healthpilot.paths import expand_home
 from healthpilot.profile import ProfileContext
@@ -21,7 +22,11 @@ def _utc_timestamp(value: float | None) -> str | None:
 def _latest_mtime(path: Path) -> float | None:
     try:
         if path.is_dir():
-            mtimes = [entry.stat().st_mtime for entry in path.iterdir()]
+            mtimes = [
+                entry.stat().st_mtime
+                for entry in path.iterdir()
+                if not is_internal_path(entry, source_root=path)
+            ]
             return max(mtimes, default=path.stat().st_mtime)
         return path.stat().st_mtime
     except OSError:
@@ -34,14 +39,13 @@ def _truthy(value: str | None) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "y"}
 
 
-def _clean_line(value: str) -> str | None:
-    cleaned = value.strip()
-    return cleaned or None
-
-
 def _recent_files(path: Path, *, limit: int = 5) -> list[str]:
     try:
-        files = [entry for entry in path.iterdir()]
+        files = [
+            entry
+            for entry in path.iterdir()
+            if entry.is_file() and not is_internal_path(entry, source_root=path)
+        ]
     except OSError:
         return []
     files.sort(key=lambda entry: entry.stat().st_mtime, reverse=True)
@@ -115,10 +119,9 @@ def _summarize_health_log(source_path: Path) -> dict[str, Any]:
     if health_log_path.exists():
         try:
             with health_log_path.open("r", encoding="utf-8", errors="ignore") as handle:
-                for line in handle:
-                    headline = _clean_line(line)
-                    if headline:
-                        break
+                for _, line in visible_lines(handle):
+                    headline = line
+                    break
         except OSError:
             headline = None
 

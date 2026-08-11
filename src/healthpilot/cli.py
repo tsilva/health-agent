@@ -1,13 +1,14 @@
-"""CLI for the rescan-driven healthpilot planning workflow."""
+"""CLI for deterministic Healthpilot evidence and state refreshes."""
 
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from healthpilot.actions import build_action_queue_payload, render_plan_report
+from healthpilot.actions import build_action_queue_payload
 from healthpilot.evidence import build_evidence_snapshot
 from healthpilot.evidence_packet import (
     build_evidence_packet,
@@ -22,10 +23,11 @@ from healthpilot.issues import (
 )
 from healthpilot.jsonio import write_json
 from healthpilot.lifestyle import render_daily_plan
+from healthpilot.output_migration import migrate_output_layout
 from healthpilot.paths import (
     ensure_repo_dirs,
-    profile_output_path,
     profiles_state_path,
+    report_output_path,
     state_path,
 )
 from healthpilot.profile import load_profile_context
@@ -38,6 +40,7 @@ from healthpilot.selfdecode import (
     resolve_selfdecode_token,
     update_genotype_cache,
 )
+from healthpilot.report_validation import REPORT_CONTRACTS, validate_report
 
 
 def _utc_now() -> str:
@@ -71,9 +74,8 @@ def _write_profile_state(
     profile_context: Any,
     generated_at: str,
     evidence_snapshot: dict[str, Any],
-    evidence_packet: dict[str, Any] | None = None,
     issues: dict[str, dict[str, Any]],
-) -> tuple[Path, Path]:
+) -> Path:
     actions_payload = build_action_queue_payload(
         profile_slug=profile_context.slug,
         profile_name=profile_context.cache_payload["profile_name"],
@@ -94,21 +96,7 @@ def _write_profile_state(
         issues=issues,
     )
     write_json(actions_path, actions_payload)
-
-    report_body = render_plan_report(
-        profile_slug=profile_context.slug,
-        profile_name=profile_context.cache_payload["profile_name"],
-        generated_at=generated_at,
-        evidence_snapshot=evidence_snapshot,
-        evidence_packet=evidence_packet,
-        issues=issues,
-        action_queue=actions_payload,
-    )
-    report_name = f"{generated_at[:10]}-{profile_context.slug}-action-plan.md"
-    report_path = profile_output_path(repo_root, profile_context.slug, report_name)
-    report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(report_body, encoding="utf-8")
-    return actions_path, report_path
+    return actions_path
 
 
 def _sync_issue_inputs(
@@ -198,7 +186,6 @@ def run_plan(args: argparse.Namespace) -> int:
         profile_context=profile_context,
         generated_at=generated_at,
         evidence_snapshot=evidence_snapshot,
-        evidence_packet=evidence_packet,
         issues=issues,
     )
     return 0
@@ -232,9 +219,46 @@ def run_daily_plan(args: argparse.Namespace) -> int:
         evidence_snapshot=evidence_snapshot,
     )
     report_name = f"{target_date}-{profile_context.slug}-daily-plan.md"
-    report_path = profile_output_path(repo_root, profile_context.slug, report_name)
+    report_path = report_output_path(
+        repo_root,
+        profile_context.slug,
+        "daily-plan",
+        report_name,
+    )
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(report_body, encoding="utf-8")
+    return 0
+
+
+def run_validate_report(args: argparse.Namespace) -> int:
+    report_path = args.report.resolve()
+    previous_path = args.previous.resolve() if args.previous else None
+    errors = validate_report(
+        report_path.read_text(encoding="utf-8"),
+        report_type=args.report_type,
+        report_path=report_path,
+        previous_path=previous_path,
+    )
+    if errors:
+        for error in errors:
+            print(f"ERROR: {error}")
+        return 1
+    print("report validation passed")
+    return 0
+
+
+def run_migrate_output_layout(args: argparse.Namespace) -> int:
+    manifest = migrate_output_layout(args.repo_root.resolve(), apply=args.apply)
+    counts = Counter(item["operation"] for item in manifest["operations"])
+    mode = "applied" if args.apply else "dry run"
+    print(
+        f"output migration {mode}: "
+        f"{counts.get('move', 0)} moves, "
+        f"{counts.get('conflict', 0)} conflicts, "
+        f"{counts.get('deduplicate', 0)} duplicates, "
+        f"{len(manifest['os_metadata'])} metadata files"
+    )
+    print(f"manifest\t{manifest['manifest_path']}")
     return 0
 
 
@@ -353,7 +377,7 @@ def _add_deprecated_outcome_arguments(parser: argparse.ArgumentParser) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="healthpilot",
-        description="Rescan parsed health data sources and render the current action plan.",
+        description="Refresh deterministic evidence and state for agent-facing Healthpilot workflows.",
     )
     parser.add_argument(
         "--repo-root",
@@ -370,9 +394,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    plan_description = (
+        "Rescan parsed source folders and refresh per-profile evidence, issue, and action state."
+    )
     plan = subparsers.add_parser(
         "plan",
-        help="Rescan parsed source folders, refresh per-profile state, and render the current action plan.",
+        help=plan_description,
+        description=plan_description,
     )
     _add_profile_argument(plan)
     _add_optional_issues_argument(plan)
@@ -395,6 +423,36 @@ def build_parser() -> argparse.ArgumentParser:
         help="Target date for the draft plan in YYYY-MM-DD format. Defaults to today.",
     )
     daily_plan.set_defaults(func=run_daily_plan)
+
+    validate = subparsers.add_parser(
+        "validate-report",
+        help="Validate a user-facing Markdown report against the shared contract.",
+    )
+    validate.add_argument(
+        "--type",
+        dest="report_type",
+        required=True,
+        choices=tuple(REPORT_CONTRACTS),
+        help="Report contract to validate.",
+    )
+    validate.add_argument("--report", type=Path, required=True, help="Markdown report path.")
+    validate.add_argument(
+        "--previous",
+        type=Path,
+        help="Previous comparable report for repeat-report change validation.",
+    )
+    validate.set_defaults(func=run_validate_report)
+
+    migrate = subparsers.add_parser(
+        "migrate-output-layout",
+        help="Plan or apply migration to profile/report output buckets.",
+    )
+    migrate.add_argument(
+        "--apply",
+        action="store_true",
+        help="Apply the migration. Without this flag, only a manifest is generated.",
+    )
+    migrate.set_defaults(func=run_migrate_output_layout)
 
     selfdecode = subparsers.add_parser(
         "selfdecode-genotypes",

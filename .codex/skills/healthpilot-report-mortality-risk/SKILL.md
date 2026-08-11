@@ -11,7 +11,7 @@ Generate a cautious, evidence-auditable mortality-risk report from every availab
 
 1. Follow the live-profile selection and source-validation rules in `AGENTS.md`.
 2. Treat all profile-linked external sources as read-only.
-3. Write the report under `.output/{profile_slug}/`.
+3. Write the report under `.output/{profile_slug}/mortality-risk/`.
 4. Use `.state/` only as factual memory or retrieval support.
 5. Browse for current official mortality statistics and current primary or authoritative evidence when estimating probabilities. Cite the data year and access date.
 6. Distinguish observed evidence, population baseline, model output, and inference.
@@ -103,6 +103,9 @@ When matched life-table inputs are available, use `scripts/estimate_competing_ri
 ## Report Requirements
 
 Use [references/report-template.md](references/report-template.md) as the starting structure.
+Read [../_shared/healthpilot-report-contract.md](../_shared/healthpilot-report-contract.md) and apply it in full.
+
+Start the decision layer with `## Leading risks and prevention levers`. Show the leading risks, separate confidence and urgency, and identify the prevention action with the broadest cross-cause value before methodology or full ranking detail.
 
 The ranked table must contain exactly 10 actual cause categories sorted by point estimate. Keep `all other causes` outside the ranking as the residual.
 
@@ -136,17 +139,22 @@ Include cross-cause prevention priorities after the rankings. Prioritize actions
 
 Follow the common Healthpilot report convention:
 
-- directory: `.output/{profile_slug}/`
+- directory: `.output/{profile_slug}/mortality-risk/`
 - filename: `{YYYY-MM-DD}-{profile_slug}-mortality-risk.md`
-- canonical path: `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-mortality-risk.md`
+- canonical path: `.output/{profile_slug}/mortality-risk/{YYYY-MM-DD}-{profile_slug}-mortality-risk.md`
 
 Use the local report date and canonical profile slug. If regenerating on the same date, refresh the canonical file instead of creating an alternate filename.
 
 Validate the finished report:
 
 ```bash
+python3 -m healthpilot validate-report \
+  --type mortality-risk \
+  --report .output/{profile_slug}/mortality-risk/{YYYY-MM-DD}-{profile_slug}-mortality-risk.md \
+  [--previous .output/{profile_slug}/mortality-risk/{previous-filename}]
+
 python3 .codex/skills/healthpilot-report-mortality-risk/scripts/validate_report.py \
-  .output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-mortality-risk.md
+  .output/{profile_slug}/mortality-risk/{YYYY-MM-DD}-{profile_slug}-mortality-risk.md
 ```
 
 Fix every validator error before handing off the report. In the user-facing answer, link the report and summarize the probability definition, largest uncertainty, source gaps, and highest-leverage prevention priority.

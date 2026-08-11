@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from healthpilot.evidence_hygiene import visible_lines
 from healthpilot.paths import expand_home
 
 
@@ -55,7 +56,8 @@ class Interval:
 
 def _read_markdown_lines(path: Path) -> list[str]:
     try:
-        return path.read_text(encoding="utf-8", errors="ignore").splitlines()
+        with path.open("r", encoding="utf-8", errors="ignore") as handle:
+            return [line for _, line in visible_lines(handle)]
     except OSError:
         return []
 
@@ -99,10 +101,7 @@ def _source_text(evidence_snapshot: dict[str, Any], source_name: str) -> str:
     path_value = source.get("path") or ""
     if not path_value:
         return ""
-    try:
-        return expand_home(path_value).read_text(encoding="utf-8", errors="ignore")
-    except OSError:
-        return ""
+    return "\n".join(_read_markdown_lines(expand_home(path_value)))
 
 
 def _strip_list_marker(value: str) -> str:

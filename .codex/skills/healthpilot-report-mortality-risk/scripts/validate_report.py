@@ -10,11 +10,13 @@ from pathlib import Path
 
 
 REQUIRED_HEADINGS = (
+    "## Leading risks and prevention levers",
     "## Probability definition",
-    "## Source coverage",
     "## Ranked top 10 causes",
     "## Highest-leverage prevention priorities",
-    "## Limitations",
+    "## Evidence appendix",
+    "### Source coverage",
+    "### Limitations",
 )
 ROW_RE = re.compile(
     r"^\|\s*(10|[1-9])\s*\|\s*([^|]+?)\s*\|\s*([0-9]+(?:\.[0-9]+)?)%\s*\|"

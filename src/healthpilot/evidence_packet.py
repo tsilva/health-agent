@@ -3,14 +3,22 @@
 from __future__ import annotations
 
 import csv
+import hashlib
+import json
 import re
 from collections import Counter, defaultdict
 from datetime import datetime
+from itertools import islice
 from pathlib import Path
 from typing import Any
 
 from healthpilot.actions import build_action_queue_payload
 from healthpilot.evidence import build_evidence_snapshot
+from healthpilot.evidence_hygiene import (
+    evidence_reference,
+    is_internal_path,
+    visible_lines,
+)
 from healthpilot.jsonio import load_json
 from healthpilot.lifestyle import LIFESTYLE_SOURCE_FIELDS
 from healthpilot.paths import expand_home, profiles_state_path
@@ -104,17 +112,20 @@ def _clean(value: str, *, max_length: int = 220) -> str:
     return cleaned[: max_length - 3].rstrip() + "..."
 
 
-def _read_text_lines(path: Path, *, max_lines: int = MAX_TEXT_LINES_PER_FILE) -> list[str]:
-    lines: list[str] = []
+def _read_visible_lines(
+    path: Path,
+    *,
+    max_lines: int = MAX_TEXT_LINES_PER_FILE,
+) -> list[tuple[int, str]]:
     try:
         with path.open("r", encoding="utf-8", errors="ignore") as handle:
-            for line in handle:
-                lines.append(line.rstrip("\n"))
-                if len(lines) >= max_lines:
-                    break
+            return list(visible_lines(islice(handle, max_lines)))
     except OSError:
         return []
-    return lines
+
+
+def _read_text_lines(path: Path, *, max_lines: int = MAX_TEXT_LINES_PER_FILE) -> list[str]:
+    return [line for _, line in _read_visible_lines(path, max_lines=max_lines)]
 
 
 def _file_entry(path: Path, *, source_path: Path) -> dict[str, Any] | None:
@@ -136,12 +147,19 @@ def _file_entry(path: Path, *, source_path: Path) -> dict[str, Any] | None:
 
 def _iter_indexable_files(path: Path) -> list[Path]:
     if path.is_file():
-        return [path] if path.suffix.lower() in INDEX_SUFFIXES else []
+        return (
+            [path]
+            if path.suffix.lower() in INDEX_SUFFIXES
+            and not is_internal_path(path, source_root=path.parent)
+            else []
+        )
     try:
         files = [
             item
             for item in path.rglob("*")
-            if item.is_file() and item.suffix.lower() in INDEX_SUFFIXES
+            if item.is_file()
+            and item.suffix.lower() in INDEX_SUFFIXES
+            and not is_internal_path(item, source_root=path)
         ]
     except OSError:
         return []
@@ -163,6 +181,30 @@ def _build_file_index(source_snapshot: dict[str, Any]) -> dict[str, list[dict[st
                 entries.append(entry)
         file_index[source_name] = entries
     return file_index
+
+
+def _snapshot_id(
+    source_snapshot: dict[str, Any],
+    file_index: dict[str, list[dict[str, Any]]],
+) -> str:
+    canonical = {
+        "sources": {
+            source_name: {
+                "status": metadata.get("status", "unknown"),
+                "files": [
+                    {
+                        "relative_path": item.get("relative_path", ""),
+                        "size_bytes": item.get("size_bytes"),
+                        "modified_at": item.get("modified_at"),
+                    }
+                    for item in file_index.get(source_name, [])
+                ],
+            }
+            for source_name, metadata in sorted(source_snapshot["sources"].items())
+        }
+    }
+    payload = json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(payload).hexdigest()[:16]
 
 
 def _changed_files(
@@ -221,20 +263,32 @@ def _source_freshness(source_snapshot: dict[str, Any]) -> dict[str, dict[str, An
     }
 
 
-def _lab_entry(row: dict[str, str]) -> dict[str, Any]:
+def _lab_entry(
+    row: dict[str, str],
+    *,
+    all_csv_path: Path,
+    line_number: int,
+) -> dict[str, Any]:
     is_abnormal = any(
         (row.get("is_above_limit", "").lower() in {"1", "true", "yes", "y"},
          row.get("is_below_limit", "").lower() in {"1", "true", "yes", "y"},
          row.get("review_needed", "").lower() in {"1", "true", "yes", "y"})
     )
-    return {
-        "date": (row.get("date") or "").strip(),
-        "label": (
+    observed_at = (row.get("date") or "").strip()
+    label = (
             row.get("lab_name")
             or row.get("lab_name_standardized")
             or row.get("raw_lab_name")
             or "unknown lab"
-        ).strip(),
+        ).strip()
+    citation_id = evidence_reference(
+        "LAB",
+        observed_at=observed_at or "undated",
+        label=f"{label}-R{line_number}",
+    )
+    return {
+        "date": observed_at,
+        "label": label,
         "value": (row.get("value") or row.get("raw_value") or "").strip(),
         "unit": (row.get("lab_unit") or row.get("raw_lab_unit") or "").strip(),
         "reference_min": (row.get("reference_min") or row.get("raw_reference_min") or "").strip(),
@@ -242,6 +296,12 @@ def _lab_entry(row: dict[str, str]) -> dict[str, Any]:
         "is_abnormal": is_abnormal,
         "source_file": (row.get("source_file") or "").strip(),
         "page_number": (row.get("page_number") or "").strip(),
+        "path": str(all_csv_path),
+        "line": line_number,
+        "citation_id": citation_id,
+        "citation_label": f"Lab result: {label}, {observed_at or 'undated'}",
+        "source_type": "labs",
+        "observed_at": observed_at,
     }
 
 
@@ -262,9 +322,13 @@ def _summarize_labs(source_snapshot: dict[str, Any]) -> dict[str, Any]:
     try:
         with all_csv_path.open("r", encoding="utf-8", newline="") as handle:
             reader = csv.DictReader(handle)
-            for row in reader:
+            for line_number, row in enumerate(reader, start=2):
                 total_rows += 1
-                entry = _lab_entry(row)
+                entry = _lab_entry(
+                    row,
+                    all_csv_path=all_csv_path,
+                    line_number=line_number,
+                )
                 if entry["date"]:
                     dates.add(entry["date"])
                     marker_dates[entry["label"]].add(entry["date"])
@@ -299,10 +363,40 @@ def _entry_date(path: Path) -> str:
     return match.group(1) if match else ""
 
 
-def _matching_lines(path: Path, terms: tuple[str, ...], *, limit: int = MAX_SIGNAL_LINES) -> list[dict[str, Any]]:
+def _health_log_kind(path: Path) -> str:
+    suffixes = path.suffixes
+    if len(suffixes) >= 2:
+        return suffixes[-2].lstrip(".")
+    return "overview"
+
+
+def _health_log_citation(path: Path, line_number: int) -> dict[str, Any]:
+    observed_at = _entry_date(path) or "overview"
+    kind = _health_log_kind(path)
+    return {
+        "citation_id": evidence_reference(
+            "HL",
+            observed_at=observed_at,
+            label=kind,
+            line=line_number,
+        ),
+        "citation_label": (
+            f"Health log: {observed_at}, {kind}, line {line_number}"
+        ),
+        "source_type": "health_log",
+        "observed_at": "" if observed_at == "overview" else observed_at,
+    }
+
+
+def _matching_lines(
+    path: Path,
+    terms: tuple[str, ...],
+    *,
+    limit: int = MAX_SIGNAL_LINES,
+) -> list[dict[str, Any]]:
     matches: list[dict[str, Any]] = []
     lowered_terms = tuple(term.lower() for term in terms)
-    for line_number, line in enumerate(_read_text_lines(path), start=1):
+    for line_number, line in _read_visible_lines(path):
         cleaned = _clean(line)
         if not cleaned or cleaned.startswith("#"):
             continue
@@ -313,6 +407,7 @@ def _matching_lines(path: Path, terms: tuple[str, ...], *, limit: int = MAX_SIGN
                     "path": str(path),
                     "line": line_number,
                     "text": cleaned,
+                    **_health_log_citation(path, line_number),
                 }
             )
             if len(matches) >= limit:
@@ -338,14 +433,14 @@ def _markdown_list_item_text(value: str) -> str | None:
 
 def _extract_current_stack_blocks(path: Path, *, limit: int = 3) -> list[dict[str, Any]]:
     blocks: list[dict[str, Any]] = []
-    lines = _read_text_lines(path, max_lines=2000)
-    for line_index, line in enumerate(lines):
+    lines = _read_visible_lines(path, max_lines=2000)
+    for line_index, (heading_line_number, line) in enumerate(lines):
         heading = _clean(line)
         if not heading or not CURRENT_STACK_HEADING_RE.search(heading):
             continue
 
         items: list[dict[str, Any]] = []
-        for item_index, candidate in enumerate(lines[line_index + 1 : line_index + 41], start=line_index + 2):
+        for item_line_number, candidate in lines[line_index + 1 : line_index + 41]:
             stripped = candidate.strip()
             if not stripped:
                 if items:
@@ -368,8 +463,9 @@ def _extract_current_stack_blocks(path: Path, *, limit: int = 3) -> list[dict[st
             items.append(
                 {
                     "path": str(path),
-                    "line": item_index,
+                    "line": item_line_number,
                     "text": _clean(item_text),
+                    **_health_log_citation(path, item_line_number),
                 }
             )
 
@@ -377,9 +473,10 @@ def _extract_current_stack_blocks(path: Path, *, limit: int = 3) -> list[dict[st
             blocks.append(
                 {
                     "path": str(path),
-                    "line": line_index + 1,
+                    "line": heading_line_number,
                     "heading": _stack_heading_text(heading),
                     "items": items,
+                    **_health_log_citation(path, heading_line_number),
                 }
             )
             if len(blocks) >= limit:
@@ -441,7 +538,12 @@ def _summarize_health_log(source_snapshot: dict[str, Any]) -> dict[str, Any]:
         "status": "available",
         "health_log_path": str(health_log_path),
         "latest_entries": [
-            {"date": _entry_date(path), "kind": path.suffixes[-2].lstrip("."), "path": str(path)}
+            {
+                "date": _entry_date(path),
+                "kind": path.suffixes[-2].lstrip("."),
+                "path": str(path),
+                **_health_log_citation(path, 1),
+            }
             for path in processed_files + raw_files
         ],
         "unresolved_symptom_or_treatment_signal_lines": (unresolved_signals + overview_signals)[
@@ -470,7 +572,22 @@ def _summarize_exams(source_snapshot: dict[str, Any]) -> dict[str, Any]:
     for path in summary_files[:8]:
         lines = [_clean(line) for line in _read_text_lines(path, max_lines=40)]
         excerpt = [line for line in lines if line][:5]
-        latest.append({"path": str(path), "excerpt": excerpt})
+        relative_path = str(path.relative_to(source_path))
+        observed_at = _entry_date(path) or "undated"
+        latest.append(
+            {
+                "path": str(path),
+                "excerpt": excerpt,
+                "citation_id": evidence_reference(
+                    "EXAM",
+                    observed_at=observed_at,
+                    label=relative_path,
+                ),
+                "citation_label": f"Exam: {path.stem}, {observed_at}",
+                "source_type": "exams",
+                "observed_at": "" if observed_at == "undated" else observed_at,
+            }
+        )
     return {"status": "available", "latest_exam_summaries": latest}
 
 
@@ -479,10 +596,21 @@ def _summarize_genetics(source_snapshot: dict[str, Any]) -> dict[str, Any]:
     if metadata.get("status") != "available":
         return {"status": metadata.get("status", "not configured")}
     details = metadata.get("details", {}) or {}
+    sample_rsids = details.get("sample_rsids", [])
     return {
         "status": "available",
         "path": metadata.get("path", ""),
-        "sample_rsids": details.get("sample_rsids", []),
+        "sample_rsids": sample_rsids,
+        "citations": [
+            {
+                "path": metadata.get("path", ""),
+                "citation_id": evidence_reference("GEN", label=rsid),
+                "citation_label": f"Genetics: {rsid}",
+                "source_type": "genetics",
+                "observed_at": "",
+            }
+            for rsid in sample_rsids
+        ],
     }
 
 
@@ -490,12 +618,28 @@ def _summarize_lifestyle(source_snapshot: dict[str, Any]) -> dict[str, Any]:
     lifestyle: dict[str, Any] = {}
     for source_name in sorted(LIFESTYLE_SOURCE_FIELDS):
         metadata = source_snapshot["sources"].get(source_name, {})
-        lifestyle[source_name] = {
+        item = {
             "status": metadata.get("status", "not configured"),
             "path": metadata.get("path", ""),
             "latest_modified_at": metadata.get("latest_modified_at"),
             "summary": metadata.get("details", {}),
         }
+        if metadata.get("status") == "available" and metadata.get("path"):
+            item.update(
+                {
+                    "citation_id": evidence_reference(
+                        "LIFE",
+                        label=source_name.removesuffix("_md_path"),
+                        line=1,
+                    ),
+                    "citation_label": source_name.removesuffix("_md_path")
+                    .replace("_", " ")
+                    .title(),
+                    "source_type": "lifestyle",
+                    "observed_at": "",
+                }
+            )
+        lifestyle[source_name] = item
     return lifestyle
 
 
@@ -557,6 +701,35 @@ def _issue_memory(
     }
 
 
+def _citation_index(*sections: Any) -> dict[str, dict[str, Any]]:
+    index: dict[str, dict[str, Any]] = {}
+
+    def visit(value: Any) -> None:
+        if isinstance(value, dict):
+            citation_id = value.get("citation_id")
+            if isinstance(citation_id, str):
+                index[citation_id] = {
+                    key: value[key]
+                    for key in (
+                        "citation_label",
+                        "source_type",
+                        "observed_at",
+                        "path",
+                        "line",
+                    )
+                    if value.get(key) not in (None, "")
+                }
+            for nested in value.values():
+                visit(nested)
+        elif isinstance(value, list):
+            for nested in value:
+                visit(nested)
+
+    for section in sections:
+        visit(section)
+    return dict(sorted(index.items()))
+
+
 def build_evidence_packet(
     *,
     repo_root: Path,
@@ -571,20 +744,34 @@ def build_evidence_packet(
     changed_files = _changed_files(file_index, previous_packet)
 
     source_name_counts = Counter(item["source_name"] for item in changed_files)
+    labs = _summarize_labs(source_snapshot)
+    health_log = _summarize_health_log(source_snapshot)
+    exams = _summarize_exams(source_snapshot)
+    genetics = _summarize_genetics(source_snapshot)
+    lifestyle = _summarize_lifestyle(source_snapshot)
     return {
+        "schema_version": 2,
         "profile_slug": profile_context.slug,
         "profile_name": profile_context.cache_payload["profile_name"],
         "profile_path": profile_context.cache_payload["profile_path"],
         "generated_at": generated_at,
+        "snapshot_id": _snapshot_id(source_snapshot, file_index),
         "source_snapshot": source_snapshot,
         "source_freshness": source_freshness,
         "changed_files_since_last_run": changed_files,
         "changed_file_counts": dict(sorted(source_name_counts.items())),
-        "labs": _summarize_labs(source_snapshot),
-        "health_log": _summarize_health_log(source_snapshot),
-        "exams": _summarize_exams(source_snapshot),
-        "genetics": _summarize_genetics(source_snapshot),
-        "lifestyle": _summarize_lifestyle(source_snapshot),
+        "labs": labs,
+        "health_log": health_log,
+        "exams": exams,
+        "genetics": genetics,
+        "lifestyle": lifestyle,
+        "citation_index": _citation_index(
+            labs,
+            health_log,
+            exams,
+            genetics,
+            lifestyle,
+        ),
         "issue_memory": _issue_memory(
             profile_slug=profile_context.slug,
             profile_name=profile_context.cache_payload["profile_name"],

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Healthpilot Report: Current Treatment"
-  short_description: "Reconcile the current medication and treatment regimen"
-  default_prompt: "Use $healthpilot-report-current-treatment to reconcile the current medications and treatments for the selected live profile."

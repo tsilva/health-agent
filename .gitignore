@@ -76,7 +76,8 @@ logs/
 .ipynb_checkpoints
 .mypy_cache/
 .nox/
-.output/*
+# Private generated reports and runtime state
+/.output/
 .pdm-build/
 .pdm-python
 .pixi
@@ -91,11 +92,13 @@ logs/
 .scrapy
 .spyderproject
 .spyproject
-.state/*
-!.state/_template/
-!.state/_template/*
-profiles/*.yaml
-!profiles/template.yaml.example
+/.state/*
+!/.state/_template/
+!/.state/_template/**
+!/.state/template/
+!/.state/template/**
+/profiles/*.yaml
+!/profiles/template.yaml.example
 .tox/
 .venv
 .webassets-cache
@@ -136,7 +139,3 @@ target/
 var/
 venv.bak/
 wheels/
-
-!.state/template/
-!.state/template/*
-.state

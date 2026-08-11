@@ -7,13 +7,13 @@ description: Generate a dated root-cause differential report for a selected live
 
 Use this skill when the user asks "what is causing X?", "find the root cause of X", "rank likely causes", or wants a probability-weighted differential for a symptom, condition, abnormal lab, episode, recurring pattern, or unresolved health problem.
 
-The deliverable is a dated Markdown report under `.output/{profile_slug}/` containing the top K hypotheses, sorted by probability, with probabilities adding exactly to 100%.
+The deliverable is a dated Markdown report under `.output/{profile_slug}/root-cause/` containing the top K hypotheses, sorted by probability, with probabilities adding exactly to 100%.
 
 ## Required Session Rules
 
 1. Follow the profile and source-validation rules from `AGENTS.md`.
 2. Treat profile-linked external sources as read-only.
-3. Write the user-facing report under `.output/{profile_slug}/`.
+3. Write the user-facing report under `.output/{profile_slug}/root-cause/`.
 4. Use `.state/` only as optional memory; do not require it.
 5. Distinguish observed evidence from inference.
 
@@ -95,27 +95,27 @@ Do not use false precision. Use whole percentages unless one decimal place is ge
 ## Report Structure
 
 Use [references/report-template.md](references/report-template.md) as the starting structure.
+Read [../_shared/healthpilot-report-contract.md](../_shared/healthpilot-report-contract.md) and apply it in full.
 
-The report should include:
+The report must include, in this order:
 
 1. Title
-2. `Report generated`
-3. `Profile`
-4. `Query interpreted as`
-5. `Source status`
-6. `Probability summary`
-7. `Ranked root-cause assessment`
-8. `Most important uncertainty`
-9. `Next best actions`
-10. `What to return with`
+2. Required shared metadata and `Query interpreted as`
+3. `Leading hypotheses`, including probability, confidence frame, evidence confidence, urgency, and strongest discriminator
+4. `Changes since previous report`
+5. `Ranked root-cause assessment`
+6. `Most important uncertainty`
+7. `Next best actions`
+8. `What to return with`
+9. `Evidence appendix`
 
 ## Output Contract
 
 Follow the common Healthpilot report convention:
 
-- directory: `.output/{profile_slug}/`
+- directory: `.output/{profile_slug}/root-cause/`
 - filename: `{YYYY-MM-DD}-{profile_slug}-root-cause-{query_slug}.md`
-- canonical path: `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-root-cause-{query_slug}.md`
+- canonical path: `.output/{profile_slug}/root-cause/{YYYY-MM-DD}-{profile_slug}-root-cause-{query_slug}.md`
 
 Use the local report date and canonical profile slug. Keep `query_slug` short, lowercase, and filesystem-safe. If regenerating the same query on the same date, refresh the canonical file instead of creating an alternate filename.
 
@@ -126,3 +126,16 @@ Do not stop at "talk to a doctor." For each high-probability or high-impact hypo
 For safety-critical symptoms or red flags found in the record, include an urgent-care note in `Next best actions`, but keep the main report focused on root-cause ranking.
 
 Avoid generic root-cause lists. Every listed hypothesis should have a reason it belongs in this specific profile's record.
+
+## Validation
+
+Run the shared validator before handoff:
+
+```bash
+python3 -m healthpilot validate-report \
+  --type root-cause \
+  --report .output/{profile_slug}/root-cause/{YYYY-MM-DD}-{profile_slug}-root-cause-{query_slug}.md \
+  [--previous .output/{profile_slug}/root-cause/{previous-filename}]
+```
+
+Fix every error before returning the report.

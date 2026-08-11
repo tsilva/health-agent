@@ -13,11 +13,11 @@ When the user invokes this skill, the expected output is simple:
 - validate the configured sources
 - generate/read the deterministic evidence packet from the current parsed source folders
 - synthesize the best next actions from the record
-- write one dated report under `.output/{profile_slug}/`
+- write one dated report under `.output/{profile_slug}/what-next/`
 
 State files under `.state/` are implementation details. Use them when helpful, but do not make the user think about them unless they explicitly ask.
 
-The expected user experience is simple: they ask the agent for next steps, this skill does the end-to-end work, and the report appears under `.output/{profile_slug}/`.
+The expected user experience is simple: they ask the agent for next steps, this skill does the end-to-end work, and the report appears under `.output/{profile_slug}/what-next/`.
 
 ## Goals
 
@@ -31,7 +31,7 @@ The expected user experience is simple: they ask the agent for next steps, this 
 
 1. Follow the profile and source-validation rules from `AGENTS.md`.
 2. Treat external profile-linked sources as read-only.
-3. Write the user-facing report under `.output/{profile_slug}/`.
+3. Write the user-facing report under `.output/{profile_slug}/what-next/`.
 4. Use `.state/` only as internal memory or ranking support.
 
 ## Working Order
@@ -64,22 +64,25 @@ SELFDECODE_JWT="<token>" python3 -m healthpilot selfdecode-genotypes --profile <
 
 If authentication is needed, tell the user to copy the `token` field from the `/service/health-analysis/accounts/user/token/` Network response on a logged-in SelfDecode SNP page. Never store JWTs; the helper caches genotypes only.
 9. Do not detour into a broad historical reread unless the current evidence packet and current issue memory are too thin to rank next actions.
-10. Use the built-in repo helper only as internal support when it reduces deterministic file work:
+10. Use the built-in repo helper only when refreshing deterministic evidence, issue, source, and action state helps:
 
 ```bash
 healthpilot plan --profile <profile-name>
 python3 -m healthpilot plan --profile <profile-name>
 ```
 
-Do not frame the CLI as the primary user interface. The skill itself is the primary interface.
+The CLI does not render the user-facing action plan. Do not frame it as the primary interface or expect it to create the Markdown report. The skill itself is the primary interface. It is the sole owner of the canonical action-plan file.
 
 ## Output Contract
 
+Read [references/report-template.md](references/report-template.md) before drafting.
+Read [../_shared/healthpilot-report-contract.md](../_shared/healthpilot-report-contract.md) and apply it in full.
+
 Follow the common Healthpilot report convention:
 
-- directory: `.output/{profile_slug}/`
+- directory: `.output/{profile_slug}/what-next/`
 - filename: `{YYYY-MM-DD}-{profile_slug}-action-plan.md`
-- canonical path: `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-action-plan.md`
+- canonical path: `.output/{profile_slug}/what-next/{YYYY-MM-DD}-{profile_slug}-action-plan.md`
 
 Use the local report date and canonical profile slug. Create the profile output directory when needed. If regenerating on the same date, refresh the canonical file instead of creating an alternate filename.
 
@@ -89,37 +92,56 @@ The durable repo-local artifacts for this workflow are:
 - `IssueStore`: `.state/profiles/{profile_slug}/issues.json`
 - `ActionStore`: `.state/profiles/{profile_slug}/actions.json`
 - `SourceSnapshot`: `.state/profiles/{profile_slug}/sources.json`
-- `ActionPlanReport`: `.output/{profile_slug}/{YYYY-MM-DD}-{profile_slug}-action-plan.md`
+- `ActionPlanReport`: `.output/{profile_slug}/what-next/{YYYY-MM-DD}-{profile_slug}-action-plan.md`
 
-The report should usually contain:
+The report must contain, in this order:
 
 1. Title
-2. `Report generated`
-3. `Profile`
-4. `Current status summary`
-5. `Source status`
-6. `Top next actions`
-7. `Self-experiments ranked by ROI`
-8. `Unresolved issues`
-9. `Optimization opportunities`
-10. `What to return with`
+2. Required shared metadata
+3. `Current status`
+4. `Now / Next / Later`
+5. `Changes since previous report`
+6. `Self-experiments ranked by ROI`
+7. `Unresolved issues`
+8. `Optimization opportunities`
+9. `What to return with`
+10. `Evidence appendix`
 
-The first substantive report section must be `Current status summary`, with:
+The first substantive report section must be `Current status`, with:
 
 - `Current active conditions`: active or monitoring conditions/issues, including confidence frame and working conclusion.
 - `Current medication / supplement stack`: the current stack if the record supports it, or a clear reconciliation note plus the recent medication/supplement evidence used.
 
 This section exists so the user can immediately confirm whether the report took the current status into account before reading the action plan.
 
-When lifestyle sources are configured, include them in source status and use `lifestyle_constraints_md_path` as the authority for conflicts between schedule, nutrition, exercise, symptom triggers, target weight changes, and preferences.
+When lifestyle sources are configured, include them in source coverage and use `lifestyle_constraints_md_path` as the authority for conflicts between schedule, nutrition, exercise, symptom triggers, target weight changes, and preferences.
 
 ## Report Content Rules
 
 ### Current Status Summary
 
-Start every what-next report with this section before source status or ranked actions.
+Start every what-next report with `## Current status`. It must precede the action board and evidence appendix.
 
 Use observed evidence for medication and supplement status. If the parsed record only contains medication/supplement mentions or recent changes rather than a reconciled active list, say that directly and list the evidence that needs reconciliation instead of pretending it is a confirmed current stack.
+
+Keep this summary compact. For a full reconciliation or history request, use `healthpilot-report-treatment-record` rather than expanding the action plan into a second treatment record.
+
+### Now / Next / Later
+
+Use a compact action board with these columns:
+
+- `Rank`
+- `Horizon`: `Now (0–7 days)`, `Next (8–30 days)`, or `Later / monitor`
+- `Status`: `ready`, `waiting`, `scheduled`, or `done`
+- `Action`
+- `Done when`
+- `Return with`
+
+Put blocking dependencies in the detailed action text instead of adding vague priority labels.
+
+### Source Coverage
+
+Put one coverage table inside `## Evidence appendix`. Include source status, freshness or span, material evidence used, limitations, and an explicit `Unavailable sources` statement. Do not add a second source-status list.
 
 ### Top Next Actions
 
@@ -140,7 +162,7 @@ For each ranked action, include:
 - `What to ask for` or `What to do`
 - `What to return with`
 
-Self-directed experiments can appear in `Top Next Actions` when their expected return is high enough, but do not let them displace time-sensitive medical workups, actions that materially narrow a differential, or actions that could change a treatment class.
+Self-directed experiments can appear in `Top Next Actions` when their expected return is high enough, but do not let them displace time-sensitive medical workups, actions that materially narrow a differential, or actions that could change a treatment class. When an experiment also appears in the dedicated ROI section, keep the top action compact and refer to its ROI rank instead of repeating the protocol.
 
 ### Self-Experiments Ranked By ROI
 
@@ -183,6 +205,8 @@ For each issue, state:
 - the strongest supporting evidence
 - the next step that would most change the plan
 
+If an issue already drives a ranked action, reference that action rank and do not repeat its `Do next`, `Why`, `What to ask for`, or `What to return with` fields. Use the issue section for evidence, counterevidence, confidence, and the unresolved data gap.
+
 ### Optimization Opportunities
 
 Include only if they are supported by the record and worth acting on now.
@@ -204,7 +228,7 @@ If the profile configures lifestyle Markdown files:
 - read `lifestyle_constraints_md_path` before changing schedule, nutrition, or exercise plans
 - treat schedule, nutrition, and exercise Markdown files as current/default templates
 - do not edit or rewrite the source Markdown files
-- write regenerated draft plans under `.output/{profile_slug}/`
+- write regenerated draft plans under `.output/{profile_slug}/daily-plan/`
 - avoid copying the full sidecar constraints into generated plans; include only short conflict notes and source references
 - use `healthpilot daily-plan --profile <profile-name> --date YYYY-MM-DD` as deterministic support when it helps render a draft daily plan
 
@@ -231,7 +255,7 @@ If the report clearly centers on unresolved issues, you may also update:
 - `.state/profiles/{profile_slug}/actions.json`
 - `.state/profiles/{profile_slug}/sources.json`
 
-But the primary deliverable is always the report in `.output/{profile_slug}/`.
+But the primary deliverable is always the report in `.output/{profile_slug}/what-next/`.
 
 When refreshing issue memory:
 
@@ -245,6 +269,7 @@ Each issue record should:
 - include `profile_slug`
 - keep `linked_sources` as absolute file paths when possible
 - keep citations current when evidence changes; these citations flow into action state as `source_citations`
+- resolve internal paths through the evidence packet's `citation_index` and print only report-safe citation IDs in the report
 - end in an operator-friendly format:
   - `Do next`
   - `Why`
@@ -269,3 +294,16 @@ When the user brings a new lab, exam, or health-log update:
 - regenerate the dated what-next report
 
 Treat the parsed source folders as the canonical input. Do not ask the user to create a separate repo-local outcome JSON file.
+
+## Validation
+
+Run the shared validator before handoff:
+
+```bash
+python3 -m healthpilot validate-report \
+  --type what-next \
+  --report .output/{profile_slug}/what-next/{YYYY-MM-DD}-{profile_slug}-action-plan.md \
+  [--previous .output/{profile_slug}/what-next/{previous-filename}]
+```
+
+Fix every error before returning the report.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Healthpilot Report: Doctor Appointment"
+  short_description: "Create doctor and patient appointment PDFs"
+  default_prompt: "Use $healthpilot-report-doctor-appointment to prepare the two-PDF packet for my upcoming appointment."
