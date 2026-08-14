@@ -5,6 +5,8 @@ description: Generate a dated Healthpilot report that scores every major organ a
 
 # Organ System Health Report
 
+Generate every user-facing report and companion artifact in European Portuguese (`pt-PT`), following the shared report contract's language rules.
+
 Generate a whole-body, evidence-auditable snapshot of current organ and system health. Use `10` for the strongest evidenced health and `0` for acute critical failure. Sort the main system table from lowest score to highest so the most concerning or uncertain domains appear first.
 
 Treat every score as a nonvalidated Healthpilot decision-support rating, not a diagnosis, prognosis, percentage, clinical grade, or substitute for organ-specific testing.
@@ -101,8 +103,8 @@ Read [../_shared/healthpilot-report-contract.md](../_shared/healthpilot-report-c
 
 The report must contain:
 
-1. `Lowest-scoring systems` decision table with the bottom five, evidence confidence, driver, urgency, and next useful data point
-2. `Changes since previous report`
+1. `Sistemas com pontuação mais baixa` decision table with the bottom five, evidence confidence, driver, urgency, and next useful data point
+2. `Alterações desde o relatório anterior`
 3. score meaning and methodology
 4. exactly 16 canonical system scores sorted lowest to highest
 5. all core organ/subsystem scores from the inventory
@@ -122,7 +124,7 @@ For each of the five lowest-scoring systems, state:
 - next best test, monitoring step, or specialist discussion
 - result that would most change the score
 
-Use `clear conclusion` only for directly established findings, `likely diagnosis` for a best-fit diagnosis not proven, `differential` when multiple explanations remain, and `open question` when the score primarily reflects inadequate data.
+Use `conclusão clara` only for directly established findings, `diagnóstico provável` for a best-fit diagnosis not proven, `diagnóstico diferencial` when multiple explanations remain, and `questão em aberto` when the score primarily reflects inadequate data.
 
 ## Safety and Interpretation
 

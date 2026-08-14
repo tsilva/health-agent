@@ -1,105 +1,105 @@
-# Mortality Risk Report — {profile_name}
+# Relatório de risco de mortalidade — {nome_do_perfil}
 
-**Report generated:** {YYYY-MM-DD HH:MM TZ}
-**Profile:** {profile_name}
-**Record cutoff:** {latest evidence date reviewed}
-**Evidence snapshot:** {snapshot_id} at {snapshot_generated_at}
-**Previous comparable report:** {filename or none}
-**Source-gap severity:** {none | minor | material | critical}
+**Relatório gerado:** {AAAA-MM-DD HH:MM FUSO}
+**Perfil:** {nome_do_perfil}
+**Data-limite dos registos:** {data mais recente da evidência analisada}
+**Instantâneo de evidência:** {id_do_instantâneo} às {data_hora_do_instantâneo}
+**Relatório comparável anterior:** {nome do ficheiro ou nenhum}
+**Gravidade das lacunas nas fontes:** {nenhuma | ligeira | material | crítica}
 
-> This is a decision-support estimate, not a prediction of how or when this person will die. Estimates are uncertain and modifiable.
+> Esta é uma estimativa de apoio à decisão, não uma previsão de como ou quando esta pessoa irá morrer. As estimativas são incertas e modificáveis.
 
-## Leading risks and prevention levers
+## Principais riscos e medidas preventivas
 
-| Rank | Leading cause/risk | Estimate | Confidence frame | Evidence confidence | Urgency | Highest-leverage prevention or clarification |
+| Posição | Causa/risco principal | Estimativa | Enquadramento de confiança | Confiança na evidência | Urgência | Prevenção ou esclarecimento com maior impacto |
 |---:|---|---:|---|---|---|---|
-| 1 | {cause} | {N}% | {frame} | {high/moderate/low} | {urgency} | {action} |
+| 1 | {causa} | {N}% | {enquadramento} | {alta/moderada/baixa} | {urgência} | {ação} |
 
-- **Largest uncertainty:** {uncertainty}
-- **Best cross-cause prevention lever:** {action and why}
+- **Maior incerteza:** {incerteza}
+- **Melhor medida preventiva transversal:** {ação e justificação}
 
-## Changes since previous report
+## Alterações desde o relatório anterior
 
-{For a baseline, use the exact baseline statement. Otherwise classify Added, Changed, Resolved, and Unchanged ranking or modifier changes with current evidence IDs.}
+{No primeiro relatório, use a frase de referência exata. Caso contrário, classifique as alterações da ordenação ou dos modificadores como Adicionadas, Alteradas, Resolvidas ou Inalteradas e cite os IDs de evidência atuais.}
 
-## Probability definition
+## Definição da probabilidade
 
-{Define the exact estimand, denominator, and horizon.}
+{Definir exatamente a grandeza estimada, o denominador e o horizonte temporal.}
 
-## Current status used
+## Estado atual considerado
 
-### Active conditions and major risk modifiers
+### Condições ativas e principais modificadores de risco
 
-{Separate observed findings from inference and apply confidence frames.}
+{Separar os achados observados das inferências e aplicar os enquadramentos de confiança.}
 
-### Current medication and supplement evidence
+### Evidência sobre medicação e suplementos atuais
 
-{Reconciled stack or evidence still needing reconciliation.}
+{Lista reconciliada ou evidência que ainda precisa de reconciliação.}
 
-## Ranked top 10 causes
+## Dez principais causas por ordem
 
-| Rank | Cause category | Best estimate | Plausible range | Confidence frame | Main reason for rank |
+| Posição | Categoria de causa | Melhor estimativa | Intervalo plausível | Enquadramento de confiança | Principal motivo da posição |
 |---:|---|---:|---:|---|---|
-| 1 | {mutually exclusive underlying cause} | {N}% | {L–H}% | {frame} | {reason} |
-| 2 | {cause} | {N}% | {L–H}% | {frame} | {reason} |
-| 3 | {cause} | {N}% | {L–H}% | {frame} | {reason} |
-| 4 | {cause} | {N}% | {L–H}% | {frame} | {reason} |
-| 5 | {cause} | {N}% | {L–H}% | {frame} | {reason} |
-| 6 | {cause} | {N}% | {L–H}% | {frame} | {reason} |
-| 7 | {cause} | {N}% | {L–H}% | {frame} | {reason} |
-| 8 | {cause} | {N}% | {L–H}% | {frame} | {reason} |
-| 9 | {cause} | {N}% | {L–H}% | {frame} | {reason} |
-| 10 | {cause} | {N}% | {L–H}% | {frame} | {reason} |
+| 1 | {causa subjacente mutuamente exclusiva} | {N}% | {L–H}% | {enquadramento} | {motivo} |
+| 2 | {causa} | {N}% | {L–H}% | {enquadramento} | {motivo} |
+| 3 | {causa} | {N}% | {L–H}% | {enquadramento} | {motivo} |
+| 4 | {causa} | {N}% | {L–H}% | {enquadramento} | {motivo} |
+| 5 | {causa} | {N}% | {L–H}% | {enquadramento} | {motivo} |
+| 6 | {causa} | {N}% | {L–H}% | {enquadramento} | {motivo} |
+| 7 | {causa} | {N}% | {L–H}% | {enquadramento} | {motivo} |
+| 8 | {causa} | {N}% | {L–H}% | {enquadramento} | {motivo} |
+| 9 | {causa} | {N}% | {L–H}% | {enquadramento} | {motivo} |
+| 10 | {causa} | {N}% | {L–H}% | {enquadramento} | {motivo} |
 
-**Residual probability for all other causes:** {N}%
+**Probabilidade residual de todas as outras causas:** {N}%
 
-## Cause-by-cause evidence
+## Evidência por causa
 
-### 1. {Cause} — {N}% ({L–H}%)
+### 1. {Causa} — {N}% ({L–H}%)
 
-- **Confidence frame:** {present-risk characterization}
-- **Evidence confidence:** {high | moderate | low}
-- **Matched baseline:** {share/rank and source}
-- **Observed evidence:** {dated safe citations}
-- **Personalized inference:** {why probability changes or stays near baseline}
-- **Protective or contradicting evidence:** {evidence}
-- **Missing data that would change this estimate:** {data}
-- **Best prevention or clarification step:** {specific action}
-- **Specialist / discussion:** {specialist type and discussion, if appropriate}
+- **Enquadramento de confiança:** {caracterização do risco atual}
+- **Confiança na evidência:** {alta | moderada | baixa}
+- **Referência populacional correspondente:** {proporção/posição e fonte}
+- **Evidência observada:** {citações seguras e datadas}
+- **Inferência personalizada:** {razão para a probabilidade se alterar ou permanecer próxima da referência}
+- **Evidência protetora ou contraditória:** {evidência}
+- **Dados em falta que alterariam esta estimativa:** {dados}
+- **Melhor passo de prevenção ou esclarecimento:** {ação específica}
+- **Especialista / discussão:** {tipo de especialista e discussão, se adequado}
 
-{Repeat for causes 2–10.}
+{Repetir para as causas 2–10.}
 
-## Important risks outside the top 10
+## Riscos importantes fora dos dez principais
 
-{Clinically important near-misses or acute flags only.}
+{Apenas riscos clinicamente importantes próximos do limiar ou sinais agudos.}
 
-## Highest-leverage prevention priorities
+## Prioridades preventivas com maior impacto
 
-1. **{Priority}:** {cross-cause value, exact action, specialist type if needed, and result to return with.}
+1. **{Prioridade}:** {valor transversal, ação exata, tipo de especialista se necessário e resultado a trazer.}
 
-## Data that would most change the ranking
+## Dados que mais alterariam a ordenação
 
-1. {Missing or stale input and affected causes.}
+1. {Dado em falta ou desatualizado e causas afetadas.}
 
-## Evidence appendix
+## Apêndice de evidência
 
-### Source coverage
+### Cobertura das fontes
 
-| Source | Status | Freshness / span | Evidence used | Limitation or impact on uncertainty |
+| Fonte | Estado | Atualidade / período | Evidência utilizada | Limitação ou impacto na incerteza |
 |---|---|---|---|---|
-| {source} | {available/missing/unreadable/not configured} | {date or span} | {safe evidence IDs} | {limitation} |
+| {fonte} | {disponível/em falta/ilegível/não configurada} | {data ou período} | {IDs de evidência seguros} | {limitação} |
 
-**Unavailable sources:** {list, or `None`}
+**Fontes indisponíveis:** {lista ou `Nenhuma`}
 
-### Population baseline and method
+### Referência populacional e método
 
-{Official data provenance, taxonomy, life-table method, modifier ledger, and double-counting controls.}
+{Proveniência dos dados oficiais, taxonomia, método da tábua de mortalidade, registo de modificadores e controlos de dupla contagem.}
 
-### Limitations
+### Limitações
 
-- {Population-data, profile-completeness, model-applicability, and uncertainty limitations.}
+- {Limitações dos dados populacionais, completude do perfil, aplicabilidade do modelo e incerteza.}
 
-### Evidence references
+### Referências de evidência
 
-- {Report-safe evidence ID}: {dated evidence label; never an absolute path}
-- {Direct links to official mortality data and primary evidence.}
+- {ID de evidência seguro}: {descrição datada; nunca um caminho absoluto}
+- {Ligações diretas para dados oficiais de mortalidade e evidência primária.}

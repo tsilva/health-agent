@@ -4,63 +4,63 @@ Score every canonical system and core organ/subsystem. Fold smaller structures i
 
 ## Canonical systems
 
-1. `Cardiovascular and vascular`
-2. `Respiratory`
-3. `Neurologic`
-4. `Mental and behavioral health`
-5. `Endocrine and metabolic`
+1. `Cardiovascular e vascular`
+2. `Respiratório`
+3. `Neurológico`
+4. `Saúde mental e comportamental`
+5. `Endócrino e metabólico`
 6. `Gastrointestinal`
-7. `Hepatic, biliary, and pancreatic`
-8. `Renal and urinary`
-9. `Hematologic`
-10. `Immune, inflammatory, and lymphatic`
-11. `Musculoskeletal and connective tissue`
-12. `Integumentary`
-13. `Reproductive and sexual`
-14. `Sensory`
-15. `Oral and dental`
-16. `Sleep and circadian`
+7. `Hepático, biliar e pancreático`
+8. `Renal e urinário`
+9. `Hematológico`
+10. `Imunitário, inflamatório e linfático`
+11. `Musculoesquelético e tecido conjuntivo`
+12. `Tegumentar`
+13. `Reprodutivo e sexual`
+14. `Sensorial`
+15. `Oral e dentário`
+16. `Sono e ritmo circadiano`
 
 ## Core organ and subsystem rows
 
-| Parent system | Required organ/subsystem | Examples of relevant evidence |
+| Sistema principal | Órgão/subsistema obrigatório | Exemplos de evidência relevante |
 |---|---|---|
-| Cardiovascular and vascular | Heart (structure, rhythm, and pump) | ECG, echocardiogram, rhythm, ejection fraction, murmurs, chest symptoms, exercise tolerance |
-| Cardiovascular and vascular | Arterial and coronary circulation | blood pressure, lipids, atherosclerosis imaging, ischemia, pulse, vascular risk |
-| Cardiovascular and vascular | Venous and peripheral circulation | thrombosis, venous insufficiency, edema, varices, peripheral arterial findings |
-| Respiratory | Lungs and airways | spirometry, imaging, oxygenation, asthma/COPD, cough, dyspnea, exercise tolerance |
-| Neurologic | Brain and cognition | imaging, seizures, headaches, cognition, focal deficits, memory, prior injury |
-| Neurologic | Spinal cord and peripheral nerves | strength, sensation, neuropathy, radiculopathy, reflexes, neurodiagnostics |
-| Neurologic | Autonomic nervous system | orthostatic symptoms, heart-rate response, sweating, temperature regulation, GI autonomic signs |
-| Mental and behavioral health | Mood, anxiety, and behavioral function | longitudinal mood/anxiety symptoms, functional impact, sleep interaction, treatment response |
-| Endocrine and metabolic | Thyroid | TSH/free hormones, antibodies, imaging, diagnosed thyroid disease, symptoms |
-| Endocrine and metabolic | Glucose regulation and endocrine pancreas | glucose, HbA1c, insulin resistance, diabetes, hypoglycemia, treatment |
-| Endocrine and metabolic | Adrenal and other endocrine function | cortisol/adrenal evidence, pituitary or calcium regulation, sex-hormone context |
-| Gastrointestinal | Esophagus and stomach | reflux, dyspepsia, endoscopy, pathology, swallowing, ulcers, treatment response |
-| Gastrointestinal | Small intestine and absorption | malabsorption, celiac testing, nutrient patterns, diarrhea, imaging/endoscopy |
-| Gastrointestinal | Colon and rectum | bowel pattern, bleeding, colonoscopy, pathology, inflammation, motility |
-| Hepatic, biliary, and pancreatic | Liver | enzymes, bilirubin, synthetic function, imaging, fibrosis, fatty liver, hepatitis |
-| Hepatic, biliary, and pancreatic | Gallbladder and biliary tract | imaging, stones, duct disease, cholestatic markers, biliary symptoms |
-| Hepatic, biliary, and pancreatic | Exocrine pancreas | enzymes, imaging, pancreatitis, digestion, exocrine insufficiency |
-| Renal and urinary | Kidneys | creatinine/eGFR, urinalysis, albuminuria, electrolytes, imaging, blood pressure |
-| Renal and urinary | Bladder and lower urinary tract | urination symptoms, infections, retention, imaging, urologic exams |
-| Hematologic | Red blood cells and oxygen carrying | hemoglobin, indices, reticulocytes, iron/B12/folate, hemolysis, symptoms |
-| Hematologic | White blood cells and bone marrow | counts/differential, recurrent abnormalities, marrow evidence, infections |
-| Hematologic | Platelets and coagulation | platelet count/function, bleeding/clotting, coagulation tests, thrombosis |
-| Immune, inflammatory, and lymphatic | Immune and lymphatic function | recurrent infections, autoimmunity, inflammatory markers, lymph nodes, immunologic tests |
-| Musculoskeletal and connective tissue | Bones | density, fractures, mineral metabolism, imaging, bone pain |
-| Musculoskeletal and connective tissue | Joints, tendons, and ligaments | pain, instability, inflammation, imaging, range of motion, injury recovery |
-| Musculoskeletal and connective tissue | Skeletal muscle | strength, mass, performance, CK, injury, exercise tolerance, recovery |
-| Musculoskeletal and connective tissue | Spine | imaging, pain, neurologic effect, mobility, rehabilitation response |
-| Integumentary | Skin | lesions, rashes, wounds, infections, cancer screening, dermatology findings |
-| Integumentary | Hair and nails | loss, brittleness, lesions, nutrient/endocrine context, examination |
-| Reproductive and sexual | Reproductive organs and hormonal function | sex-specific exams, imaging, cycles or gonadal function, fertility, screening |
-| Reproductive and sexual | Sexual function | libido, erectile/arousal function, pain, medication effects, hormonal context |
-| Sensory | Eyes and vision | acuity, retinal/optic findings, pressure, symptoms, corrective needs |
-| Sensory | Ears, hearing, and vestibular function | audiology, tinnitus, vertigo, balance, ear disease |
-| Oral and dental | Teeth and periodontium | caries, periodontal disease, dental exams, pain, infection, chewing |
-| Oral and dental | Oral mucosa, jaw, and salivary glands | lesions, TMJ, dry mouth, salivary disease, swallowing/oral function |
-| Sleep and circadian | Sleep and circadian function | sleep duration/quality, schedule, insomnia, sleep study, apnea, daytime function |
+| Cardiovascular e vascular | Coração (estrutura, ritmo e função de bomba) | ECG, ecocardiograma, ritmo, fração de ejeção, sopros, sintomas torácicos, tolerância ao exercício |
+| Cardiovascular e vascular | Circulação arterial e coronária | pressão arterial, lípidos, imagiologia da aterosclerose, isquemia, pulso, risco vascular |
+| Cardiovascular e vascular | Circulação venosa e periférica | trombose, insuficiência venosa, edema, varizes, achados arteriais periféricos |
+| Respiratório | Pulmões e vias respiratórias | espirometria, imagiologia, oxigenação, asma/DPOC, tosse, dispneia, tolerância ao exercício |
+| Neurológico | Cérebro e cognição | imagiologia, convulsões, cefaleias, cognição, défices focais, memória, lesão anterior |
+| Neurológico | Medula espinal e nervos periféricos | força, sensibilidade, neuropatia, radiculopatia, reflexos, exames neurodiagnósticos |
+| Neurológico | Sistema nervoso autónomo | sintomas ortostáticos, resposta da frequência cardíaca, sudação, regulação da temperatura, sinais autonómicos gastrointestinais |
+| Saúde mental e comportamental | Humor, ansiedade e função comportamental | sintomas longitudinais de humor/ansiedade, impacto funcional, interação com o sono, resposta ao tratamento |
+| Endócrino e metabólico | Tiroide | TSH/hormonas livres, anticorpos, imagiologia, doença tiroideia diagnosticada, sintomas |
+| Endócrino e metabólico | Regulação da glicose e pâncreas endócrino | glicose, HbA1c, resistência à insulina, diabetes, hipoglicemia, tratamento |
+| Endócrino e metabólico | Função suprarrenal e outras funções endócrinas | evidência relativa ao cortisol/suprarrenais, regulação hipofisária ou do cálcio, contexto das hormonas sexuais |
+| Gastrointestinal | Esófago e estômago | refluxo, dispepsia, endoscopia, anatomia patológica, deglutição, úlceras, resposta ao tratamento |
+| Gastrointestinal | Intestino delgado e absorção | má absorção, testes de doença celíaca, padrões de nutrientes, diarreia, imagiologia/endoscopia |
+| Gastrointestinal | Cólon e reto | padrão intestinal, hemorragia, colonoscopia, anatomia patológica, inflamação, motilidade |
+| Hepático, biliar e pancreático | Fígado | enzimas, bilirrubina, função de síntese, imagiologia, fibrose, esteatose hepática, hepatite |
+| Hepático, biliar e pancreático | Vesícula biliar e vias biliares | imagiologia, cálculos, doença dos canais, marcadores colestáticos, sintomas biliares |
+| Hepático, biliar e pancreático | Pâncreas exócrino | enzimas, imagiologia, pancreatite, digestão, insuficiência exócrina |
+| Renal e urinário | Rins | creatinina/TFGe, análise de urina, albuminúria, eletrólitos, imagiologia, pressão arterial |
+| Renal e urinário | Bexiga e trato urinário inferior | sintomas urinários, infeções, retenção, imagiologia, exames urológicos |
+| Hematológico | Glóbulos vermelhos e transporte de oxigénio | hemoglobina, índices, reticulócitos, ferro/B12/folato, hemólise, sintomas |
+| Hematológico | Glóbulos brancos e medula óssea | contagens/fórmula leucocitária, alterações recorrentes, evidência medular, infeções |
+| Hematológico | Plaquetas e coagulação | contagem/função plaquetária, hemorragia/coagulação, testes de coagulação, trombose |
+| Imunitário, inflamatório e linfático | Função imunitária e linfática | infeções recorrentes, autoimunidade, marcadores inflamatórios, gânglios linfáticos, testes imunológicos |
+| Musculoesquelético e tecido conjuntivo | Ossos | densidade, fraturas, metabolismo mineral, imagiologia, dor óssea |
+| Musculoesquelético e tecido conjuntivo | Articulações, tendões e ligamentos | dor, instabilidade, inflamação, imagiologia, amplitude de movimento, recuperação de lesões |
+| Musculoesquelético e tecido conjuntivo | Músculo esquelético | força, massa, desempenho, CK, lesão, tolerância ao exercício, recuperação |
+| Musculoesquelético e tecido conjuntivo | Coluna vertebral | imagiologia, dor, efeito neurológico, mobilidade, resposta à reabilitação |
+| Tegumentar | Pele | lesões, erupções cutâneas, feridas, infeções, rastreio oncológico, achados dermatológicos |
+| Tegumentar | Cabelo e unhas | queda, fragilidade, lesões, contexto nutricional/endócrino, exame |
+| Reprodutivo e sexual | Órgãos reprodutores e função hormonal | exames específicos do sexo, imagiologia, ciclos ou função gonadal, fertilidade, rastreio |
+| Reprodutivo e sexual | Função sexual | libido, função erétil/excitação, dor, efeitos da medicação, contexto hormonal |
+| Sensorial | Olhos e visão | acuidade, achados retinianos/óticos, pressão, sintomas, necessidades de correção |
+| Sensorial | Ouvidos, audição e função vestibular | audiologia, acufenos, vertigem, equilíbrio, doença do ouvido |
+| Oral e dentário | Dentes e periodonto | cáries, doença periodontal, exames dentários, dor, infeção, mastigação |
+| Oral e dentário | Mucosa oral, maxilar e glândulas salivares | lesões, ATM, boca seca, doença salivar, deglutição/função oral |
+| Sono e ritmo circadiano | Sono e função circadiana | duração/qualidade do sono, horário, insónia, estudo do sono, apneia, função diurna |
 
 ## Mapping rules
 

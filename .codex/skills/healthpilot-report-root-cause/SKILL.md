@@ -5,6 +5,8 @@ description: Generate a dated root-cause differential report for a selected live
 
 # Root Cause Analysis
 
+Generate every user-facing report and companion artifact in European Portuguese (`pt-PT`), following the shared report contract's language rules.
+
 Use this skill when the user asks "what is causing X?", "find the root cause of X", "rank likely causes", or wants a probability-weighted differential for a symptom, condition, abnormal lab, episode, recurring pattern, or unresolved health problem.
 
 The deliverable is a dated Markdown report under `.output/{profile_slug}/root-cause/` containing the top K hypotheses, sorted by probability, with probabilities adding exactly to 100%.
@@ -64,7 +66,7 @@ Rank candidate root causes as conditions, mechanisms, or clinically meaningful e
 Each hypothesis must include:
 
 - `probability`: integer or one-decimal percentage
-- `confidence frame`: `clear conclusion`, `likely diagnosis`, `differential`, or `open question`
+- `confidence frame`: render as `conclusão clara`, `diagnóstico provável`, `diagnóstico diferencial`, or `questão em aberto`; internal state may retain the canonical English enum
 - `why this probability`: explanation for the assigned probability
 - `supporting evidence`: observed evidence with dates or source references when possible
 - `contradicting / weakening evidence`: evidence against it or reasons it is less likely
@@ -72,7 +74,7 @@ Each hypothesis must include:
 - `next best test or action`
 - `specialist type` when a specialist path is appropriate
 
-Use `clear conclusion` only when the record directly proves the cause. Most root-cause reports should use `likely diagnosis`, `differential`, and `open question`.
+Use `conclusão clara` only when the record directly proves the cause. Most root-cause reports should use `diagnóstico provável`, `diagnóstico diferencial`, and `questão em aberto`.
 
 ## Probability Rules
 
@@ -101,13 +103,13 @@ The report must include, in this order:
 
 1. Title
 2. Required shared metadata and `Query interpreted as`
-3. `Leading hypotheses`, including probability, confidence frame, evidence confidence, urgency, and strongest discriminator
-4. `Changes since previous report`
-5. `Ranked root-cause assessment`
-6. `Most important uncertainty`
-7. `Next best actions`
-8. `What to return with`
-9. `Evidence appendix`
+3. `Principais hipóteses`, including probability, confidence frame, evidence confidence, urgency, and strongest discriminator
+4. `Alterações desde o relatório anterior`
+5. `Avaliação ordenada das causas`
+6. `Incerteza mais importante`
+7. `Melhores ações seguintes`
+8. `O que trazer na próxima atualização`
+9. `Apêndice de evidência`
 
 ## Output Contract
 
@@ -123,7 +125,7 @@ Use the local report date and canonical profile slug. Keep `query_slug` short, l
 
 Do not stop at "talk to a doctor." For each high-probability or high-impact hypothesis, identify the specialist type and the specific test, treatment discussion, or observation that would most change the probability.
 
-For safety-critical symptoms or red flags found in the record, include an urgent-care note in `Next best actions`, but keep the main report focused on root-cause ranking.
+For safety-critical symptoms or red flags found in the record, include an urgent-care note in `Melhores ações seguintes`, but keep the main report focused on root-cause ranking.
 
 Avoid generic root-cause lists. Every listed hypothesis should have a reason it belongs in this specific profile's record.
 

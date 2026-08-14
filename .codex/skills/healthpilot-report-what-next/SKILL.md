@@ -5,6 +5,8 @@ description: Generate a dated what-next report for a selected live healthpilot p
 
 # What Next Report
 
+Generate every user-facing report and companion artifact in European Portuguese (`pt-PT`), following the shared report contract's language rules.
+
 This is the canonical high-level workflow for the repo.
 
 When the user invokes this skill, the expected output is simple:
@@ -98,19 +100,19 @@ The report must contain, in this order:
 
 1. Title
 2. Required shared metadata
-3. `Current status`
-4. `Now / Next / Later`
-5. `Changes since previous report`
-6. `Self-experiments ranked by ROI`
-7. `Unresolved issues`
-8. `Optimization opportunities`
-9. `What to return with`
-10. `Evidence appendix`
+3. `Estado atual`
+4. `Agora / A seguir / Mais tarde`
+5. `Alterações desde o relatório anterior`
+6. `Autoexperiências ordenadas por retorno esperado`
+7. `Questões por resolver`
+8. `Oportunidades de otimização`
+9. `O que trazer na próxima atualização`
+10. `Apêndice de evidência`
 
-The first substantive report section must be `Current status`, with:
+The first substantive report section must be `Estado atual`, with:
 
-- `Current active conditions`: active or monitoring conditions/issues, including confidence frame and working conclusion.
-- `Current medication / supplement stack`: the current stack if the record supports it, or a clear reconciliation note plus the recent medication/supplement evidence used.
+- `Condições ativas atuais`: active or monitoring conditions/issues, including confidence frame and working conclusion.
+- `Medicação e suplementos atuais`: the current stack if the record supports it, or a clear reconciliation note plus the recent medication/supplement evidence used.
 
 This section exists so the user can immediately confirm whether the report took the current status into account before reading the action plan.
 
@@ -120,13 +122,13 @@ When lifestyle sources are configured, include them in source coverage and use `
 
 ### Current Status Summary
 
-Start every what-next report with `## Current status`. It must precede the action board and evidence appendix.
+Start every what-next report with `## Estado atual`. It must precede the action board and evidence appendix.
 
 Use observed evidence for medication and supplement status. If the parsed record only contains medication/supplement mentions or recent changes rather than a reconciled active list, say that directly and list the evidence that needs reconciliation instead of pretending it is a confirmed current stack.
 
 Keep this summary compact. For a full reconciliation or history request, use `healthpilot-report-treatment-record` rather than expanding the action plan into a second treatment record.
 
-### Now / Next / Later
+### Agora / A seguir / Mais tarde
 
 Use a compact action board with these columns:
 
@@ -141,7 +143,7 @@ Put blocking dependencies in the detailed action text instead of adding vague pr
 
 ### Source Coverage
 
-Put one coverage table inside `## Evidence appendix`. Include source status, freshness or span, material evidence used, limitations, and an explicit `Unavailable sources` statement. Do not add a second source-status list.
+Put one coverage table inside `## Apêndice de evidência`. Include source status, freshness or span, material evidence used, limitations, and an explicit `Fontes indisponíveis` statement. Do not add a second source-status list.
 
 ### Top Next Actions
 

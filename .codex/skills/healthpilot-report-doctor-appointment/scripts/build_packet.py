@@ -40,24 +40,28 @@ except ImportError as exc:  # pragma: no cover - exercised only outside the PDF 
 
 PAGE_SIZES = {"A4": A4, "LETTER": LETTER}
 FACT_SECTIONS = (
-    ("new_since_last_visit", "NEW SINCE LAST VISIT"),
-    ("visit_focus", "Visit focus"),
-    ("objective_results", "Objective results"),
-    ("current_treatments", "Current relevant treatments and reactions"),
-    ("relevant_history", "Relevant documented history"),
+    ("new_since_last_visit", "NOVO DESDE A ÚLTIMA CONSULTA"),
+    ("visit_focus", "Motivo da consulta"),
+    ("objective_results", "Resultados objetivos"),
+    ("current_treatments", "Tratamentos atuais relevantes e reações"),
+    ("relevant_history", "Antecedentes documentados relevantes"),
 )
 EVIDENCE_LABELS = {
-    "objective_record": "Objective record",
-    "patient_reported": "Patient-reported",
-    "documented_treatment": "Documented treatment",
-    "documented_history": "Documented history",
+    "objective_record": "Registo objetivo",
+    "patient_reported": "Relatado pelo doente",
+    "documented_treatment": "Tratamento documentado",
+    "documented_history": "Antecedente documentado",
 }
 PROHIBITED_DOCTOR_LANGUAGE = re.compile(
     r"\b(hypothes(?:is|es)|differential|likely|possibly|perhaps|consider|"
     r"rule(?:d)?\s+out|recommend(?:ed|ation)?|request(?:ed)?|questions?|should|"
     r"could\s+be|may\s+be|potential(?:ly)?|probabl(?:e|y)|suspect(?:ed|s)?|"
     r"suggest(?:s|ed|ing)?|appear(?:s|ed)?|favou?rs?|consistent\s+with|"
-    r"compatible\s+with|risk\s+of)\b",
+    r"compatible\s+with|risk\s+of|hipóteses?|diferencial|prováv(?:el|eis)|provavelmente|"
+    r"possív(?:el|eis)|possivelmente|talvez|considerar|a\s+excluir|recomend(?:ar|ado|ada|ação)|"
+    r"pedir|pedido|pedida|solicitar|perguntas?|questões?|deveria|deve|poderá\s+ser|"
+    r"pode\s+ser|potencial(?:mente)?|suspeit[ao]|sugere|aparenta|favorece|"
+    r"compatível\s+com|consistente\s+com|risco\s+de)\b",
     re.IGNORECASE,
 )
 SUPPORTED_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp"}
@@ -110,7 +114,7 @@ class NumberedDocTemplate(BaseDocTemplate):
             topMargin=14 * mm,
             bottomMargin=14 * mm,
             title=title,
-            author="Prepared by the patient from available health records",
+            author="Preparado pelo doente a partir dos registos de saúde disponíveis",
         )
         frame = Frame(
             self.leftMargin,
@@ -128,11 +132,11 @@ class NumberedDocTemplate(BaseDocTemplate):
         canvas.saveState()
         canvas.setFont("Helvetica", 7)
         canvas.setFillColor(colors.HexColor("#59636E"))
-        canvas.drawString(15 * mm, 7 * mm, "Private health information")
+        canvas.drawString(15 * mm, 7 * mm, "Informação clínica privada")
         canvas.drawRightString(
             self.pagesize[0] - 15 * mm,
             7 * mm,
-            f"Page {doc.page + self.page_offset}",
+            f"Página {doc.page + self.page_offset}",
         )
         canvas.restoreState()
 
@@ -464,9 +468,9 @@ def _meta_table(spec: dict[str, Any], *, compact: bool) -> Table:
     styles = _styles()
     appointment = spec["appointment"]
     rows = [
-        ["Patient", _escape(spec["profile_name"]), "Appointment", _escape(appointment["date"])],
-        ["Clinician", _escape(appointment["clinician_name"]), "Specialty", _escape(appointment["specialty"])],
-        ["Purpose", _escape(appointment["purpose"]), "Record cutoff", _escape(spec["record_cutoff"])],
+        ["Doente", _escape(spec["profile_name"]), "Consulta", _escape(appointment["date"])],
+        ["Médico", _escape(appointment["clinician_name"]), "Especialidade", _escape(appointment["specialty"])],
+        ["Motivo", _escape(appointment["purpose"]), "Data-limite dos registos", _escape(spec["record_cutoff"])],
     ]
     body_style = styles["doctor_body"] if compact else styles["body"]
     formatted = []
@@ -501,7 +505,7 @@ def _fact_paragraph(fact: dict[str, str], style: ParagraphStyle) -> Paragraph:
     label = EVIDENCE_LABELS[fact["evidence_type"]]
     content = (
         f"- <b>{_escape(fact['date'])}</b> - {_escape(label)}: {_escape(fact['text'])} "
-        f"<font color='#59636E'>(Source: {_escape(fact['source'])})</font>"
+        f"<font color='#59636E'>(Fonte: {_escape(fact['source'])})</font>"
     )
     return Paragraph(content, style)
 
@@ -509,9 +513,9 @@ def _fact_paragraph(fact: dict[str, str], style: ParagraphStyle) -> Paragraph:
 def _doctor_story(spec: dict[str, Any], attachment_labels: list[str]) -> list[Any]:
     styles = _styles()
     story: list[Any] = [
-        Paragraph("Clinical fact summary for appointment", styles["doctor_title"]),
+        Paragraph("Resumo factual para a consulta", styles["doctor_title"]),
         Paragraph(
-            "Prepared for rapid review from available records. Items are attributed by evidence type.",
+            "Preparado para consulta rápida a partir dos registos disponíveis. Cada item identifica o tipo de evidência.",
             styles["subtitle"],
         ),
         Spacer(1, 2.5 * mm),
@@ -523,7 +527,7 @@ def _doctor_story(spec: dict[str, Any], attachment_labels: list[str]) -> list[An
         new_facts = doctor["new_since_last_visit"]
         banner_content: list[Any] = [
             Paragraph(
-                f"NEW SINCE LAST VISIT - compared with {_escape(repeat['prior_visit_date'])}",
+                f"NOVO DESDE A ÚLTIMA CONSULTA — comparação com {_escape(repeat['prior_visit_date'])}",
                 styles["banner"],
             )
         ]
@@ -532,7 +536,7 @@ def _doctor_story(spec: dict[str, Any], attachment_labels: list[str]) -> list[An
         else:
             banner_content.append(
                 Paragraph(
-                    "No material new facts were identified in the available record after the prior visit cutoff.",
+                    "Não foram identificados factos novos relevantes nos registos disponíveis após a consulta anterior.",
                     styles["banner_body"],
                 )
             )
@@ -561,10 +565,10 @@ def _doctor_story(spec: dict[str, Any], attachment_labels: list[str]) -> list[An
 
     if attachment_labels:
         shown = attachment_labels[:5]
-        suffix = f"; plus {len(attachment_labels) - 5} more" if len(attachment_labels) > 5 else ""
+        suffix = f"; mais {len(attachment_labels) - 5}" if len(attachment_labels) > 5 else ""
         story.extend(
             [
-                Paragraph("Records included in the patient packet", styles["doctor_heading"]),
+                Paragraph("Registos incluídos no pacote do doente", styles["doctor_heading"]),
                 Paragraph("- " + _escape("; ".join(shown) + suffix), styles["doctor_body"]),
             ]
         )
@@ -572,7 +576,7 @@ def _doctor_story(spec: dict[str, Any], attachment_labels: list[str]) -> list[An
         [
             Spacer(1, 2 * mm),
             Paragraph(
-                "Prepared by the patient from available records.",
+                "Preparado pelo doente a partir dos registos disponíveis.",
                 styles["small"],
             ),
         ]
@@ -584,10 +588,10 @@ def _patient_story(spec: dict[str, Any]) -> list[Any]:
     styles = _styles()
     appointment = spec["appointment"]
     story: list[Any] = [
-        Paragraph("Patient appointment briefing", styles["title"]),
+        Paragraph("Preparação do doente para a consulta", styles["title"]),
         Paragraph(
-            f"Prepared {_escape(spec['report_date'])} for {_escape(appointment['clinician_name'])} "
-            f"({_escape(appointment['specialty'])}). This is a preparation aid, not a diagnosis or medical order.",
+            f"Preparado em {_escape(spec['report_date'])} para {_escape(appointment['clinician_name'])} "
+            f"({_escape(appointment['specialty'])}). Este documento ajuda a preparar a consulta; não constitui um diagnóstico nem uma prescrição médica.",
             styles["subtitle"],
         ),
         Spacer(1, 4 * mm),
@@ -598,14 +602,14 @@ def _patient_story(spec: dict[str, Any]) -> list[Any]:
     if repeat["status"] == "confirmed":
         story.append(
             Paragraph(
-                f"Repeat-visit comparison cutoff: {_escape(repeat['prior_visit_date'])}",
+                f"Data de referência para comparação com a consulta anterior: {_escape(repeat['prior_visit_date'])}",
                 styles["body"],
             )
         )
     elif repeat["status"] == "uncertain":
         story.append(
             Paragraph(
-                "Prior visit with this clinician could not be confirmed from the available record; no clinician-facing new-since comparison was made.",
+                "Não foi possível confirmar uma consulta anterior com este médico nos registos disponíveis; não foi feita uma comparação de novos factos para o resumo clínico.",
                 styles["body"],
             )
         )
@@ -624,7 +628,7 @@ def _patient_story(spec: dict[str, Any]) -> list[Any]:
         [
             Spacer(1, 4 * mm),
             Paragraph(
-                "Bring the separate one-page clinician summary and this packet. Record decisions, exact medication instructions, tests ordered, and follow-up timing before leaving.",
+                "Levar o resumo de uma página para o médico e este pacote. Antes de sair, registar as decisões, instruções exatas sobre medicação, exames pedidos e prazo de seguimento.",
                 styles["small"],
             ),
         ]
@@ -746,9 +750,9 @@ def _index_story(
 ) -> list[Any]:
     styles = _styles()
     story: list[Any] = [
-        Paragraph("Supporting documents", styles["index_title"]),
+        Paragraph("Documentos de apoio", styles["index_title"]),
         Paragraph(
-            "The following source pages are merged into this patient packet. Page ranges refer to the final combined PDF.",
+            "As páginas-fonte seguintes estão anexadas a este pacote. Os intervalos de páginas referem-se ao PDF final combinado.",
             styles["body"],
         ),
         Spacer(1, 3 * mm),
@@ -756,7 +760,7 @@ def _index_story(
     if not attachments:
         story.append(
             Paragraph(
-                "No supporting source documents were selected from the available record for this appointment.",
+                "Não foram selecionados documentos-fonte de apoio dos registos disponíveis para esta consulta.",
                 styles["body"],
             )
         )
@@ -764,10 +768,10 @@ def _index_story(
 
     rows: list[list[Any]] = [
         [
-            Paragraph("Document", styles["small"]),
-            Paragraph("Date", styles["small"]),
-            Paragraph("Why included", styles["small"]),
-            Paragraph("Packet pages", styles["small"]),
+            Paragraph("Documento", styles["small"]),
+            Paragraph("Data", styles["small"]),
+            Paragraph("Motivo da inclusão", styles["small"]),
+            Paragraph("Páginas no pacote", styles["small"]),
         ]
     ]
     next_page = briefing_pages + index_pages + 1
@@ -776,7 +780,7 @@ def _index_story(
         label = (
             f"{_escape(attachment.label)}<br/>"
             f"<font color='#59636E'>{_escape(attachment.source_path.name)}; "
-            f"source pages {_escape(original_pages)}</font>"
+            f"páginas da fonte {_escape(original_pages)}</font>"
         )
         rows.append(
             [
@@ -823,7 +827,7 @@ def _build_index_pdf(
                 index_pages=assumed_pages,
             ),
             pagesize=pagesize,
-            title="Supporting documents index",
+            title="Índice de documentos de apoio",
             page_offset=briefing_pages,
         )
         if actual_pages == assumed_pages:
@@ -838,7 +842,7 @@ def _merge_pdfs(inputs: Iterable[Path], destination: Path, *, title: str) -> int
         reader = _read_pdf(input_path)
         for page in reader.pages:
             writer.add_page(page)
-    writer.add_metadata({"/Title": title, "/Author": "Prepared by the patient"})
+    writer.add_metadata({"/Title": title, "/Author": "Preparado pelo doente"})
     destination.parent.mkdir(parents=True, exist_ok=True)
     with destination.open("wb") as handle:
         writer.write(handle)
@@ -880,7 +884,7 @@ def build_packet(spec_path: Path, doctor_output: Path, patient_output: Path) -> 
             doctor_temp,
             _doctor_story(spec, attachment_labels),
             pagesize=pagesize,
-            title="Clinical fact summary for appointment",
+            title="Resumo factual para a consulta",
         )
         if doctor_pages != 1:
             raise PacketError(
@@ -892,7 +896,7 @@ def build_packet(spec_path: Path, doctor_output: Path, patient_output: Path) -> 
             patient_briefing,
             _patient_story(spec),
             pagesize=pagesize,
-            title="Patient appointment briefing",
+            title="Preparação do doente para a consulta",
         )
         index_pdf = temp_dir / "supporting-index.pdf"
         index_pages = _build_index_pdf(
@@ -908,7 +912,7 @@ def build_packet(spec_path: Path, doctor_output: Path, patient_output: Path) -> 
         patient_pages = _merge_pdfs(
             [patient_briefing, index_pdf, *(item.prepared_pdf for item in attachments)],
             patient_temp,
-            title="Patient appointment packet with supporting documents",
+            title="Pacote do doente para a consulta com documentos de apoio",
         )
         if patient_pages != expected_patient_pages:
             raise PacketError(
@@ -952,9 +956,9 @@ def _self_test() -> None:
         temp_dir = Path(temp_name)
         source_pdf = temp_dir / "source.pdf"
         pdf = canvas.Canvas(str(source_pdf), pagesize=A4)
-        pdf.drawString(72, 760, "Supporting laboratory report page 1")
+        pdf.drawString(72, 760, "Relatório laboratorial de apoio — página 1")
         pdf.showPage()
-        pdf.drawString(72, 760, "Supporting laboratory report page 2")
+        pdf.drawString(72, 760, "Relatório laboratorial de apoio — página 2")
         pdf.showPage()
         pdf.save()
         source_image = temp_dir / "source-image.png"
@@ -962,26 +966,26 @@ def _self_test() -> None:
 
         fact = {
             "date": "2026-08-01",
-            "text": "Patient reports a new symptom beginning after the prior consultation.",
+            "text": "O doente refere um novo sintoma com início após a consulta anterior.",
             "evidence_type": "patient_reported",
-            "source": "Processed health-log entry",
+            "source": "Entrada processada do registo de saúde",
         }
         objective = {
             "date": "2026-08-02",
-            "text": "Laboratory report records marker X at 12 units.",
+            "text": "O relatório laboratorial regista o marcador X em 12 unidades.",
             "evidence_type": "objective_record",
-            "source": "Laboratory report",
+            "source": "Relatório laboratorial",
         }
         spec = {
-            "profile_name": "Test Patient",
+            "profile_name": "Doente de teste",
             "report_date": "2026-08-09",
             "record_cutoff": "2026-08-08",
             "page_size": "A4",
             "appointment": {
                 "date": "2026-08-10",
-                "clinician_name": "Dr. Test",
-                "specialty": "Internal medicine",
-                "purpose": "Follow-up",
+                "clinician_name": "Dr. Teste",
+                "specialty": "Medicina interna",
+                "purpose": "Seguimento",
             },
             "repeat_visit": {
                 "status": "confirmed",
@@ -989,8 +993,8 @@ def _self_test() -> None:
                 "evidence": [
                     {
                         "date": "2026-07-01",
-                        "text": "Completed visit documented.",
-                        "source": "Exam corpus",
+                        "text": "Consulta concluída e documentada.",
+                        "source": "Conjunto de exames",
                     }
                 ],
             },
@@ -1005,69 +1009,69 @@ def _self_test() -> None:
                 "sections": [
                     {
                         "kind": "appointment_goals",
-                        "title": "Appointment goals",
-                        "items": ["Understand the new symptom and agree on next steps."],
+                        "title": "Objetivos da consulta",
+                        "items": ["Compreender o novo sintoma e acordar os passos seguintes."],
                     },
                     {
                         "kind": "situation_summary",
-                        "title": "Situation summary",
-                        "items": ["A concise patient-facing summary."],
+                        "title": "Resumo da situação",
+                        "items": ["Um resumo conciso para o doente."],
                     },
                     {
                         "kind": "new_since_last_visit",
-                        "title": "New since the last visit",
-                        "items": ["A new symptom and a new laboratory result were recorded."],
+                        "title": "Novidades desde a última consulta",
+                        "items": ["Foram registados um novo sintoma e um novo resultado laboratorial."],
                     },
                     {
                         "kind": "current_status",
-                        "title": "Current symptoms, treatments, and reactions",
-                        "items": ["Current status to reconcile at the appointment."],
+                        "title": "Sintomas, tratamentos e reações atuais",
+                        "items": ["Estado atual a reconciliar na consulta."],
                     },
                     {
                         "kind": "objective_evidence",
-                        "title": "Objective evidence",
-                        "items": ["Laboratory report dated 2026-08-02."],
+                        "title": "Evidência objetiva",
+                        "items": ["Relatório laboratorial datado de 2026-08-02."],
                     },
                     {
                         "kind": "working_hypotheses",
-                        "title": "Working hypotheses and differential",
-                        "items": ["Differential - treatment effect versus unrelated change."],
+                        "title": "Hipóteses de trabalho e diagnóstico diferencial",
+                        "items": ["Diagnóstico diferencial — efeito do tratamento ou alteração não relacionada."],
                     },
                     {
                         "kind": "questions_to_ask",
-                        "title": "Questions to ask",
-                        "items": ["What finding would change the treatment plan?"],
+                        "title": "Perguntas a fazer",
+                        "items": ["Que achado alteraria o plano de tratamento?"],
                     },
                     {
                         "kind": "source_coverage",
-                        "title": "Source coverage and limitations",
-                        "items": ["Labs, exams, and health log reviewed."],
+                        "title": "Cobertura das fontes e limitações",
+                        "items": ["Foram analisados resultados laboratoriais, exames e o registo de saúde."],
                     },
                     {
                         "kind": "appointment_checklist",
-                        "title": "Appointment checklist",
-                        "items": ["Bring both PDFs and current medication containers."],
+                        "title": "Lista de verificação para a consulta",
+                        "items": ["Levar ambos os PDF e as embalagens da medicação atual."],
                     },
                     {
                         "kind": "after_visit_capture",
-                        "title": "After-visit capture",
-                        "items": ["Record decisions, tests, medication changes, and follow-up timing."],
+                        "title": "Registo após a consulta",
+                        "items": ["Registar decisões, exames, alterações à medicação e prazo de seguimento."],
                     },
                 ]
             },
             "supporting_documents": [
                 {
                     "path": str(source_pdf),
-                    "label": "Laboratory report",
+                    "label": "Relatório laboratorial",
                     "record_date": "2026-08-02",
-                    "reason": "Supports the objective result",
+                    "reason": "Sustenta o resultado objetivo",
                     "pages": [2],
                 },
                 {
                     "path": str(source_image),
-                    "label": "Exam image",
+                    "label": "Imagem de exame",
                     "record_date": "2026-08-03",
-                    "reason": "Supports the documented exam finding",
+                    "reason": "Sustenta o achado documentado no exame",
                 }
             ],
         }
@@ -1087,9 +1091,9 @@ def _self_test() -> None:
         doctor_text = "\n".join(
             page.extract_text() or "" for page in PdfReader(result["doctor_output"]).pages
         )
-        assert "NEW SINCE LAST VISIT" in doctor_text
-        assert "Working hypotheses" not in doctor_text
-        assert "Questions to ask" not in doctor_text
+        assert "NOVO DESDE A ÚLTIMA CONSULTA" in doctor_text
+        assert "Hipóteses de trabalho" not in doctor_text
+        assert "Perguntas a fazer" not in doctor_text
 
         first_visit = json.loads(json.dumps(spec))
         first_visit["repeat_visit"] = {"status": "not_found", "evidence": []}
@@ -1111,11 +1115,11 @@ def _self_test() -> None:
             page.extract_text() or ""
             for page in PdfReader(first_visit_result["doctor_output"]).pages
         )
-        assert "NEW SINCE LAST VISIT" not in first_visit_doctor_text
+        assert "NOVO DESDE A ÚLTIMA CONSULTA" not in first_visit_doctor_text
         assert first_visit_result["supporting_documents"] == 0
 
         broken = json.loads(json.dumps(spec))
-        broken["doctor"]["visit_focus"][0]["text"] = "Consider a likely diagnosis."
+        broken["doctor"]["visit_focus"][0]["text"] = "Considerar um diagnóstico provável."
         try:
             _validate_spec(broken)
         except PacketError:

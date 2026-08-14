@@ -1,93 +1,93 @@
-# Treatment Record — {profile_name}
+# Registo de tratamentos — {nome_do_perfil}
 
-**Report generated:** {YYYY-MM-DD HH:MM TZ}
-**Profile:** {profile_name}
-**Record cutoff:** {latest evidence date reviewed}
-**Evidence snapshot:** {snapshot_id} at {snapshot_generated_at}
-**Previous comparable report:** {filename or none}
-**Source-gap severity:** {none | minor | material | critical}
+**Relatório gerado:** {AAAA-MM-DD HH:MM FUSO}
+**Perfil:** {nome_do_perfil}
+**Data-limite dos registos:** {data mais recente da evidência analisada}
+**Instantâneo de evidência:** {id_do_instantâneo} às {data_hora_do_instantâneo}
+**Relatório comparável anterior:** {nome do ficheiro ou nenhum}
+**Gravidade das lacunas nas fontes:** {nenhuma | ligeira | material | crítica}
 
-> This record reconciles treatment evidence. It does not instruct the person to start, stop, taper, or change treatment.
+> Este registo reconcilia a evidência sobre tratamentos. Não indica que a pessoa deva iniciar, interromper, reduzir gradualmente ou alterar um tratamento.
 
-## Current regimen at a glance
+## Regime atual em resumo
 
-- **Clear conclusion:** {supported current regimen summary}
-- **Evidence confidence:** {high | moderate | low, with reason}
-- **Urgency:** {immediate | soon | routine | monitoring}
-- **Material recent change:** {change or none supported}
-- **Main reconciliation conflict:** {conflict or none}
-- **Confirmation needed next:** {specific status, dose, adherence, or stop-date question}
+- **Conclusão clara:** {resumo do regime atual apoiado pela evidência}
+- **Confiança na evidência:** {alta | moderada | baixa, com justificação}
+- **Urgência:** {imediata | breve | rotina | monitorização}
+- **Alteração recente relevante:** {alteração apoiada ou nenhuma}
+- **Principal conflito de reconciliação:** {conflito ou nenhum}
+- **Próxima confirmação necessária:** {questão específica sobre estado, dose, adesão ou data de suspensão}
 
-## Changes since previous report
+## Alterações desde o relatório anterior
 
-{For a baseline, use the exact baseline statement. Otherwise classify Added, Changed, Resolved, and Unchanged items with current evidence IDs.}
+{No primeiro relatório, use a frase de referência exata. Caso contrário, classifique os itens como Adicionados, Alterados, Resolvidos ou Inalterados e cite os IDs de evidência atuais.}
 
-## Current medications
+## Medicação atual
 
-| Medication | Status | How taken | Origin | Indication / target | Current since | Latest confirmation | Response / adverse effects | Evidence / uncertainty |
+| Medicamento | Estado | Como é tomado | Origem | Indicação / objetivo | Atual desde | Confirmação mais recente | Resposta / efeitos adversos | Evidência / incerteza |
 |---|---|---|---|---|---|---|---|---|
-| {generic name} | {confirmed active/likely active/active PRN} | {dose, route, schedule} | {origin} | {target} | {date} | {date} | {response} | {safe citation and uncertainty} |
+| {nome genérico} | {ativo confirmado/provavelmente ativo/ativo em SOS} | {dose, via, horário} | {origem} | {objetivo} | {data} | {data} | {resposta} | {citação segura e incerteza} |
 
-## Current supplements
+## Suplementos atuais
 
-| Supplement | Status | How taken | Origin | Purpose / target | Current since | Latest confirmation | Response / adverse effects | Evidence / uncertainty |
+| Suplemento | Estado | Como é tomado | Origem | Finalidade / objetivo | Atual desde | Confirmação mais recente | Resposta / efeitos adversos | Evidência / incerteza |
 |---|---|---|---|---|---|---|---|---|
-| {name} | {status} | {dose and schedule} | {origin} | {purpose} | {date} | {date} | {response} | {safe citation and uncertainty} |
+| {nome} | {estado} | {dose e horário} | {origem} | {finalidade} | {data} | {data} | {resposta} | {citação segura e incerteza} |
 
-## Current non-medication treatments
+## Tratamentos atuais não medicamentosos
 
-| Treatment | Category | Status | Protocol / schedule | Origin | Target | Latest confirmation | Evidence / uncertainty |
+| Tratamento | Categoria | Estado | Protocolo / horário | Origem | Objetivo | Confirmação mais recente | Evidência / incerteza |
 |---|---|---|---|---|---|---|---|
-| {treatment} | {therapy/device/lifestyle/monitoring/self-experiment} | {status} | {protocol} | {origin} | {target} | {date} | {safe citation} |
+| {tratamento} | {terapia/dispositivo/estilo de vida/monitorização/autoexperiência} | {estado} | {protocolo} | {origem} | {objetivo} | {data} | {citação segura} |
 
-## Current monitoring and follow-up
+## Monitorização e seguimento atuais
 
-| Activity | Frequency / next date | Linked treatment or condition | Latest confirmation | Evidence / uncertainty |
+| Atividade | Frequência / próxima data | Tratamento ou condição associada | Confirmação mais recente | Evidência / incerteza |
 |---|---|---|---|---|
-| {activity} | {schedule} | {link} | {date} | {safe citation} |
+| {atividade} | {calendário} | {associação} | {data} | {citação segura} |
 
-## Planned or recommended—not confirmed started
+## Planeado ou recomendado — início não confirmado
 
-| Item | Plan / intended target | Evidence date | Why it is not current |
+| Item | Plano / objetivo previsto | Data da evidência | Porque não é atual |
 |---|---|---|---|
-| {item} | {plan} | {date and safe citation} | {missing start confirmation} |
+| {item} | {plano} | {data e citação segura} | {confirmação de início em falta} |
 
-## Unclear or conflicting current status
+## Estado atual incerto ou contraditório
 
-| Item | Latest supporting evidence | Conflicting or missing evidence | Reconciliation needed |
+| Item | Evidência de suporte mais recente | Evidência contraditória ou em falta | Reconciliação necessária |
 |---|---|---|---|
-| {item} | {evidence} | {conflict} | {specific question} |
+| {item} | {evidência} | {conflito} | {questão específica} |
 
-## Recently stopped or completed
+## Interrompido ou concluído recentemente
 
-| Item | Prior regimen | Stop / completion evidence | Reason or outcome if recorded |
+| Item | Regime anterior | Evidência de suspensão / conclusão | Motivo ou resultado, se registado |
 |---|---|---|---|
-| {item} | {regimen} | {date and safe citation} | {reason} |
+| {item} | {regime} | {data e citação segura} | {motivo} |
 
-## Medication and supplement history
+## Histórico de medicação e suplementos
 
-| Item | Timeline | Last supported status | Response / adverse effects | Evidence / uncertainty |
+| Item | Cronologia | Último estado sustentado | Resposta / efeitos adversos | Evidência / incerteza |
 |---|---|---|---|---|
-| {item} | {dated changes} | {status and date} | {outcome} | {safe citations and gaps} |
+| {item} | {alterações datadas} | {estado e data} | {resultado} | {citações seguras e lacunas} |
 
-## Reconciliation flags
+## Alertas de reconciliação
 
-- {Dose conflict, duplicate, ingredient overlap, adverse effect, missed monitoring, ambiguous instruction, or `None identified`.}
+- {Conflito de dose, duplicação, sobreposição de ingredientes, efeito adverso, monitorização em falta, instrução ambígua ou `Nenhum identificado`.}
 
-## Evidence appendix
+## Apêndice de evidência
 
-### Source coverage
+### Cobertura das fontes
 
-| Source | Status | Freshness / span | Treatment evidence used | Limitation |
+| Fonte | Estado | Atualidade / período | Evidência de tratamento utilizada | Limitação |
 |---|---|---|---|---|
-| {source} | {available/missing/unreadable/not configured} | {date or span} | {safe citations or none} | {limitation} |
+| {fonte} | {disponível/em falta/ilegível/não configurada} | {data ou período} | {citações seguras ou nenhuma} | {limitação} |
 
-**Unavailable sources:** {list, or `None`}
+**Fontes indisponíveis:** {lista ou `Nenhuma`}
 
-### Evidence references
+### Referências de evidência
 
-- {Report-safe evidence ID}: {dated evidence label; never an absolute path}
+- {ID de evidência seguro}: {descrição datada; nunca um caminho absoluto}
 
-### Evidence notes and limitations
+### Notas sobre a evidência e limitações
 
-- {Synonym merges, inference labels, source precedence, and material gaps.}
+- {Fusão de sinónimos, rótulos de inferência, precedência das fontes e lacunas relevantes.}

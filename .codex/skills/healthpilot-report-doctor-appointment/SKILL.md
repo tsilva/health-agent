@@ -5,6 +5,8 @@ description: "Generate a two-PDF appointment packet for a selected live Healthpi
 
 # Doctor Appointment Packet
 
+Generate both PDFs and every user-facing companion artifact in European Portuguese (`pt-PT`), including titles, headings, metadata, tables, callouts, footers, and builder-generated text. Preserve original source-document titles or short quotations only when source fidelity requires it.
+
 Create exactly two final PDFs for one appointment:
 
 1. a one-page clinician fact summary; and
@@ -33,7 +35,7 @@ Resolve from the prompt and record when possible:
 - specialty or clinic, if known
 - purpose of the appointment
 
-Do not block on a missing appointment date or clinician name. Use `Date not provided` or a short specialty slug when necessary. Ask only when the missing detail would make the packet unsafe or useless.
+Do not block on a missing appointment date or clinician name. Use `Data não fornecida`, `Não fornecido`, or a short specialty slug when necessary. Ask only when the missing detail would make the packet unsafe or useless.
 
 ## Retrieval workflow
 
@@ -63,7 +65,7 @@ When confirmed:
 
 1. use the latest completed visit with that clinician as the comparison cutoff;
 2. identify only material facts first observed, measured, started, stopped, or changed after that cutoff;
-3. place `NEW SINCE LAST VISIT` immediately below the clinician handout header;
+3. place `NOVO DESDE A ÚLTIMA CONSULTA` immediately below the clinician handout header;
 4. include the prior-visit date and concise dated facts;
 5. if no material new facts are supported, state that rather than filling the box with old information.
 

@@ -10,77 +10,77 @@ from pathlib import Path
 
 
 SYSTEMS = (
-    "Cardiovascular and vascular",
-    "Respiratory",
-    "Neurologic",
-    "Mental and behavioral health",
-    "Endocrine and metabolic",
+    "Cardiovascular e vascular",
+    "Respiratório",
+    "Neurológico",
+    "Saúde mental e comportamental",
+    "Endócrino e metabólico",
     "Gastrointestinal",
-    "Hepatic, biliary, and pancreatic",
-    "Renal and urinary",
-    "Hematologic",
-    "Immune, inflammatory, and lymphatic",
-    "Musculoskeletal and connective tissue",
-    "Integumentary",
-    "Reproductive and sexual",
-    "Sensory",
-    "Oral and dental",
-    "Sleep and circadian",
+    "Hepático, biliar e pancreático",
+    "Renal e urinário",
+    "Hematológico",
+    "Imunitário, inflamatório e linfático",
+    "Musculoesquelético e tecido conjuntivo",
+    "Tegumentar",
+    "Reprodutivo e sexual",
+    "Sensorial",
+    "Oral e dentário",
+    "Sono e ritmo circadiano",
 )
 
 COMPONENTS = (
-    "Heart (structure, rhythm, and pump)",
-    "Arterial and coronary circulation",
-    "Venous and peripheral circulation",
-    "Lungs and airways",
-    "Brain and cognition",
-    "Spinal cord and peripheral nerves",
-    "Autonomic nervous system",
-    "Mood, anxiety, and behavioral function",
-    "Thyroid",
-    "Glucose regulation and endocrine pancreas",
-    "Adrenal and other endocrine function",
-    "Esophagus and stomach",
-    "Small intestine and absorption",
-    "Colon and rectum",
-    "Liver",
-    "Gallbladder and biliary tract",
-    "Exocrine pancreas",
-    "Kidneys",
-    "Bladder and lower urinary tract",
-    "Red blood cells and oxygen carrying",
-    "White blood cells and bone marrow",
-    "Platelets and coagulation",
-    "Immune and lymphatic function",
-    "Bones",
-    "Joints, tendons, and ligaments",
-    "Skeletal muscle",
-    "Spine",
-    "Skin",
-    "Hair and nails",
-    "Reproductive organs and hormonal function",
-    "Sexual function",
-    "Eyes and vision",
-    "Ears, hearing, and vestibular function",
-    "Teeth and periodontium",
-    "Oral mucosa, jaw, and salivary glands",
-    "Sleep and circadian function",
+    "Coração (estrutura, ritmo e função de bomba)",
+    "Circulação arterial e coronária",
+    "Circulação venosa e periférica",
+    "Pulmões e vias respiratórias",
+    "Cérebro e cognição",
+    "Medula espinal e nervos periféricos",
+    "Sistema nervoso autónomo",
+    "Humor, ansiedade e função comportamental",
+    "Tiroide",
+    "Regulação da glicose e pâncreas endócrino",
+    "Função suprarrenal e outras funções endócrinas",
+    "Esófago e estômago",
+    "Intestino delgado e absorção",
+    "Cólon e reto",
+    "Fígado",
+    "Vesícula biliar e vias biliares",
+    "Pâncreas exócrino",
+    "Rins",
+    "Bexiga e trato urinário inferior",
+    "Glóbulos vermelhos e transporte de oxigénio",
+    "Glóbulos brancos e medula óssea",
+    "Plaquetas e coagulação",
+    "Função imunitária e linfática",
+    "Ossos",
+    "Articulações, tendões e ligamentos",
+    "Músculo esquelético",
+    "Coluna vertebral",
+    "Pele",
+    "Cabelo e unhas",
+    "Órgãos reprodutores e função hormonal",
+    "Função sexual",
+    "Olhos e visão",
+    "Ouvidos, audição e função vestibular",
+    "Dentes e periodonto",
+    "Mucosa oral, maxilar e glândulas salivares",
+    "Sono e função circadiana",
 )
 
 REQUIRED_HEADINGS = (
-    "## Lowest-scoring systems",
-    "## Score meaning",
-    "## Current status context",
-    "## Ranked system scores",
-    "## Detailed organ and subsystem scores",
-    "## Five lowest systems",
-    "## Cross-system findings",
-    "## Evidence gaps",
-    "## Evidence appendix",
-    "### Source coverage",
-    "### Safety notes",
-    "### Limitations",
-    "### Evidence references",
+    "## Sistemas com pontuação mais baixa",
+    "## Significado das pontuações",
+    "## Contexto do estado atual",
+    "## Pontuações dos sistemas por ordem",
+    "## Pontuações detalhadas dos órgãos e subsistemas",
+    "## Cinco sistemas com pontuação mais baixa",
+    "## Achados transversais aos sistemas",
+    "## Lacunas de evidência",
+    "## Apêndice de evidência",
+    "### Cobertura das fontes",
+    "### Notas de segurança",
+    "### Limitações",
+    "### Referências de evidência",
 )
 SYSTEM_ROW_RE = re.compile(
     r"^\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|\s*([0-9]+(?:\.[0-9]+)?)\s*/\s*10\s*\|"
@@ -110,8 +110,8 @@ def validate(text: str) -> list[str]:
     if PLACEHOLDER_RE.search(text):
         errors.append("report still contains template placeholders")
 
-    if "## Ranked system scores" in text:
-        section = _section(text, "## Ranked system scores")
+    if "## Pontuações dos sistemas por ordem" in text:
+        section = _section(text, "## Pontuações dos sistemas por ordem")
         rows = [
             (int(match.group(1)), match.group(2).strip(), float(match.group(3)))
             for line in section.splitlines()
@@ -143,8 +143,8 @@ def validate(text: str) -> list[str]:
             if scores != sorted(scores):
                 errors.append(f"system scores must be sorted lowest to highest; found {scores}")
 
-    if "## Detailed organ and subsystem scores" in text:
-        section = _section(text, "## Detailed organ and subsystem scores")
+    if "## Pontuações detalhadas dos órgãos e subsistemas" in text:
+        section = _section(text, "## Pontuações detalhadas dos órgãos e subsistemas")
         rows = [
             (match.group(1).strip(), float(match.group(2)))
             for line in section.splitlines()
@@ -166,46 +166,46 @@ def validate(text: str) -> list[str]:
 
 def _self_test() -> None:
     system_rows = [
-        f"| {rank} | {name} | 5.0/10 | 2–8 | Low | uncertainty-driven | No direct data |"
+        f"| {rank} | {name} | 5.0/10 | 2–8 | Baixa | incerteza | Sem dados diretos |"
         for rank, name in enumerate(SYSTEMS, start=1)
     ]
     component_rows = [
-        f"| Parent system | {name} | 5.0/10 | 2–8 | Low | uncertainty-driven | No direct data |"
+        f"| Sistema principal | {name} | 5.0/10 | 2–8 | Baixa | incerteza | Sem dados diretos |"
         for name in COMPONENTS
     ]
     fixture = "\n".join(
         [
-            "# Organ and Bodily-System Health Report — Test User",
-            "## Lowest-scoring systems",
-            "- Test.",
-            "## Score meaning",
-            "- Test.",
-            "## Current status context",
-            "- Test.",
-            "## Ranked system scores",
+            "# Relatório de saúde dos órgãos e sistemas — Pessoa de teste",
+            "## Sistemas com pontuação mais baixa",
+            "- Teste.",
+            "## Significado das pontuações",
+            "- Teste.",
+            "## Contexto do estado atual",
+            "- Teste.",
+            "## Pontuações dos sistemas por ordem",
             *system_rows,
-            "## Detailed organ and subsystem scores",
+            "## Pontuações detalhadas dos órgãos e subsistemas",
             *component_rows,
-            "## Five lowest systems",
-            "- Test.",
-            "## Cross-system findings",
-            "- Test.",
-            "## Evidence gaps",
-            "- Test.",
-            "## Evidence appendix",
-            "### Source coverage",
-            "- Test.",
-            "### Safety notes",
-            "- Test.",
-            "### Limitations",
-            "- Test.",
-            "### Evidence references",
-            "- Test.",
+            "## Cinco sistemas com pontuação mais baixa",
+            "- Teste.",
+            "## Achados transversais aos sistemas",
+            "- Teste.",
+            "## Lacunas de evidência",
+            "- Teste.",
+            "## Apêndice de evidência",
+            "### Cobertura das fontes",
+            "- Teste.",
+            "### Notas de segurança",
+            "- Teste.",
+            "### Limitações",
+            "- Teste.",
+            "### Referências de evidência",
+            "- Teste.",
         ]
     )
     assert validate(fixture) == []
-    assert validate(fixture.replace("| 1 | Cardiovascular and vascular | 5.0/10", "| 1 | Cardiovascular and vascular | 5.5/10"))
-    assert validate(fixture.replace("| Parent system | Thyroid |", "| Parent system | Missing thyroid |"))
+    assert validate(fixture.replace("| 1 | Cardiovascular e vascular | 5.0/10", "| 1 | Cardiovascular e vascular | 5.5/10"))
+    assert validate(fixture.replace("| Sistema principal | Tiroide |", "| Sistema principal | Tiroide em falta |"))
 
 
 def main() -> int:

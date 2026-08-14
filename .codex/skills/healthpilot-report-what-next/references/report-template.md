@@ -1,80 +1,80 @@
-# What Next — {profile_name}
+# Próximos passos — {nome_do_perfil}
 
-**Report generated:** {YYYY-MM-DD HH:MM TZ}
-**Profile:** {profile_name}
-**Record cutoff:** {latest evidence date reviewed}
-**Evidence snapshot:** {snapshot_id} at {snapshot_generated_at}
-**Previous comparable report:** {filename or none}
-**Source-gap severity:** {none | minor | material | critical}
+**Relatório gerado:** {AAAA-MM-DD HH:MM FUSO}
+**Perfil:** {nome_do_perfil}
+**Data-limite dos registos:** {data mais recente da evidência analisada}
+**Instantâneo de evidência:** {id_do_instantâneo} às {data_hora_do_instantâneo}
+**Relatório comparável anterior:** {nome do ficheiro ou nenhum}
+**Gravidade das lacunas nas fontes:** {nenhuma | ligeira | material | crítica}
 
-## Current status
+## Estado atual
 
-### Current active conditions
+### Condições ativas atuais
 
-| Condition / issue | Status | Working conclusion | Confidence frame | Evidence confidence | Urgency |
+| Condição / questão | Estado | Conclusão de trabalho | Enquadramento de confiança | Confiança na evidência | Urgência |
 |---|---|---|---|---|---|
-| {issue} | {active/monitoring} | {conclusion} | {frame} | {high/moderate/low} | {urgency} |
+| {questão} | {ativa/em monitorização} | {conclusão} | {enquadramento} | {alta/moderada/baixa} | {urgência} |
 
-### Current medication / supplement stack
+### Medicação e suplementos atuais
 
-{Compact reconciled stack, or the exact evidence that still needs reconciliation.}
+{Lista reconciliada e concisa, ou a evidência exata que ainda precisa de reconciliação.}
 
-## Now / Next / Later
+## Agora / A seguir / Mais tarde
 
-| Rank | Horizon | Status | Action | Done when | Return with |
+| Prioridade | Horizonte | Estado | Ação | Concluída quando | Trazer como resultado |
 |---:|---|---|---|---|---|
-| 1 | {Now 0–7 days/Next 8–30 days/Later or monitor} | {ready/waiting/scheduled/done} | {action} | {completion evidence} | {result to bring back} |
+| 1 | {Agora 0–7 dias/A seguir 8–30 dias/Mais tarde ou monitorizar} | {pronta/em espera/agendada/concluída} | {ação} | {evidência de conclusão} | {resultado a trazer} |
 
-## Changes since previous report
+## Alterações desde o relatório anterior
 
-{For a baseline, use the exact baseline statement. Otherwise classify Added, Changed, Resolved, and Unchanged findings with current evidence IDs.}
+{No primeiro relatório, use a frase de referência exata. Caso contrário, classifique os achados como Adicionados, Alterados, Resolvidos ou Inalterados e cite os IDs de evidência atuais.}
 
-## Self-experiments ranked by ROI
+## Autoexperiências ordenadas por retorno esperado
 
-### {ROI rank}. {Experiment}
+### {posição}. {Experiência}
 
-- **Hypothesis:** {hypothesis}
-- **What to do:** {protocol}
-- **Duration:** {duration}
-- **Success metric:** {metric}
-- **Stop / avoid if:** {criteria}
-- **Evidence basis:** {profile evidence IDs and external evidence}
-- **Expected ROI:** {benefit versus effort, cost, safety, and time-to-feedback}
+- **Hipótese:** {hipótese}
+- **O que fazer:** {protocolo}
+- **Duração:** {duração}
+- **Métrica de sucesso:** {métrica}
+- **Parar / evitar se:** {critérios}
+- **Base de evidência:** {IDs de evidência do perfil e evidência externa}
+- **Retorno esperado:** {benefício face ao esforço, custo, segurança e tempo até obter informação}
 
-## Unresolved issues
+## Questões por resolver
 
-### {Issue}
+### {Questão}
 
-- **Working conclusion:** {conclusion}
-- **Confidence frame:** {frame}
-- **Evidence confidence:** {high/moderate/low}
-- **Strongest evidence:** {safe citations}
-- **Counterevidence:** {safe citations or none}
-- **Plan-changing gap:** {gap}
-- **Linked action:** {rank}
+- **Conclusão de trabalho:** {conclusão}
+- **Enquadramento de confiança:** {enquadramento}
+- **Confiança na evidência:** {alta/moderada/baixa}
+- **Evidência mais forte:** {citações seguras}
+- **Contraevidência:** {citações seguras ou nenhuma}
+- **Lacuna que pode alterar o plano:** {lacuna}
+- **Ação associada:** {posição}
 
-## Optimization opportunities
+## Oportunidades de otimização
 
-- {Evidence-backed opportunity or omit this section.}
+- {Oportunidade apoiada por evidência, ou omitir esta secção.}
 
-## What to return with
+## O que trazer na próxima atualização
 
-- {Results or feedback needed for the next refresh.}
+- {Resultados ou informação necessários para a próxima atualização.}
 
-## Evidence appendix
+## Apêndice de evidência
 
-### Source coverage
+### Cobertura das fontes
 
-| Source | Status | Freshness / span | Evidence used | Limitation |
+| Fonte | Estado | Atualidade / período | Evidência utilizada | Limitação |
 |---|---|---|---|---|
-| {source} | {available/missing/unreadable/not configured} | {date or span} | {safe evidence IDs} | {limitation} |
+| {fonte} | {disponível/em falta/ilegível/não configurada} | {data ou período} | {IDs de evidência seguros} | {limitação} |
 
-**Unavailable sources:** {list, or `None`}
+**Fontes indisponíveis:** {lista ou `Nenhuma`}
 
-### Evidence references
+### Referências de evidência
 
-- {Report-safe evidence ID}: {dated evidence label; never an absolute path}
+- {ID de evidência seguro}: {descrição datada; nunca um caminho absoluto}
 
-### Limitations
+### Limitações
 
-- {Material uncertainty and source limitations.}
+- {Incerteza material e limitações das fontes.}

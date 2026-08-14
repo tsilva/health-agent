@@ -5,6 +5,8 @@ description: Generate a dated, profile-specific report ranking the 10 most likel
 
 # Mortality Risk Report
 
+Generate every user-facing report and companion artifact in European Portuguese (`pt-PT`), following the shared report contract's language rules.
+
 Generate a cautious, evidence-auditable mortality-risk report from every available source category linked by a selected live Healthpilot profile. Treat the result as a baseline-calibrated risk estimate, not a prediction of how or when the person will die.
 
 ## Required Session Rules
@@ -105,14 +107,14 @@ When matched life-table inputs are available, use `scripts/estimate_competing_ri
 Use [references/report-template.md](references/report-template.md) as the starting structure.
 Read [../_shared/healthpilot-report-contract.md](../_shared/healthpilot-report-contract.md) and apply it in full.
 
-Start the decision layer with `## Leading risks and prevention levers`. Show the leading risks, separate confidence and urgency, and identify the prevention action with the broadest cross-cause value before methodology or full ranking detail.
+Start the decision layer with `## Principais riscos e medidas preventivas`. Show the leading risks, separate confidence and urgency, and identify the prevention action with the broadest cross-cause value before methodology or full ranking detail.
 
 The ranked table must contain exactly 10 actual cause categories sorted by point estimate. Keep `all other causes` outside the ranking as the residual.
 
 For each cause, include:
 
 - point estimate and plausible range
-- project confidence frame: `clear conclusion`, `likely diagnosis`, `differential`, or `open question`
+- project confidence frame: render as `conclusão clara`, `diagnóstico provável`, `diagnóstico diferencial`, or `questão em aberto`; internal state may retain the canonical English enum
 - matched population baseline
 - observed supporting evidence with dates or source citations
 - personalized inference and why it changes or preserves baseline rank
@@ -121,7 +123,7 @@ For each cause, include:
 - strongest realistic prevention, screening, or risk-reduction action
 - specialist type and specific discussion or test when appropriate
 
-Apply the confidence frame to the present risk characterization, not to a certain future death. A future cause of death is never a `clear conclusion`; that label may apply only to an observed diagnosis or modifier.
+Apply the confidence frame to the present risk characterization, not to a certain future death. A future cause of death is never a `conclusão clara`; that label may apply only to an observed diagnosis or modifier.
 
 Include cross-cause prevention priorities after the rankings. Prioritize actions that can reduce multiple leading risks, clarify a high-impact unknown, or change treatment. Do not pad the report with generic wellness advice or suggest prescription-only treatment without specialist evaluation.
 

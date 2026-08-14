@@ -10,19 +10,19 @@ from pathlib import Path
 
 
 REQUIRED_HEADINGS = (
-    "## Leading risks and prevention levers",
-    "## Probability definition",
-    "## Ranked top 10 causes",
-    "## Highest-leverage prevention priorities",
-    "## Evidence appendix",
-    "### Source coverage",
-    "### Limitations",
+    "## Principais riscos e medidas preventivas",
+    "## Definição da probabilidade",
+    "## Dez principais causas por ordem",
+    "## Prioridades preventivas com maior impacto",
+    "## Apêndice de evidência",
+    "### Cobertura das fontes",
+    "### Limitações",
 )
 ROW_RE = re.compile(
     r"^\|\s*(10|[1-9])\s*\|\s*([^|]+?)\s*\|\s*([0-9]+(?:\.[0-9]+)?)%\s*\|"
 )
 RESIDUAL_RE = re.compile(
-    r"\*\*Residual probability for all other causes:\*\*\s*([0-9]+(?:\.[0-9]+)?)%",
+    r"\*\*Probabilidade residual de todas as outras causas:\*\*\s*([0-9]+(?:\.[0-9]+)?)%",
     re.IGNORECASE,
 )
 
@@ -33,7 +33,7 @@ def validate(text: str) -> list[str]:
         if heading not in text:
             errors.append(f"missing required heading: {heading}")
 
-    ranked_heading = "## Ranked top 10 causes"
+    ranked_heading = "## Dez principais causas por ordem"
     if ranked_heading not in text:
         return errors
 
@@ -58,7 +58,7 @@ def validate(text: str) -> list[str]:
         names = [row[1].casefold() for row in rows]
         if len(set(names)) != len(names):
             errors.append("cause categories must be unique")
-        if any("all other" in name for name in names):
+        if any("all other" in name or "todas as outras" in name for name in names):
             errors.append("all other causes must be an unranked residual, not a top-10 row")
 
         estimates = [row[2] for row in rows]
@@ -83,22 +83,22 @@ def validate(text: str) -> list[str]:
 
 def _self_test() -> None:
     rows = "\n".join(
-        f"| {rank} | Cause {rank} | {11 - rank}% | 1–20% | differential | Test |"
+        f"| {rank} | Causa {rank} | {11 - rank}% | 1–20% | diagnóstico diferencial | Teste |"
         for rank in range(1, 11)
     )
     point_total = sum(range(1, 11))
     fixture = "\n".join(
         [
             *REQUIRED_HEADINGS[:2],
-            "## Ranked top 10 causes",
+            "## Dez principais causas por ordem",
             rows,
-            f"**Residual probability for all other causes:** {100 - point_total}%",
+            f"**Probabilidade residual de todas as outras causas:** {100 - point_total}%",
             *REQUIRED_HEADINGS[3:],
         ]
     )
     assert validate(fixture) == []
 
-    broken = fixture.replace("| 10 | Cause 10 | 1%", "| 10 | Cause 10 | 9%")
+    broken = fixture.replace("| 10 | Causa 10 | 1%", "| 10 | Causa 10 | 9%")
     assert validate(broken)
 
 

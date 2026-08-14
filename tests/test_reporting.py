@@ -17,31 +17,31 @@ from healthpilot.report_validation import BASELINE_CHANGE_TEXT, validate_report
 def _valid_what_next_report() -> str:
     return "\n".join(
         [
-            "# Action plan",
+            "# Plano de ação",
             "",
-            "**Report generated:** 2026-08-11T10:00:00+01:00",
-            "**Record cutoff:** 2026-08-10",
-            "**Evidence snapshot:** abc123 at 2026-08-11T09:00:00Z",
-            "**Previous comparable report:** none",
-            "**Source-gap severity:** minor",
+            "**Relatório gerado:** 2026-08-11T10:00:00+01:00",
+            "**Data-limite dos registos:** 2026-08-10",
+            "**Instantâneo de evidência:** abc123 às 2026-08-11T09:00:00Z",
+            "**Relatório comparável anterior:** nenhum",
+            "**Gravidade das lacunas nas fontes:** ligeira",
             "",
-            "## Current status",
-            "Likely diagnosis, medium evidence confidence, routine urgency.",
+            "## Estado atual",
+            "Diagnóstico provável, confiança moderada na evidência, urgência de rotina.",
             "",
-            "## Now / Next / Later",
-            "| Rank | Horizon | Status | Action | Done when | Return with |",
+            "## Agora / A seguir / Mais tarde",
+            "| Prioridade | Horizonte | Estado | Ação | Concluída quando | Trazer como resultado |",
             "|---|---|---|---|---|---|",
-            "| 1 | Now | Ready | Repeat CBC | Result received | CBC values [HL:2026-08-10:processed:L4] |",
+            "| 1 | Agora | Pronta | Repetir hemograma | Resultado recebido | Valores do hemograma [HL:2026-08-10:processed:L4] |",
             "",
-            "## Changes since previous report",
+            "## Alterações desde o relatório anterior",
             BASELINE_CHANGE_TEXT,
             "",
-            "## Supporting analysis",
-            "The action narrows the differential.",
+            "## Análise de suporte",
+            "A ação reduz o diagnóstico diferencial.",
             "",
-            "## Evidence appendix",
-            "### Source coverage",
-            "Unavailable sources: none.",
+            "## Apêndice de evidência",
+            "### Cobertura das fontes",
+            "Fontes indisponíveis: nenhuma.",
         ]
     )
 
@@ -49,21 +49,21 @@ def _valid_what_next_report() -> str:
 def _minimal_report(decision_heading: str) -> str:
     return "\n".join(
         [
-            "# Report",
-            "**Report generated:** 2026-08-11T10:00:00+01:00",
-            "**Record cutoff:** 2026-08-10",
-            "**Evidence snapshot:** abc123 at 2026-08-11T09:00:00Z",
-            "**Previous comparable report:** none",
-            "**Source-gap severity:** none",
+            "# Relatório",
+            "**Relatório gerado:** 2026-08-11T10:00:00+01:00",
+            "**Data-limite dos registos:** 2026-08-10",
+            "**Instantâneo de evidência:** abc123 às 2026-08-11T09:00:00Z",
+            "**Relatório comparável anterior:** nenhum",
+            "**Gravidade das lacunas nas fontes:** nenhuma",
             decision_heading,
-            "Decision content [LAB:2026-08-10:ferritin-R2].",
-            "## Changes since previous report",
+            "Conteúdo da decisão [LAB:2026-08-10:ferritin-R2].",
+            "## Alterações desde o relatório anterior",
             BASELINE_CHANGE_TEXT,
-            "## Supporting analysis",
-            "Observed evidence and inference are separated.",
-            "## Evidence appendix",
-            "### Source coverage",
-            "Unavailable sources: none.",
+            "## Análise de suporte",
+            "A evidência observada e a inferência estão separadas.",
+            "## Apêndice de evidência",
+            "### Cobertura das fontes",
+            "Fontes indisponíveis: nenhuma.",
         ]
     )
 
@@ -203,12 +203,20 @@ def test_shared_report_validation_accepts_contract_and_rejects_leaks(tmp_path: P
     ) == []
 
     leaked = report_text.replace(
-        "The action narrows the differential.",
+        "A ação reduz o diagnóstico diferencial.",
         "Evidence: /Users/alice/private/health.md <!-- DEPS: internal -->",
     )
     errors = validate_report(leaked, report_type="what-next", report_path=report_path)
     assert any("absolute macOS path" in error for error in errors)
     assert any("HTML/parser comment" in error for error in errors)
+
+    english_metadata = report_text.replace(
+        "**Relatório gerado:**", "**Report generated:**"
+    )
+    errors = validate_report(
+        english_metadata, report_type="what-next", report_path=report_path
+    )
+    assert "missing metadata: Relatório gerado" in errors
 
 
 def test_shared_report_validation_covers_every_report_type(tmp_path: Path) -> None:
@@ -216,22 +224,22 @@ def test_shared_report_validation_covers_every_report_type(tmp_path: Path) -> No
         "root-cause": (
             "root-cause",
             "2026-08-11-alice-root-cause-fatigue.md",
-            "## Leading hypotheses",
+            "## Principais hipóteses",
         ),
         "treatment-record": (
             "treatment-record",
             "2026-08-11-alice-treatment-record.md",
-            "## Current regimen at a glance",
+            "## Regime atual em resumo",
         ),
         "organ-system-health": (
             "organ-system-health",
             "2026-08-11-alice-organ-system-health.md",
-            "## Lowest-scoring systems",
+            "## Sistemas com pontuação mais baixa",
         ),
         "mortality-risk": (
             "mortality-risk",
             "2026-08-11-alice-mortality-risk.md",
-            "## Leading risks and prevention levers",
+            "## Principais riscos e medidas preventivas",
         ),
     }
     for report_type, (bucket, filename, decision_heading) in fixtures.items():
@@ -254,7 +262,7 @@ def test_shared_report_validation_enforces_word_budget_and_calendar_date(tmp_pat
         / "2026-99-99-alice-action-plan.md"
     )
     oversized = _valid_what_next_report().replace(
-        "The action narrows the differential.",
+        "A ação reduz o diagnóstico diferencial.",
         "word " * 1900,
     )
     errors = validate_report(
@@ -289,7 +297,7 @@ def test_repeat_report_requires_classified_change(tmp_path: Path) -> None:
 
     updated = report_text.replace(
         BASELINE_CHANGE_TEXT,
-        "Changed: CBC is now the highest-priority action [HL:2026-08-10:processed:L4].",
+        "Alterado: o hemograma é agora a ação de maior prioridade [HL:2026-08-10:processed:L4].",
     )
     assert validate_report(
         updated,

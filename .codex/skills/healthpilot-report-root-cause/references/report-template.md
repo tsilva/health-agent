@@ -1,72 +1,72 @@
-# Root Cause Analysis — {query}
+# Análise de causas — {questão}
 
-**Report generated:** {YYYY-MM-DD HH:MM TZ}
-**Profile:** {profile_name}
-**Record cutoff:** {latest evidence date reviewed}
-**Evidence snapshot:** {snapshot_id} at {snapshot_generated_at}
-**Previous comparable report:** {filename or none}
-**Source-gap severity:** {none | minor | material | critical}
+**Relatório gerado:** {AAAA-MM-DD HH:MM FUSO}
+**Perfil:** {nome_do_perfil}
+**Data-limite dos registos:** {data mais recente da evidência analisada}
+**Instantâneo de evidência:** {id_do_instantâneo} às {data_hora_do_instantâneo}
+**Relatório comparável anterior:** {nome do ficheiro ou nenhum}
+**Gravidade das lacunas nas fontes:** {nenhuma | ligeira | material | crítica}
 
-**Query interpreted as:** {one sentence defining the symptom, marker, episode, or pattern}
+**Questão interpretada como:** {uma frase que defina o sintoma, marcador, episódio ou padrão}
 
-## Leading hypotheses
+## Principais hipóteses
 
-These are evidence-weighted working probabilities, not definitive diagnoses.
+Estas são probabilidades de trabalho ponderadas pela evidência, não diagnósticos definitivos.
 
-| Rank | Hypothesis | Probability | Confidence frame | Evidence confidence | Urgency | Strongest discriminator |
+| Posição | Hipótese | Probabilidade | Enquadramento de confiança | Confiança na evidência | Urgência | Melhor elemento discriminador |
 |---:|---|---:|---|---|---|---|
-| 1 | {hypothesis} | {N}% | {frame} | {high/moderate/low} | {immediate/soon/routine/monitoring} | {test or observation} |
+| 1 | {hipótese} | {N}% | {enquadramento} | {alta/moderada/baixa} | {imediata/breve/rotina/monitorização} | {teste ou observação} |
 
 **Total:** 100%
 
-## Changes since previous report
+## Alterações desde o relatório anterior
 
-{For a baseline, use the exact baseline statement. Otherwise classify Added, Changed, Resolved, and Unchanged findings with current evidence IDs.}
+{No primeiro relatório, use a frase de referência exata. Caso contrário, classifique os achados como Adicionados, Alterados, Resolvidos ou Inalterados e cite os IDs de evidência atuais.}
 
-## Ranked root-cause assessment
+## Avaliação ordenada das causas
 
-### 1. {Hypothesis} — {N}%
+### 1. {Hipótese} — {N}%
 
-- **Confidence frame:** {clear conclusion | likely diagnosis | differential | open question}
-- **Evidence confidence:** {high | moderate | low}
-- **Urgency:** {immediate | soon | routine | monitoring}
-- **Why this probability:** {why it is higher or lower than alternatives}
-- **Supporting evidence:** {dated observed evidence with report-safe citations}
-- **Contradicting / weakening evidence:** {evidence against or uncertainty}
-- **Missing data that would change probability:** {specific result or observation}
-- **Next best test or action:** {concrete action and specialist type when appropriate}
+- **Enquadramento de confiança:** {conclusão clara | diagnóstico provável | diagnóstico diferencial | questão em aberto}
+- **Confiança na evidência:** {alta | moderada | baixa}
+- **Urgência:** {imediata | breve | rotina | monitorização}
+- **Justificação desta probabilidade:** {razão para ser superior ou inferior às alternativas}
+- **Evidência a favor:** {evidência observada e datada com citações seguras}
+- **Evidência contra / que reduz a probabilidade:** {evidência contrária ou incerteza}
+- **Dados em falta que alterariam a probabilidade:** {resultado ou observação específica}
+- **Melhor teste ou ação seguinte:** {ação concreta e tipo de especialista, quando adequado}
 
-{Repeat for every ranked hypothesis.}
+{Repetir para todas as hipóteses ordenadas.}
 
-## Most important uncertainty
+## Incerteza mais importante
 
-- {Single uncertainty that most limits the ranking.}
+- {A única incerteza que mais limita a ordenação.}
 
-## Next best actions
+## Melhores ações seguintes
 
-1. **Do next:** {highest-yield action}
-   **Why:** {how it changes the ranking}
-   **What to ask for:** {test, exam, specialist type, or treatment discussion}
-   **What result to return with:** {result that would change probabilities}
+1. **Fazer a seguir:** {ação com maior utilidade}
+   **Porquê:** {como altera a ordenação}
+   **O que pedir:** {análise, exame, tipo de especialista ou discussão terapêutica}
+   **Que resultado trazer:** {resultado que alteraria as probabilidades}
 
-## What to return with
+## O que trazer na próxima atualização
 
-- {New evidence that would change the ranking.}
+- {Nova evidência que alteraria a ordenação.}
 
-## Evidence appendix
+## Apêndice de evidência
 
-### Source coverage
+### Cobertura das fontes
 
-| Source | Status | Freshness / span | Evidence used | Limitation |
+| Fonte | Estado | Atualidade / período | Evidência utilizada | Limitação |
 |---|---|---|---|---|
-| {source} | {available/missing/unreadable/not configured} | {date or span} | {evidence IDs or none} | {limitation} |
+| {fonte} | {disponível/em falta/ilegível/não configurada} | {data ou período} | {IDs de evidência ou nenhum} | {limitação} |
 
-**Unavailable sources:** {list, or `None`}
+**Fontes indisponíveis:** {lista ou `Nenhuma`}
 
-### Evidence references
+### Referências de evidência
 
-- {Report-safe evidence ID}: {dated evidence label; never an absolute path}
+- {ID de evidência seguro}: {descrição datada; nunca um caminho absoluto}
 
-### Method and limitations
+### Método e limitações
 
-- {Probability method, missing-data effects, and other limitations.}
+- {Método de cálculo das probabilidades, efeitos dos dados em falta e outras limitações.}

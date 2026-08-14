@@ -1,99 +1,99 @@
-# Organ and Bodily-System Health Report — {profile_name}
+# Relatório de saúde dos órgãos e sistemas — {nome_do_perfil}
 
-**Report generated:** {YYYY-MM-DD HH:MM TZ}
-**Profile:** {profile_name}
-**Record cutoff:** {latest evidence date reviewed}
-**Evidence snapshot:** {snapshot_id} at {snapshot_generated_at}
-**Previous comparable report:** {filename or none}
-**Source-gap severity:** {none | minor | material | critical}
+**Relatório gerado:** {AAAA-MM-DD HH:MM FUSO}
+**Perfil:** {nome_do_perfil}
+**Data-limite dos registos:** {data mais recente da evidência analisada}
+**Instantâneo de evidência:** {id_do_instantâneo} às {data_hora_do_instantâneo}
+**Relatório comparável anterior:** {nome do ficheiro ou nenhum}
+**Gravidade das lacunas nas fontes:** {nenhuma | ligeira | material | crítica}
 
-> Scores use a nonvalidated Healthpilot prioritization rubric. They are not diagnoses, probabilities, clinical grades, or comparisons with other people.
+> As pontuações usam uma grelha de priorização Healthpilot não validada. Não são diagnósticos, probabilidades, classificações clínicas nem comparações com outras pessoas.
 
-## Lowest-scoring systems
+## Sistemas com pontuação mais baixa
 
-| Rank | System | Score | Plausible range | Confidence frame | Evidence confidence | Driver | Urgency | Next useful data point |
+| Posição | Sistema | Pontuação | Intervalo plausível | Enquadramento de confiança | Confiança na evidência | Fator principal | Urgência | Próximo dado útil |
 |---:|---|---:|---:|---|---|---|---|---|
-| 1 | {system} | {N.N}/10 | {L–H} | {frame} | {high/moderate/low} | {impairment/uncertainty/mixed} | {urgency} | {test or reconciliation} |
+| 1 | {sistema} | {N.N}/10 | {L–H} | {enquadramento} | {alta/moderada/baixa} | {compromisso/incerteza/misto} | {urgência} | {teste ou reconciliação} |
 
-## Changes since previous report
+## Alterações desde o relatório anterior
 
-{For a baseline, use the exact baseline statement. Otherwise classify Added, Changed, Resolved, and Unchanged score changes with current evidence IDs.}
+{No primeiro relatório, use a frase de referência exata. Caso contrário, classifique as alterações de pontuação como Adicionadas, Alteradas, Resolvidas ou Inalteradas e cite os IDs de evidência atuais.}
 
-## Score meaning
+## Significado das pontuações
 
-- `10` = exceptional directly evidenced health across structure, function, symptoms, disease control, and trajectory.
-- `5` = neutral/indeterminate midpoint when evidence is missing or mixed; it does not mean 50% healthy.
-- `0` = directly evidenced acute critical failure.
-- Read every score with its plausible range and evidence confidence.
+- `10` = saúde excecional diretamente sustentada por evidência da estrutura, função, sintomas, controlo da doença e evolução.
+- `5` = ponto médio neutro/indeterminado quando a evidência é insuficiente ou mista; não significa 50% de saúde.
+- `0` = falência crítica aguda diretamente sustentada por evidência.
+- Interpretar cada pontuação juntamente com o intervalo plausível e a confiança na evidência.
 
-## Current status context
+## Contexto do estado atual
 
-### Active conditions
+### Condições ativas
 
-{Active or monitoring conditions with confidence frames.}
+{Condições ativas ou em monitorização, com enquadramentos de confiança.}
 
-### Current medications and treatments considered
+### Medicação e tratamentos atuais considerados
 
-{Reconciled current regimen or evidence needing reconciliation.}
+{Regime atual reconciliado ou evidência que precisa de reconciliação.}
 
-## Ranked system scores
+## Pontuações dos sistemas por ordem
 
-| Rank | Organ/system | Health score | Plausible range | Evidence confidence | Driver | Main evidence or gap |
+| Posição | Órgão/sistema | Pontuação de saúde | Intervalo plausível | Confiança na evidência | Fator principal | Evidência ou lacuna principal |
 |---:|---|---:|---:|---|---|---|
-| 1 | {lowest canonical system} | {N.N}/10 | {L–H} | {confidence} | {driver} | {safe citation or gap} |
-| … | {all 16 canonical systems in ascending score order} | {N.N}/10 | {L–H} | {confidence} | {driver} | {evidence} |
-| 16 | {highest canonical system} | {N.N}/10 | {L–H} | {confidence} | {driver} | {evidence} |
+| 1 | {sistema canónico com pontuação mais baixa} | {N.N}/10 | {L–H} | {confiança} | {fator} | {citação segura ou lacuna} |
+| … | {os 16 sistemas canónicos por ordem crescente de pontuação} | {N.N}/10 | {L–H} | {confiança} | {fator} | {evidência} |
+| 16 | {sistema canónico com pontuação mais alta} | {N.N}/10 | {L–H} | {confiança} | {fator} | {evidência} |
 
-## Detailed organ and subsystem scores
+## Pontuações detalhadas dos órgãos e subsistemas
 
-| Parent system | Organ or subsystem | Health score | Plausible range | Evidence confidence | Driver | Main evidence or gap |
+| Sistema principal | Órgão ou subsistema | Pontuação de saúde | Intervalo plausível | Confiança na evidência | Fator principal | Evidência ou lacuna principal |
 |---|---|---:|---:|---|---|---|
-| {parent} | {required organ/subsystem} | {N.N}/10 | {L–H} | {confidence} | {driver} | {evidence} |
+| {sistema principal} | {órgão/subsistema obrigatório} | {N.N}/10 | {L–H} | {confiança} | {fator} | {evidência} |
 
-## Five lowest systems
+## Cinco sistemas com pontuação mais baixa
 
-### 1. {System} — {N.N}/10 ({L–H})
+### 1. {Sistema} — {N.N}/10 ({L–H})
 
-- **Working conclusion:** {conclusion}
-- **Confidence frame:** {clear conclusion | likely diagnosis | differential | open question}
-- **Evidence confidence:** {high | moderate | low}
-- **Urgency:** {immediate | soon | routine | monitoring}
-- **Driver:** {impairment-driven | uncertainty-driven | mixed | healthy-evidenced}
-- **Dimension scores:** structure {N}/2; function {N}/2; symptoms/impact {N}/2; disease/control {N}/2; trajectory/reserve {N}/2
-- **Observed supporting evidence:** {dated evidence IDs}
-- **Reassuring or contradicting evidence:** {dated evidence IDs}
-- **Missing data that would change the score:** {data}
-- **Next step:** {test, monitoring step, or specialist discussion}
-- **Result that would most change the score:** {result}
+- **Conclusão de trabalho:** {conclusão}
+- **Enquadramento de confiança:** {conclusão clara | diagnóstico provável | diagnóstico diferencial | questão em aberto}
+- **Confiança na evidência:** {alta | moderada | baixa}
+- **Urgência:** {imediata | breve | rotina | monitorização}
+- **Fator principal:** {compromisso | incerteza | misto | saúde sustentada por evidência}
+- **Pontuações por dimensão:** estrutura {N}/2; função {N}/2; sintomas/impacto {N}/2; doença/controlo {N}/2; evolução/reserva {N}/2
+- **Evidência observada a favor:** {IDs de evidência datados}
+- **Evidência tranquilizadora ou contraditória:** {IDs de evidência datados}
+- **Dados em falta que alterariam a pontuação:** {dados}
+- **Passo seguinte:** {teste, monitorização ou discussão com especialista}
+- **Resultado que mais alteraria a pontuação:** {resultado}
 
-{Repeat for ranks 2–5.}
+{Repetir para as posições 2–5.}
 
-## Cross-system findings
+## Achados transversais aos sistemas
 
-- {Systemic signal, primary scoring location, downstream relevance, and double-counting control.}
+- {Sinal sistémico, local principal da pontuação, relevância noutros sistemas e controlo de dupla contagem.}
 
-## Evidence gaps
+## Lacunas de evidência
 
-1. {Highest-impact gap and affected systems.}
+1. {Lacuna com maior impacto e sistemas afetados.}
 
-## Evidence appendix
+## Apêndice de evidência
 
-### Source coverage
+### Cobertura das fontes
 
-| Source | Status | Freshness / span | Systems informed | Limitation or uncertainty impact |
+| Fonte | Estado | Atualidade / período | Sistemas informados | Limitação ou impacto na incerteza |
 |---|---|---|---|---|
-| {source} | {available/missing/unreadable/not configured} | {date or span} | {systems} | {limitation} |
+| {fonte} | {disponível/em falta/ilegível/não configurada} | {data ou período} | {sistemas} | {limitação} |
 
-**Unavailable sources:** {list, or `None`}
+**Fontes indisponíveis:** {lista ou `Nenhuma`}
 
-### Safety notes
+### Notas de segurança
 
-- {Urgent red flag, or `No acute organ-failure signal was identified in the available record.`}
+- {Sinal de alarme urgente ou `Não foi identificado qualquer sinal de falência aguda de órgão nos registos disponíveis.`}
 
-### Limitations
+### Limitações
 
-- {Missing evidence, uncertainty scoring, current-health horizon, and noncomparability across people.}
+- {Evidência em falta, pontuação da incerteza, horizonte de saúde atual e impossibilidade de comparação entre pessoas.}
 
-### Evidence references
+### Referências de evidência
 
-- {Report-safe evidence ID}: {dated evidence label; never an absolute path}
+- {ID de evidência seguro}: {descrição datada; nunca um caminho absoluto}

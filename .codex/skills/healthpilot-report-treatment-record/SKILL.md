@@ -5,6 +5,8 @@ description: Generate a dated, evidence-reconciled treatment record covering cur
 
 # Treatment Record
 
+Generate every user-facing report and companion artifact in European Portuguese (`pt-PT`), following the shared report contract's language rules.
+
 Create one treatment record that answers both present-tense reconciliation and historical medication or supplement questions. Put the current regimen first, keep noncurrent items visibly separate, and preserve a compact longitudinal history.
 
 ## Required session rules
@@ -77,14 +79,14 @@ Apply these precedence rules:
 7. Deduplicate clear synonyms and brand/generic pairs without merging materially different formulations.
 8. Label origin as `prescribed`, `clinician-directed`, `self-directed`, or `unclear` only when supported.
 
-Use `clear conclusion` for directly supported current or historical status and `open question` for uncertainty. Do not force diagnostic confidence labels onto reconciliation.
+Use `conclusão clara` for directly supported current or historical status and `questão em aberto` for uncertainty. Do not force diagnostic confidence labels onto reconciliation.
 
 ## Report contract
 
 Read [references/report-template.md](references/report-template.md) before drafting.
 Read [../_shared/healthpilot-report-contract.md](../_shared/healthpilot-report-contract.md) and apply it in full.
 
-Start the decision layer with `## Current regimen at a glance`. Show confirmed current treatment, material recent changes, reconciliation conflicts, and the most urgent confirmation need before the detailed treatment tables.
+Start the decision layer with `## Regime atual em resumo`. Show confirmed current treatment, material recent changes, reconciliation conflicts, and the most urgent confirmation need before the detailed treatment tables.
 
 For every current medication or supplement, include when available:
 
@@ -98,7 +100,7 @@ For every current medication or supplement, include when available:
 
 For non-medication treatments, include category, protocol, target, origin, latest confirmation, adherence, response, and evidence.
 
-Keep planned items, unclear items, and recently completed items outside the current tables. In `Medication and supplement history`, summarize meaningful starts, dose changes, pauses, restarts, stops, replacements, responses, and adverse effects with dates. Do not repeat the full current row when a short cross-reference is sufficient.
+Keep planned items, unclear items, and recently completed items outside the current tables. In `Histórico de medicação e suplementos`, summarize meaningful starts, dose changes, pauses, restarts, stops, replacements, responses, and adverse effects with dates. Do not repeat the full current row when a short cross-reference is sufficient.
 
 ## Reconciliation and safety
 

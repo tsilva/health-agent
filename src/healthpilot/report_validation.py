@@ -9,42 +9,44 @@ from pathlib import Path
 from healthpilot.paths import REPORT_TYPE_BUCKETS
 
 
-BASELINE_CHANGE_TEXT = "Baseline report; no prior comparable artifact was found."
+BASELINE_CHANGE_TEXT = (
+    "Relatório de referência; não foi encontrado nenhum artefacto comparável anterior."
+)
 
 REPORT_CONTRACTS = {
     "what-next": {
-        "decision_headings": ("## Current status", "## Now / Next / Later"),
+        "decision_headings": ("## Estado atual", "## Agora / A seguir / Mais tarde"),
         "word_limit": 1800,
         "artifact_pattern": r"action-plan\.md",
     },
     "root-cause": {
-        "decision_headings": ("## Leading hypotheses",),
+        "decision_headings": ("## Principais hipóteses",),
         "word_limit": 2500,
         "artifact_pattern": r"root-cause-[a-z0-9][a-z0-9-]*\.md",
     },
     "treatment-record": {
-        "decision_headings": ("## Current regimen at a glance",),
+        "decision_headings": ("## Regime atual em resumo",),
         "word_limit": 3000,
         "artifact_pattern": r"treatment-record\.md",
     },
     "organ-system-health": {
-        "decision_headings": ("## Lowest-scoring systems",),
+        "decision_headings": ("## Sistemas com pontuação mais baixa",),
         "word_limit": 2500,
         "artifact_pattern": r"organ-system-health\.md",
     },
     "mortality-risk": {
-        "decision_headings": ("## Leading risks and prevention levers",),
+        "decision_headings": ("## Principais riscos e medidas preventivas",),
         "word_limit": 2500,
         "artifact_pattern": r"mortality-risk\.md",
     },
 }
 
 REQUIRED_METADATA = (
-    "Report generated",
-    "Record cutoff",
-    "Evidence snapshot",
-    "Previous comparable report",
-    "Source-gap severity",
+    "Relatório gerado",
+    "Data-limite dos registos",
+    "Instantâneo de evidência",
+    "Relatório comparável anterior",
+    "Gravidade das lacunas nas fontes",
 )
 
 FORBIDDEN_PATTERNS = {
@@ -60,16 +62,16 @@ FORBIDDEN_PATTERNS = {
     "snapshot placeholder": re.compile(r"No additional snapshot details", re.I),
 }
 
-PLACEHOLDER_RE = re.compile(
-    r"\{(?:YYYY|profile|query|clinician|report|record|source|evidence)[^}]*\}",
-    re.I,
-)
+PLACEHOLDER_RE = re.compile(r"\{[^{}\n]+\}")
 SAFE_CITATION_RE = re.compile(
     r"\[(?:LAB|HL|EXAM|GEN|LIFE):[A-Za-z0-9][A-Za-z0-9:-]*\]"
 )
 EVIDENCE_LIKE_RE = re.compile(r"\[(?:LAB|HL|EXAM|GEN|LIFE):[^\]]*\]")
 WORD_RE = re.compile(r"\b[\w][\w'’/-]*\b", re.UNICODE)
-CHANGE_TERMS_RE = re.compile(r"\b(?:added|changed|resolved|unchanged)\b", re.I)
+CHANGE_TERMS_RE = re.compile(
+    r"\b(?:adicionado|adicionada|alterado|alterada|resolvido|resolvida|inalterado|inalterada)\b",
+    re.I,
+)
 
 
 def _section(text: str, heading: str) -> str:
@@ -128,12 +130,14 @@ def validate_report(
             errors.append(f"missing metadata: {label}")
 
     severity = re.search(
-        r"\*\*Source-gap severity:\*\*\s*(none|minor|material|critical)\b",
+        r"\*\*Gravidade das lacunas nas fontes:\*\*\s*(nenhuma|ligeira|material|crítica)\b",
         text,
         flags=re.I,
     )
     if not severity:
-        errors.append("source-gap severity must be none, minor, material, or critical")
+        errors.append(
+            "a gravidade das lacunas nas fontes deve ser nenhuma, ligeira, material ou crítica"
+        )
 
     nonblank_lines = [line.strip() for line in text.splitlines() if line.strip()]
     decision_positions: list[int] = []
@@ -149,8 +153,8 @@ def validate_report(
         if line_position is None or line_position > 40:
             errors.append(f"decision heading must appear within first 40 nonblank lines: {heading}")
 
-    changes_heading = "## Changes since previous report"
-    appendix_heading = "## Evidence appendix"
+    changes_heading = "## Alterações desde o relatório anterior"
+    appendix_heading = "## Apêndice de evidência"
     for heading in (changes_heading, appendix_heading):
         if heading not in text:
             errors.append(f"missing required heading: {heading}")
@@ -181,10 +185,10 @@ def validate_report(
                 f"main body exceeds {contract['word_limit']} words; found {word_count}"
             )
         appendix = text.split(appendix_heading, 1)[1]
-        if "Source coverage" not in appendix:
-            errors.append("evidence appendix must include Source coverage")
-        if "Unavailable sources" not in appendix:
-            errors.append("evidence appendix must disclose Unavailable sources")
+        if "Cobertura das fontes" not in appendix:
+            errors.append("o apêndice de evidência deve incluir Cobertura das fontes")
+        if "Fontes indisponíveis" not in appendix:
+            errors.append("o apêndice de evidência deve indicar Fontes indisponíveis")
 
     for label, pattern in FORBIDDEN_PATTERNS.items():
         if pattern.search(text):

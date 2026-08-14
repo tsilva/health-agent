@@ -9,36 +9,36 @@ from pathlib import Path
 
 
 REQUIRED_HEADINGS = (
-    "## Current regimen at a glance",
-    "## Current medications",
-    "## Current supplements",
-    "## Current non-medication treatments",
-    "## Current monitoring and follow-up",
-    "## Planned or recommended—not confirmed started",
-    "## Unclear or conflicting current status",
-    "## Recently stopped or completed",
-    "## Medication and supplement history",
-    "## Reconciliation flags",
-    "## Evidence appendix",
-    "### Source coverage",
-    "### Evidence notes and limitations",
+    "## Regime atual em resumo",
+    "## Medicação atual",
+    "## Suplementos atuais",
+    "## Tratamentos atuais não medicamentosos",
+    "## Monitorização e seguimento atuais",
+    "## Planeado ou recomendado — início não confirmado",
+    "## Estado atual incerto ou contraditório",
+    "## Interrompido ou concluído recentemente",
+    "## Histórico de medicação e suplementos",
+    "## Alertas de reconciliação",
+    "## Apêndice de evidência",
+    "### Cobertura das fontes",
+    "### Notas sobre a evidência e limitações",
 )
 SECTION_RULES = {
-    "## Current medications": "No current medications were identified in the available record.",
-    "## Current supplements": "No current supplements were identified in the available record.",
-    "## Current non-medication treatments": (
-        "No current non-medication treatments were identified in the available record."
+    "## Medicação atual": "Não foi identificada medicação atual nos registos disponíveis.",
+    "## Suplementos atuais": "Não foram identificados suplementos atuais nos registos disponíveis.",
+    "## Tratamentos atuais não medicamentosos": (
+        "Não foram identificados tratamentos atuais não medicamentosos nos registos disponíveis."
     ),
-    "## Current monitoring and follow-up": (
-        "No current monitoring or follow-up regimen was identified in the available record."
+    "## Monitorização e seguimento atuais": (
+        "Não foi identificado um regime atual de monitorização ou seguimento nos registos disponíveis."
     ),
-    "## Medication and supplement history": (
-        "No additional historical medications or supplements were identified in the available record."
+    "## Histórico de medicação e suplementos": (
+        "Não foram identificados medicamentos ou suplementos históricos adicionais nos registos disponíveis."
     ),
 }
 PLACEHOLDER_RE = re.compile(r"\{[^{}]+\}|YYYY-MM-DD")
 DATA_ROW_RE = re.compile(
-    r"^\|(?!\s*(?:---|Medication|Supplement|Treatment|Monitoring|Item)\s*\|)", re.I
+    r"^\|(?!\s*(?:---|Medicamento|Suplemento|Tratamento|Atividade|Item)\s*\|)", re.I
 )
 
 
@@ -68,10 +68,10 @@ def validate(text: str) -> list[str]:
                 f"{heading} must contain at least one data row or the explicit empty statement"
             )
 
-    if "**Clear conclusion:**" not in text:
-        errors.append("current regimen summary must include **Clear conclusion:**")
-    if "**Confirmation needed next:**" not in text:
-        errors.append("current regimen summary must include **Confirmation needed next:**")
+    if "**Conclusão clara:**" not in text:
+        errors.append("current regimen summary must include **Conclusão clara:**")
+    if "**Próxima confirmação necessária:**" not in text:
+        errors.append("current regimen summary must include **Próxima confirmação necessária:**")
 
     return errors
 
@@ -83,30 +83,30 @@ def _self_test() -> None:
 
     fixture = "\n".join(
         [
-            "# Treatment Record — Test User",
-            "## Current regimen at a glance",
-            "- **Clear conclusion:** No confirmed items.",
-            "- **Confirmation needed next:** None.",
+            "# Registo de tratamentos — Pessoa de teste",
+            "## Regime atual em resumo",
+            "- **Conclusão clara:** Nenhum item confirmado.",
+            "- **Próxima confirmação necessária:** Nenhuma.",
             *required_sections,
-            "## Planned or recommended—not confirmed started",
-            "- None.",
-            "## Unclear or conflicting current status",
-            "- None.",
-            "## Recently stopped or completed",
-            "- None.",
-            "## Reconciliation flags",
-            "- None identified from the available record.",
-            "## Evidence appendix",
-            "### Source coverage",
-            "| Source | Status |",
+            "## Planeado ou recomendado — início não confirmado",
+            "- Nenhum.",
+            "## Estado atual incerto ou contraditório",
+            "- Nenhum.",
+            "## Interrompido ou concluído recentemente",
+            "- Nenhum.",
+            "## Alertas de reconciliação",
+            "- Nenhum identificado nos registos disponíveis.",
+            "## Apêndice de evidência",
+            "### Cobertura das fontes",
+            "| Fonte | Estado |",
             "|---|---|",
-            "| Health log | available |",
-            "### Evidence notes and limitations",
-            "- Latest direct sources reviewed.",
+            "| Registo de saúde | disponível |",
+            "### Notas sobre a evidência e limitações",
+            "- Foram analisadas as fontes diretas mais recentes.",
         ]
     )
     assert validate(fixture) == []
-    assert validate(fixture.replace("**Clear conclusion:**", "Clear conclusion:"))
+    assert validate(fixture.replace("**Conclusão clara:**", "Conclusão clara:"))
     assert validate(fixture + "\n{unfilled placeholder}")
 
 
