@@ -63,6 +63,7 @@ Deprecated aliases such as `healthpilot intake`, `healthpilot review`, and `heal
 - The primary data sources are `labs-parser`, `medical-exams-parser`, `health-log-parser`, optional raw 23andMe data, optional SelfDecode genotype lookups, and optional lifestyle Markdown files.
 - SelfDecode JWTs are transient credentials. The cache stores genotype results only, in `.state/profiles/<profile_slug>/selfdecode-genotypes.json`.
 - Project report skills live under `.codex/skills/` and share the `healthpilot-report-` prefix: `healthpilot-report-what-next`, `healthpilot-report-root-cause`, `healthpilot-report-treatment-record`, `healthpilot-report-organ-system-health`, `healthpilot-report-mortality-risk`, and `healthpilot-report-doctor-appointment`.
+- Printable colour-coded medication tables use `healthpilot-medication-sheet`. The skill reconciles the current regimen for a selected live profile and writes a one-page PDF under `.output/<profile_slug>/treatment-record/` without modifying profile-linked source files.
 - Profile gap-filling uses `healthpilot-profile-interview`, which asks high-yield questions and creates a paste-ready health-log entry rather than a report.
 - Appointment preparation uses `healthpilot-report-doctor-appointment`. It creates a facts-only one-page clinician PDF and a detailed patient PDF with the relevant printable labs, exams, imaging, or other supporting records merged into it. For a confirmed repeat visit with the same named clinician, the handout highlights only what is new since the latest completed visit.
 

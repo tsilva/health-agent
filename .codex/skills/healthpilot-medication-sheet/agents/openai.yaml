@@ -1,0 +1,4 @@
+interface:
+  display_name: "Healthpilot Medication Sheet"
+  short_description: "Create colour-coded medication sheets"
+  default_prompt: "Use $healthpilot-medication-sheet to create a colour-coded medication PDF for the selected live profile."
